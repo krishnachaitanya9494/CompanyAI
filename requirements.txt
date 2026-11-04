@@ -1,0 +1,21 @@
+
+# Web framework used to define and serve the HTTP API.
+fastapi
+
+# ASGI server used to run the FastAPI application.
+uvicorn
+
+# HTTP client required by FastAPI TestClient.
+httpx
+
+# Test runner used to execute automated tests.
+pytest
+
+# ORM used to manage PostgreSQL database operations.
+sqlalchemy
+
+# PostgreSQL driver used by Python to communicate with PostgreSQL.
+psycopg[binary]
+
+# Loads environment variables from the project's .env file.
+python-dotenv

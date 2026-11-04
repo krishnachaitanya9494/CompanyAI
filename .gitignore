@@ -1,0 +1,14 @@
+# Keep the local virtual environment out of source control.
+.venv/
+# Ignore Python bytecode and interpreter cache folders.
+__pycache__/
+# Ignore pytest's local cache.
+.pytest_cache/
+# Ignore compiled Python files.
+*.py[cod]
+# Ignore the generated SQLite database; keep database code, not local data.
+database/*.db
+# Keep local environment variables and credentials out of source control.
+.env
+# Candidate and other local CSV data must not be published to GitHub.
+data/*.csv
