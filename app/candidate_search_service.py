@@ -1,0 +1,125 @@
+# Import the existing vector validator so stored values follow the storage contract.
+from database.embedding_storage import validate_embedding_vector
+# Import the current configured provider model for the built-in embedding function.
+from app.embedding_service import OPENROUTER_EMBEDDING_MODEL, generate_embedding
+# Import the SQLite ORM records used to build per-resume search inputs.
+from database.models import Candidate, Resume, ResumeEmbedding
+# Import the Phase 2 resume-vector ranking implementation rather than copying cosine logic.
+from app.semantic_search import CandidateEmbedding, rank_candidates
+# Import SQLAlchemy selection helpers for a read-only joined query.
+from sqlalchemy import select
+# Import Session and Sequence for the service's public input types.
+from sqlalchemy.orm import Session
+from collections.abc import Callable, Sequence
+from dataclasses import dataclass
+
+
+# Describe the caller-facing result while retaining one row per matching resume.
+@dataclass(frozen=True)
+class CandidateSearchResult:
+    # Identify the candidate who owns the matched resume.
+    candidate_id: int
+    # Identify the independently ranked resume record.
+    resume_id: int
+    # Expose the candidate's optional display name.
+    candidate_name: str | None
+    # Return a fresh list of the candidate's available skills.
+    skills: list[str]
+    # Return the Phase 2 cosine similarity for this resume.
+    similarity: float
+
+
+# Search stored SQLite resume vectors using the existing embedding and ranking services.
+def search_candidates(
+    query: str,
+    session: Session,
+    embedding_provider: Callable[[str], Sequence[int | float]] | None = None,
+    limit: int = 20,
+) -> list[CandidateSearchResult]:
+    # Reject empty query text before any provider call or database work.
+    if not isinstance(query, str) or not query.strip():
+        raise ValueError("Search query must not be empty.")
+    # Require a positive integer result limit, matching the Phase 2 ranker contract.
+    if not isinstance(limit, int) or isinstance(limit, bool) or limit < 1:
+        raise ValueError("Result limit must be a positive integer.")
+    # Select the built-in provider when no custom embedding callable was supplied.
+    provider = embedding_provider or generate_embedding
+    # Read the provider's model identifier, falling back only for the known built-in function.
+    query_model = getattr(provider, "model_name", None) or getattr(provider, "embedding_model", None)
+    # Use the configured model identifier when the provider is the existing application service.
+    if provider is generate_embedding:
+        query_model = OPENROUTER_EMBEDDING_MODEL
+    # Fail explicitly when provider metadata cannot establish query-vector compatibility.
+    if not isinstance(query_model, str) or not query_model.strip():
+        raise ValueError("Embedding provider model metadata is missing or unverifiable.")
+    # Load only rows with actual local vectors and the candidate fields required for results.
+    # Prevent this read from flushing unrelated pending changes in the caller's session.
+    with session.no_autoflush:
+        # Select only embedding rows that can be ranked and their associated candidate data.
+        rows = session.execute(
+            select(ResumeEmbedding, Resume, Candidate)
+            .join(Resume, Resume.id == ResumeEmbedding.resume_id)
+            .join(Candidate, Candidate.id == Resume.candidate_id)
+            .where(ResumeEmbedding.embedding_vector.is_not(None))
+            .order_by(Resume.id.asc())
+        ).all()
+    # Avoid an embedding API call when there are no vectors that could produce results.
+    if not rows:
+        return []
+    # Generate one query embedding only after input and database preconditions are satisfied.
+    query_vector = validate_embedding_vector(provider(query.strip()))
+    # Keep resume metadata keyed by resume ID because multiple resumes may share a candidate.
+    result_metadata: dict[int, tuple[int, str | None, list[str]]] = {}
+    # Prepare ranking inputs using each resume ID as a unique Phase 2 ranker identifier.
+    ranking_inputs: list[CandidateEmbedding] = []
+    # Validate compatibility and vector shape before passing any stored vector to the ranker.
+    for embedding_record, resume, candidate in rows:
+        # Prefer explicit requested/returned metadata and retain model_name as the legacy source.
+        stored_model = (
+            embedding_record.requested_model
+            or embedding_record.returned_model
+            or embedding_record.model_name
+        )
+        # Treat blank and placeholder legacy values as unverifiable metadata, never as a match.
+        if not isinstance(stored_model, str) or not stored_model.strip() or stored_model == "unspecified":
+            raise ValueError(f"Resume {resume.id} has missing or unverifiable embedding model metadata.")
+        # Reject an embedding generated by a different model before cosine ranking.
+        if stored_model.strip() != query_model.strip():
+            raise ValueError(
+                f"Resume {resume.id} uses embedding model {stored_model!r}, "
+                f"which does not match query model {query_model!r}."
+            )
+        # Skip malformed stored vectors safely without changing or repairing their database rows.
+        try:
+            stored_vector = validate_embedding_vector(embedding_record.embedding_vector)
+        except (TypeError, ValueError):
+            continue
+        # Detect disagreement between the stored dimension declaration and actual vector length.
+        if embedding_record.dimensions is not None and embedding_record.dimensions != len(stored_vector):
+            continue
+        # Reject dimension incompatibility explicitly instead of allowing silent truncation or padding.
+        if len(stored_vector) != len(query_vector):
+            raise ValueError(
+                f"Resume {resume.id} embedding dimension {len(stored_vector)} does not match "
+                f"query dimension {len(query_vector)}."
+            )
+        # Save only result fields needed after Phase 2 returns the resume ranking.
+        result_metadata[resume.id] = (candidate.id, candidate.name, list(candidate.skills or []))
+        # Reuse the Phase 2 ranker with the unique resume ID to keep each resume independent.
+        ranking_inputs.append(CandidateEmbedding(candidate_id=resume.id, embedding=stored_vector))
+    # Return no matches when every stored vector was malformed or inconsistent.
+    if not ranking_inputs:
+        return []
+    # Rank resume vectors with the existing cosine similarity and deterministic ordering logic.
+    ranked = rank_candidates(query_vector, ranking_inputs, limit=limit)
+    # Restore candidate identity and skills while preserving one result for each ranked resume.
+    return [
+        CandidateSearchResult(
+            candidate_id=result_metadata[item.candidate_id][0],
+            resume_id=item.candidate_id,
+            candidate_name=result_metadata[item.candidate_id][1],
+            skills=result_metadata[item.candidate_id][2],
+            similarity=item.similarity,
+        )
+        for item in ranked
+    ]
