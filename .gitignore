@@ -10,5 +10,47 @@ __pycache__/
 database/*.db
 # Keep local environment variables and credentials out of source control.
 .env
+# Keep local resume-ingestion metadata and source paths out of source control.
+.companyai/
 # Candidate and other local CSV data must not be published to GitHub.
 data/*.csv
+
+# Exclude local credentials while retaining the safe template.
+.env.*
+!.env.example
+
+# Exclude local Python environments and generated test data.
+.venv*/
+.pytest*/
+.pytest_cache/
+
+# Exclude frontend dependencies and generated build output.
+node_modules/
+dist/
+build/
+coverage/
+.coverage*
+
+# Exclude local databases, vector stores, resumes, and recruitment documents.
+*.db
+*.db-*
+*.sqlite
+*.sqlite3
+data/resumes/
+data/converted_resumes/
+data/jds/
+data/chroma_db/
+
+# Exclude local editor settings, logs, and common tool caches.
+.vscode/settings.json
+*.log
+.mypy_cache/
+.ruff_cache/
+
+# Keep hard-coded candidate/recruitment records out of public source control.
+/app/agent/orchestrator.py
+/frontend/src/data/
+/frontend/src/components/candidates/ResumePreview.jsx
+/scripts/enrich_candidates.py
+/scripts/seed_database.py
+/tests/test_candidate_extensions.py

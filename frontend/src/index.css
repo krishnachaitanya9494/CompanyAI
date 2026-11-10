@@ -1,0 +1,50 @@
+/* Import Tailwind base layer styles for standard HTML resets */
+@tailwind base;
+
+/* Import Tailwind component layer styles */
+@tailwind components;
+
+/* Import Tailwind utility classes for responsive and interactive styles */
+@tailwind utilities;
+
+/* Define global custom styles and transitions */
+@layer base {
+  /* Set smooth scroll behavior on root element */
+  html {
+    scroll-behavior: smooth;
+  }
+
+  /* Style custom subtle scrollbars for sleek SaaS aesthetic */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  /* Style scrollbar track with transparent neutral color */
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  /* Style scrollbar thumb handle with light slate color */
+  ::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 9999px;
+  }
+
+  /* Darken scrollbar thumb handle slightly on hover */
+  ::-webkit-scrollbar-thumb:hover {
+    background: #94a3b8;
+  }
+}
+
+/* Custom interactive utility helpers */
+@layer utilities {
+  /* Hide scrollbar for tabs or pill sliders while preserving scroll ability */
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+}

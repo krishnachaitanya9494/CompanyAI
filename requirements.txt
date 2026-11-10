@@ -1,21 +1,51 @@
 
-# Web framework used to define and serve the HTTP API.
+# -------------------- Web Framework --------------------
+
+# Framework used to build and serve the CompanyAI REST API.
 fastapi
 
-# ASGI server used to run the FastAPI application.
+# Multipart form parser used for resume file uploads.
+python-multipart
+
+# ASGI server used to run the FastAPI application locally.
 uvicorn
 
-# HTTP client required by FastAPI TestClient.
+# HTTP client used by FastAPI TestClient and application tests.
 httpx
 
-# Test runner used to execute automated tests.
+
+# -------------------- Testing --------------------
+
+# Testing framework used for backend and database tests.
 pytest
 
-# ORM used to manage PostgreSQL database operations.
+
+# -------------------- Database --------------------
+
+# SQLAlchemy ORM used for SQLite models and legacy PostgreSQL operations.
 sqlalchemy
 
-# PostgreSQL driver used by Python to communicate with PostgreSQL.
-psycopg[binary]
+# Pure-Python PostgreSQL driver preserved for existing PostgreSQL functionality.
+pg8000
 
-# Loads environment variables from the project's .env file.
+# ChromaDB used for persistent local vector storage and semantic search.
+chromadb
+
+
+# -------------------- Configuration --------------------
+
+# Loads API keys, model configuration and other settings from the .env file.
 python-dotenv
+
+
+# -------------------- Resume Processing --------------------
+
+# Extracts text from PDF resumes without requiring a native PDF DLL.
+pypdf
+
+# Reads and processes Microsoft Word DOCX resume documents.
+python-docx
+
+
+# Persistent vector database used for resume embeddings and semantic search.
+chromadb

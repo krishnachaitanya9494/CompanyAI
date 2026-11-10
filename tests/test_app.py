@@ -12,7 +12,11 @@ def test_root_returns_welcome_message() -> None:  # Names a pytest test for the 
     response = client.get("/")  # Sends a GET request to the root URL.
 
     assert response.status_code == 200  # Confirms the server reports a successful request.
-    assert response.json() == {"message": "CompanyAI Agent API is running"}  # Checks the exact JSON payload.
+    assert response.json() == {
+        "message": "CompanyAI 2.0 Enterprise API is running",
+        "version": "2.0.0",
+        "docs_url": "/docs",
+    }  # Checks the exact JSON payload for the versioned API root response.
 
 
 def test_health_check() -> None:  # Names a pytest test for the health-check route.
@@ -20,4 +24,4 @@ def test_health_check() -> None:  # Names a pytest test for the health-check rou
     response = client.get("/health")  # Sends a GET request to the health-check URL.
 
     assert response.status_code == 200  # Confirms the health request succeeded.
-    assert response.json() == {"status": "ok"}  # Confirms the endpoint returns the expected healthy status.
+    assert response.json() == {"status": "ok", "platform": "CompanyAI 2.0"}  # Confirms the endpoint reports the 2.0 platform status.

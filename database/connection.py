@@ -37,8 +37,8 @@ if not all([DB_USER, DB_PASSWORD, DB_NAME]):
 
 # Build the database URL safely, including passwords with special characters.
 DATABASE_URL = URL.create(
-    # Select PostgreSQL with the Psycopg 3 driver.
-    drivername="postgresql+psycopg",
+    # Select the pure-Python PostgreSQL driver for restricted Windows environments.
+    drivername="postgresql+pg8000",
     # Supply the PostgreSQL login username.
     username=DB_USER,
     # Supply the PostgreSQL login password.
