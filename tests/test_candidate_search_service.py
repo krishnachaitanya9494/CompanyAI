@@ -42,7 +42,7 @@ def add_candidate(session, vectors, name="Asha", skills=None):
         session.add(candidate)
         session.flush()
         # Store the vector and matching model metadata directly as fixture data.
-        session.add(ResumeEmbedding(resume_id=resume.id, vector_id=f"vector-{resume.id}", collection_name="sqlite-local", model_name="test-model", requested_model="test-model", dimensions=len(vector), embedding_vector=vector, embedding_metadata={}))
+        session.add(ResumeEmbedding(resume_id=resume.id, vector_id=f"vector-{resume.id}", collection_name="sqlite-local", model_name="test-model", requested_model="test-model", dimensions=len(vector), embedding_vector=vector, generation_method="nemotron_api", embedding_metadata={}))
     # Flush all fixture records so subsequent service selects can see them.
     session.flush()
     # Return the candidate ID for result assertions.

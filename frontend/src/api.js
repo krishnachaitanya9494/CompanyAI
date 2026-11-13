@@ -1,5 +1,5 @@
 // Keep every browser request pointed at the local FastAPI service.
-const API_ROOT = import.meta.env.VITE_API_ROOT || 'http://127.0.0.1:8000/api';
+export const API_ROOT = import.meta.env.VITE_API_ROOT || 'http://127.0.0.1:8000/api';
 
 // Decode JSON responses and turn backend validation messages into readable UI errors.
 export async function apiRequest(path, options = {}) {
@@ -127,6 +127,9 @@ export function toJob(row) {
     sourceFilename: row.sourceFilename || '',
     matchedCandidateIds: row.matchedCandidateIds || [],
     analysis: row.analysis || null,
+    structuredScope: row.structuredScope || row.structured_scope || null,
+    intelligenceData: row.intelligenceData || row.intelligence_data || null,
+    originalText: row.originalText || row.original_text || null,
   };
 }
 

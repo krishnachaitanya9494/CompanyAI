@@ -156,7 +156,10 @@ def isolated_test_database():
         jobs.JOB_DESCRIPTIONS_UPLOAD_DIR = ORIGINAL_JDS_DIR
 
         # Clean up and permanently remove the temporary directory and all test artifacts.
-        temp_dir_obj.cleanup()
+        try:
+            temp_dir_obj.cleanup()
+        except (PermissionError, OSError):
+            pass
 
 
 @pytest.fixture(autouse=True)

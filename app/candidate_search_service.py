@@ -55,12 +55,15 @@ def search_candidates(
     # Load only rows with actual local vectors and the candidate fields required for results.
     # Prevent this read from flushing unrelated pending changes in the caller's session.
     with session.no_autoflush:
-        # Select only embedding rows that can be ranked and their associated candidate data.
+        # Select only genuine Nemotron embedding rows and their associated candidate data.
         rows = session.execute(
             select(ResumeEmbedding, Resume, Candidate)
             .join(Resume, Resume.id == ResumeEmbedding.resume_id)
             .join(Candidate, Candidate.id == Resume.candidate_id)
-            .where(ResumeEmbedding.embedding_vector.is_not(None))
+            .where(
+                ResumeEmbedding.embedding_vector.is_not(None),
+                ResumeEmbedding.generation_method == "nemotron_api",
+            )
             .order_by(Resume.id.asc())
         ).all()
     # Avoid an embedding API call when there are no vectors that could produce results.

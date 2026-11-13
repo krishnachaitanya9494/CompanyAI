@@ -64,6 +64,13 @@ export const MatchingCandidates = ({
 
   // Helper to determine style variant based on candidate classification or score.
   const getTierBadge = (candidate) => {
+    if (candidate.sourceTag || candidate.matchScore == null) {
+      return (
+        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-indigo-100 dark:bg-indigo-900/40 text-indigo-800 dark:text-indigo-300 border border-indigo-300 dark:border-indigo-700/60">
+          ✦ Talent Pool
+        </span>
+      );
+    }
     const classification = candidate.classification || (
       candidate.matchScore >= 88 ? 'Excellent Match' :
       candidate.matchScore >= 75 ? 'Strong Match' :
@@ -122,68 +129,77 @@ export const MatchingCandidates = ({
             <div className="flex items-start justify-between gap-3 mb-2.5">
               <div className="space-y-0.5">
                 <div className="flex items-center gap-2 flex-wrap">
-                  <h4 className="text-sm font-bold text-navy-950 dark:text-slate-100 hover:text-brand-600 dark:hover:text-brand-400 cursor-pointer" onClick={() => onSelectCandidate(cand.id)}>
+                  <h4 className="text-base font-bold text-navy-950 dark:text-slate-100 hover:text-brand-600 dark:hover:text-brand-400 cursor-pointer" onClick={() => onSelectCandidate(cand.id)}>
                     {cand.name}
                   </h4>
-                  <span className="font-mono text-[10px] text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded border border-slate-200 dark:border-surface-darkBorder">
+                  <span className="font-mono text-xs font-semibold text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded border border-slate-200 dark:border-surface-darkBorder">
                     {cand.code || `cand-${cand.id}`}
                   </span>
                   {getTierBadge(cand)}
                 </div>
-                <p className="text-xs text-slate-600 dark:text-slate-400 font-medium">{cand.currentRole}</p>
+                <p className="text-sm text-slate-700 dark:text-slate-300 font-medium">{cand.currentRole}</p>
               </div>
 
               {/* Match Score Badge */}
               <div className="flex items-center gap-2 flex-shrink-0">
-                <div className="text-right">
-                  <div className="flex items-center gap-1.5 justify-end">
-                    <Sparkles className="w-3.5 h-3.5 text-brand-600 dark:text-brand-400" />
-                    <span className="text-base font-extrabold text-navy-950 dark:text-slate-100">{cand.matchScore}%</span>
+                {cand.matchScore != null ? (
+                  <div className="text-right">
+                    <div className="flex items-center gap-1.5 justify-end">
+                      <Sparkles className="w-4 h-4 text-brand-600 dark:text-brand-400" />
+                      <span className="text-lg font-extrabold text-navy-950 dark:text-slate-100">{cand.matchScore}%</span>
+                    </div>
+                    <span className="text-xs uppercase font-semibold text-slate-500 dark:text-slate-400 tracking-wider">Overall Fit</span>
                   </div>
-                  <span className="text-[10px] uppercase font-semibold text-slate-500 dark:text-slate-400 tracking-wider">Overall Fit</span>
-                </div>
+                ) : (
+                  <div className="text-right">
+                    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg text-xs font-bold bg-indigo-50 dark:bg-indigo-950/50 text-indigo-700 dark:text-indigo-300 border border-indigo-200/80 dark:border-indigo-800">
+                      Talent Pool
+                    </span>
+                    <span className="text-xs text-slate-400 dark:text-slate-500 block mt-0.5">Keyword Match</span>
+                  </div>
+                )}
               </div>
             </div>
 
             {/* Candidate Metadata Row */}
-            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-500 dark:text-slate-400 mb-2.5">
-              <span className="flex items-center gap-1">
-                <Briefcase className="w-3 h-3 text-slate-400" />
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs sm:text-sm text-slate-600 dark:text-slate-300 mb-3">
+              <span className="flex items-center gap-1.5">
+                <Briefcase className="w-3.5 h-3.5 text-slate-400" />
                 {cand.experienceYears} Years Exp
               </span>
               <span>•</span>
-              <span className="flex items-center gap-1">
-                <MapPin className="w-3 h-3 text-slate-400" />
+              <span className="flex items-center gap-1.5">
+                <MapPin className="w-3.5 h-3.5 text-slate-400" />
                 {cand.location}
               </span>
               <span>•</span>
-              <span className="flex items-center gap-1 text-brand-700 dark:text-brand-400 font-medium">
-                <Clock className="w-3 h-3 text-brand-600 dark:text-brand-400" />
+              <span className="flex items-center gap-1.5 text-brand-700 dark:text-brand-400 font-semibold">
+                <Clock className="w-3.5 h-3.5 text-brand-600 dark:text-brand-400" />
                 {cand.availability} Notice
               </span>
               <span>•</span>
-              <span className="px-2 py-0.5 rounded text-[11px] font-semibold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
+              <span className="px-2.5 py-0.5 rounded-md text-xs font-semibold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
                 {cand.status || cand.stage || 'New'}
               </span>
             </div>
 
             {/* Requirement Alignment Summary Badges if structured requirements exist */}
             {reqs.length > 0 && (
-              <div className="flex items-center gap-2 mb-2.5 text-[11px] flex-wrap">
+              <div className="flex items-center gap-2 mb-3 text-xs sm:text-sm flex-wrap">
                 <span className="font-semibold text-slate-500 dark:text-slate-400">JD Alignment:</span>
-                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 font-semibold border border-emerald-200 dark:border-emerald-700/60">
-                  <CheckCircle2 className="w-3 h-3" />
+                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 font-semibold border border-emerald-200 dark:border-emerald-700/60">
+                  <CheckCircle2 className="w-3.5 h-3.5" />
                   {satisfiedCount} Satisfied
                 </span>
                 {gapCount > 0 && (
-                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-rose-50 dark:bg-rose-900/30 text-rose-700 dark:text-rose-300 font-semibold border border-rose-200 dark:border-rose-700/60">
-                    <AlertCircle className="w-3 h-3" />
+                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg bg-rose-50 dark:bg-rose-900/30 text-rose-700 dark:text-rose-300 font-semibold border border-rose-200 dark:border-rose-700/60">
+                    <AlertCircle className="w-3.5 h-3.5" />
                     {gapCount} Gaps
                   </span>
                 )}
                 {unverifiedCount > 0 && (
-                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 font-semibold border border-amber-200 dark:border-amber-700/60">
-                    <HelpCircle className="w-3 h-3" />
+                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 font-semibold border border-amber-200 dark:border-amber-700/60">
+                    <HelpCircle className="w-3.5 h-3.5" />
                     {unverifiedCount} Unverified
                   </span>
                 )}
@@ -192,35 +208,35 @@ export const MatchingCandidates = ({
 
             {/* Component Score Breakdown Mini-Bars if available */}
             {cand.componentScores && (
-              <div className="p-2.5 bg-slate-50/80 dark:bg-surface-darkBg/60 rounded-xl border border-slate-100 dark:border-surface-darkBorder mb-3 grid grid-cols-2 sm:grid-cols-4 gap-2 text-[11px]">
+              <div className="p-3 bg-slate-50/80 dark:bg-surface-darkBg/60 rounded-xl border border-slate-100 dark:border-surface-darkBorder mb-3 grid grid-cols-2 sm:grid-cols-4 gap-2.5 text-xs sm:text-sm">
                 <div>
-                  <span className="text-slate-500 dark:text-slate-400 block text-[10px]">Mandatory Skills</span>
+                  <span className="text-slate-500 dark:text-slate-400 block text-xs">Mandatory Skills</span>
                   <span className="font-bold text-navy-900 dark:text-slate-100">{cand.componentScores.mandatory_skills}%</span>
                 </div>
                 <div>
-                  <span className="text-slate-500 dark:text-slate-400 block text-[10px]">Experience Fit</span>
+                  <span className="text-slate-500 dark:text-slate-400 block text-xs">Experience Fit</span>
                   <span className="font-bold text-navy-900 dark:text-slate-100">{cand.componentScores.relevant_experience}%</span>
                 </div>
                 <div>
-                  <span className="text-slate-500 dark:text-slate-400 block text-[10px]">Domain & Role</span>
+                  <span className="text-slate-500 dark:text-slate-400 block text-xs">Domain &amp; Role</span>
                   <span className="font-bold text-navy-900 dark:text-slate-100">{cand.componentScores.domain_fit}%</span>
                 </div>
                 <div>
-                  <span className="text-slate-500 dark:text-slate-400 block text-[10px]">Semantic Relevance</span>
+                  <span className="text-slate-500 dark:text-slate-400 block text-xs">Semantic Relevance</span>
                   <span className="font-bold text-brand-700 dark:text-brand-400">{cand.componentScores.semantic_relevance}%</span>
                 </div>
               </div>
             )}
 
             {/* Primary Skill Pills */}
-            <div className="flex flex-wrap gap-1.5 mb-3">
+            <div className="flex flex-wrap gap-2 mb-3">
               {(cand.primarySkills || []).map((sk, idx) => (
-                <Badge key={idx} variant="neutral" size="xs">
+                <span key={idx} className="inline-flex items-center px-2.5 py-1 rounded-lg text-xs sm:text-sm font-medium bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700">
                   {sk}
-                </Badge>
+                </span>
               ))}
               {(cand.secondarySkills || []).slice(0, 3).map((sk, idx) => (
-                <span key={idx} className="text-[11px] px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400">
+                <span key={idx} className="text-xs px-2 py-1 rounded-lg bg-slate-50 dark:bg-slate-900 text-slate-500 dark:text-slate-400 border border-slate-200/60 dark:border-slate-800">
                   {sk}
                 </span>
               ))}
@@ -228,25 +244,25 @@ export const MatchingCandidates = ({
 
             {/* Expandable Evidence Highlights & Recruiter Rationale */}
             {isEvidenceOpen && (
-              <div className="mt-3 pt-3 border-t border-slate-100 dark:border-surface-darkBorder space-y-2.5 animate-fadeIn">
+              <div className="mt-3 pt-3 border-t border-slate-100 dark:border-surface-darkBorder space-y-3 animate-fadeIn">
                 {/* Executive Recruiter Summary Narrative */}
                 {cand.explanations?.summary_narrative && (
-                  <div className="p-2.5 bg-brand-50/60 dark:bg-brand-950/40 border border-brand-200/60 dark:border-brand-800/60 rounded-xl text-xs text-brand-900 dark:text-brand-200">
-                    <span className="font-bold block mb-0.5">AI Recruiter Briefing:</span>
+                  <div className="p-3 bg-brand-50/60 dark:bg-brand-950/40 border border-brand-200/60 dark:border-brand-800/60 rounded-xl text-xs sm:text-sm text-brand-900 dark:text-brand-200">
+                    <span className="font-bold block mb-1">AI Recruiter Briefing:</span>
                     <p className="leading-relaxed">{cand.explanations.summary_narrative}</p>
                   </div>
                 )}
 
                 {/* Evidence excerpts from candidate resume */}
                 {cand.evidenceHighlights && cand.evidenceHighlights.length > 0 && (
-                  <div className="space-y-1">
-                    <span className="text-[11px] font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
-                      <ShieldCheck className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                  <div className="space-y-1.5">
+                    <span className="text-xs sm:text-sm font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                      <ShieldCheck className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
                       Verbatim Resume Evidence:
                     </span>
-                    <div className="space-y-1">
+                    <div className="space-y-1.5">
                       {cand.evidenceHighlights.map((ev, idx) => (
-                        <div key={idx} className="p-2 bg-slate-50 dark:bg-surface-darkBg border border-slate-200/70 dark:border-surface-darkBorder rounded-lg text-[11px] text-slate-700 dark:text-slate-300 leading-relaxed font-mono">
+                        <div key={idx} className="p-2.5 bg-slate-50 dark:bg-surface-darkBg border border-slate-200/70 dark:border-surface-darkBorder rounded-lg text-xs sm:text-sm text-slate-700 dark:text-slate-300 leading-relaxed font-mono">
                           {ev}
                         </div>
                       ))}
@@ -256,12 +272,12 @@ export const MatchingCandidates = ({
 
                 {/* Missing requirements or gaps notice */}
                 {cand.explanations?.missing_requirements && cand.explanations.missing_requirements.length > 0 && (
-                  <div className="space-y-1">
-                    <span className="text-[11px] font-bold text-rose-700 dark:text-rose-400 flex items-center gap-1.5">
-                      <AlertCircle className="w-3.5 h-3.5 text-rose-600 dark:text-rose-400" />
+                  <div className="space-y-1.5">
+                    <span className="text-xs sm:text-sm font-bold text-rose-700 dark:text-rose-400 flex items-center gap-1.5">
+                      <AlertCircle className="w-4 h-4 text-rose-600 dark:text-rose-400" />
                       Identified Requirement Gaps:
                     </span>
-                    <ul className="text-[11px] text-rose-800 dark:text-rose-300 list-disc list-inside space-y-0.5 bg-rose-50/60 dark:bg-rose-950/30 p-2 rounded-lg border border-rose-200/60 dark:border-rose-900/50">
+                    <ul className="text-xs sm:text-sm text-rose-800 dark:text-rose-300 list-disc list-inside space-y-1 bg-rose-50/60 dark:bg-rose-950/30 p-2.5 rounded-lg border border-rose-200/60 dark:border-rose-900/50">
                       {cand.explanations.missing_requirements.map((gap, idx) => (
                         <li key={idx}>{gap}</li>
                       ))}

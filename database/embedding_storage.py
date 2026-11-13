@@ -18,6 +18,15 @@ from database.models import Resume, ResumeEmbedding, Job, JDSegmentation, JobReq
 # Match exactly 64 hexadecimal characters for a SHA-256 digest.
 _SHA256_PATTERN = re.compile(r"^[0-9a-fA-F]{64}$")
 
+# Standardized embedding generation method identifiers.
+VALID_GENERATION_METHODS = frozenset({
+    "nemotron_api",
+    "provenance_unknown",
+    "synthetic_fallback",
+    "synthetic_test",
+    "pending_regeneration",
+})
+
 
 # Validate and normalize an embedding sequence without relying on numerical packages.
 def validate_embedding_vector(
@@ -72,7 +81,11 @@ def store_resume_embedding(
     returned_model: str | None = None,
     preprocessing_version: str | None = None,
     metadata: Mapping[str, Any] | None = None,
+    generation_method: str = "nemotron_api",
 ) -> ResumeEmbedding:
+    # Only verified Nemotron vectors may enter the production index.
+    if generation_method not in ("nemotron_api", "synthetic_test"):
+        raise ValueError(f"Deterministic hash, unverified, or fallback vectors ('{generation_method}') cannot be stored as Nemotron embeddings.")
     # Confirm the parent resume exists before creating or changing its embedding.
     resume = session.get(Resume, resume_id)
     if resume is None:
@@ -132,6 +145,8 @@ def store_resume_embedding(
     # Record the preprocessing version only when the caller supplies one.
     if preprocessing_version is not None:
         embedding_record.preprocessing_version = preprocessing_version
+    # Record verified generation method
+    embedding_record.generation_method = generation_method
     # Flush now so database constraints surface while leaving commit ownership with the caller.
     session.flush()
     # Return the attached row for the caller to commit or roll back with its unit of work.
@@ -145,13 +160,14 @@ def find_compatible_job_embedding_by_hash(
     model_name: str = "nvidia/nemotron-3-embed-1b:free",
     dimensions: int = 2048,
 ) -> JobEmbedding | None:
-    # Query for any job embedding matching the content digest and model configuration.
+    # Query only genuine Nemotron job embeddings matching the content digest and model configuration.
     stmt = (
         select(JobEmbedding)
         .where(
             JobEmbedding.input_hash == input_hash,
             JobEmbedding.model_name == model_name,
             JobEmbedding.dimensions == dimensions,
+            JobEmbedding.generation_method == "nemotron_api",
         )
         .order_by(JobEmbedding.id.desc())
     )
@@ -171,7 +187,11 @@ def store_job_embedding(
     requirement_id: int | None = None,
     dimensions: int | None = 2048,
     model_name: str = "nvidia/nemotron-3-embed-1b:free",
+    generation_method: str = "nemotron_api",
 ) -> JobEmbedding:
+    # Only verified Nemotron vectors may enter the production index.
+    if generation_method not in ("nemotron_api", "synthetic_test"):
+        raise ValueError(f"Deterministic hash, unverified, or fallback vectors ('{generation_method}') cannot be stored as Nemotron embeddings.")
     # Confirm the parent operational job exists in the database.
     job = session.get(Job, job_id)
     if job is None:
@@ -222,6 +242,7 @@ def store_job_embedding(
             model_name=model_name,
             dimensions=len(validated_vector),
             embedding_vector=validated_vector,
+            generation_method=generation_method,
         )
         session.add(record)
     else:
@@ -230,6 +251,7 @@ def store_job_embedding(
         record.model_name = model_name
         record.dimensions = len(validated_vector)
         record.embedding_vector = validated_vector
+        record.generation_method = generation_method
 
     # Flush session so constraints are validated while caller controls transaction commit.
     session.flush()

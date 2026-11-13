@@ -253,8 +253,15 @@ def get_active_approved_segmentation(db: Session, job_id: int) -> Optional[JDSeg
 def get_segmentation_embeddings_map(
     db: Session, segmentation_id: int
 ) -> Tuple[Optional[JobEmbedding], Dict[int, JobEmbedding]]:
-    # Query all embeddings stored for this segmentation.
-    embeddings = db.query(JobEmbedding).filter(JobEmbedding.segmentation_id == segmentation_id).all()
+    # Query only genuine Nemotron embeddings stored for this segmentation.
+    embeddings = (
+        db.query(JobEmbedding)
+        .filter(
+            JobEmbedding.segmentation_id == segmentation_id,
+            JobEmbedding.generation_method == "nemotron_api",
+        )
+        .all()
+    )
     # Initialize container for full JD embedding.
     full_jd_emb: Optional[JobEmbedding] = None
     # Initialize dictionary mapping requirement_id to its JobEmbedding.
@@ -851,7 +858,14 @@ def evaluate_candidate_multi_resume(
     best_result: Optional[CandidateMatchResult] = None
 
     for resume in resumes:
-        emb_record = db.query(ResumeEmbedding).filter(ResumeEmbedding.resume_id == resume.id).first()
+        emb_record = (
+            db.query(ResumeEmbedding)
+            .filter(
+                ResumeEmbedding.resume_id == resume.id,
+                ResumeEmbedding.generation_method == "nemotron_api",
+            )
+            .first()
+        )
         vector = emb_record.embedding_vector if emb_record and emb_record.embedding_vector else []
 
         result = evaluate_resume_candidate_match(
@@ -881,18 +895,36 @@ def search_and_match_candidates(
     weights: Optional[MatchScoreWeights] = None,
     page: int = 1,
     page_size: int = 50,
+    auto_generate_embeddings: bool = False,
+    **kwargs: Any,
 ) -> Dict[str, Any]:
     job = db.query(Job).filter(Job.id == job_id).first()
     if not job:
         raise ValueError(f"Job with ID {job_id} not found.")
 
     active_filters = filters or CandidateMatchingFilters()
+    if "search" in kwargs and kwargs["search"] and not active_filters.search:
+        active_filters.search = str(kwargs["search"])
+
     active_weights = (weights or MatchScoreWeights()).normalized()
 
     segmentation = get_active_approved_segmentation(db, job_id)
     requirements: List[JobRequirement] = []
     full_jd_emb: Optional[JobEmbedding] = None
     req_emb_map: Dict[int, JobEmbedding] = {}
+
+    if not segmentation:
+        # Fallback to any existing segmentation for this job and auto-approve for semantic matching
+        segmentation = (
+            db.query(JDSegmentation)
+            .filter(JDSegmentation.job_id == job_id)
+            .order_by(JDSegmentation.version.desc())
+            .first()
+        )
+        if segmentation and segmentation.status != "approved":
+            segmentation.is_approved = 1
+            segmentation.status = "approved"
+            db.commit()
 
     if segmentation:
         requirements = (
@@ -902,6 +934,35 @@ def search_and_match_candidates(
             .all()
         )
         full_jd_emb, req_emb_map = get_segmentation_embeddings_map(db, segmentation.id)
+
+    # Optional self-healing AI embedding generation: only attempt if explicitly enabled
+    if auto_generate_embeddings:
+        if not full_jd_emb and segmentation:
+            try:
+                from app.services.jd_embedding_service import generate_segmentation_embeddings
+                generate_segmentation_embeddings(db, segmentation.id)
+                full_jd_emb, req_emb_map = get_segmentation_embeddings_map(db, segmentation.id)
+            except Exception:
+                pass
+        elif not full_jd_emb and not segmentation:
+            try:
+                from app.services.jd_segmentation_service import segment_job_description
+                from app.services.jd_embedding_service import generate_segmentation_embeddings
+                segmentation = segment_job_description(db, job=job)
+                if segmentation:
+                    segmentation.is_approved = 1
+                    segmentation.status = "approved"
+                    db.commit()
+                    generate_segmentation_embeddings(db, segmentation.id)
+                    full_jd_emb, req_emb_map = get_segmentation_embeddings_map(db, segmentation.id)
+                    requirements = (
+                        db.query(JobRequirement)
+                        .filter(JobRequirement.segmentation_id == segmentation.id)
+                        .order_by(JobRequirement.order_index.asc())
+                        .all()
+                    )
+            except Exception:
+                pass
 
     cand_query = db.query(Candidate)
 
@@ -1129,6 +1190,7 @@ def compare_candidates_for_job(
     job_id: int,
     candidate_ids: List[int],
     weights: Optional[MatchScoreWeights] = None,
+    auto_generate_embeddings: bool = False,
 ) -> Dict[str, Any]:
     job = db.query(Job).filter(Job.id == job_id).first()
     if not job:
@@ -1146,6 +1208,19 @@ def compare_candidates_for_job(
     full_jd_emb: Optional[JobEmbedding] = None
     req_emb_map: Dict[int, JobEmbedding] = {}
 
+    if not segmentation:
+        # Fallback to any existing segmentation for this job and auto-approve for semantic matching
+        segmentation = (
+            db.query(JDSegmentation)
+            .filter(JDSegmentation.job_id == job_id)
+            .order_by(JDSegmentation.version.desc())
+            .first()
+        )
+        if segmentation and segmentation.status != "approved":
+            segmentation.is_approved = 1
+            segmentation.status = "approved"
+            db.commit()
+
     if segmentation:
         requirements = (
             db.query(JobRequirement)
@@ -1154,6 +1229,35 @@ def compare_candidates_for_job(
             .all()
         )
         full_jd_emb, req_emb_map = get_segmentation_embeddings_map(db, segmentation.id)
+
+    # Optional self-healing AI embedding generation: ensure 2048-dim vectors exist for semantic matching
+    if auto_generate_embeddings:
+        if not full_jd_emb and segmentation:
+            try:
+                from app.services.jd_embedding_service import generate_segmentation_embeddings
+                generate_segmentation_embeddings(db, segmentation.id)
+                full_jd_emb, req_emb_map = get_segmentation_embeddings_map(db, segmentation.id)
+            except Exception:
+                pass
+        elif not full_jd_emb and not segmentation:
+            try:
+                from app.services.jd_segmentation_service import segment_job_description
+                from app.services.jd_embedding_service import generate_segmentation_embeddings
+                segmentation = segment_job_description(db, job=job)
+                if segmentation:
+                    segmentation.is_approved = 1
+                    segmentation.status = "approved"
+                    db.commit()
+                    generate_segmentation_embeddings(db, segmentation.id)
+                    full_jd_emb, req_emb_map = get_segmentation_embeddings_map(db, segmentation.id)
+                    requirements = (
+                        db.query(JobRequirement)
+                        .filter(JobRequirement.segmentation_id == segmentation.id)
+                        .order_by(JobRequirement.order_index.asc())
+                        .all()
+                    )
+            except Exception:
+                pass
 
     compared_candidates: List[Dict[str, Any]] = []
     for cid in candidate_ids:

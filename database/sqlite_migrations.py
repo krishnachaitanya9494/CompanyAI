@@ -8,6 +8,7 @@ _RESUME_EMBEDDING_COLUMNS = (
     ("requested_model", "VARCHAR(255)"),  # Store the model identifier sent to the provider.
     ("returned_model", "VARCHAR(255)"),  # Store the model identifier returned by the provider.
     ("preprocessing_version", "VARCHAR(255)"),  # Record the embedding text preparation version.
+    ("generation_method", "VARCHAR(64) DEFAULT 'provenance_unknown'"),  # Track provenance: nemotron_api vs provenance_unknown vs synthetic_fallback.
 )
 
 # Define nullable candidate profile fields added after the original SQLite candidate table.
@@ -83,6 +84,12 @@ _JOB_REQUIREMENT_COLUMNS = (
     ("source_origin", "VARCHAR(32) DEFAULT 'ai_extracted'"),
 )
 
+# Define additive columns for JDSegmentation for 12-section scope and deep intelligence data.
+_JD_SEGMENTATION_COLUMNS = (
+    ("structured_scope", "JSON"),
+    ("intelligence_data", "JSON"),
+)
+
 
 # Add missing nullable embedding columns while preserving every existing row and field.
 def migrate_resume_embedding_storage(connection: Connection) -> tuple[str, ...]:
@@ -136,6 +143,23 @@ def migrate_candidate_profile_columns(connection: Connection) -> tuple[str, ...]
     return tuple(added_columns)
 
 
+# Add 12-section scope and deep intelligence data columns to jd_segmentation.
+def migrate_jd_segmentation_columns(connection: Connection) -> tuple[str, ...]:
+    table_info = connection.exec_driver_sql("PRAGMA table_info(jd_segmentation)").all()
+    if not table_info:
+        return ()
+    existing_columns = {row[1] for row in table_info}
+    added_columns: list[str] = []
+    for column_name, column_type in _JD_SEGMENTATION_COLUMNS:
+        if column_name in existing_columns:
+            continue
+        connection.exec_driver_sql(
+            f"ALTER TABLE jd_segmentation ADD COLUMN {column_name} {column_type} NULL"
+        )
+        added_columns.append(column_name)
+    return tuple(added_columns)
+
+
 # Add independent extraction, parsing, and embedding states to existing file-status rows.
 def migrate_resume_ingestion_stage_columns(connection: Connection) -> tuple[str, ...]:
     # Inspect the tracking table before applying its fixed additive column definitions.
@@ -159,6 +183,23 @@ def migrate_resume_ingestion_stage_columns(connection: Connection) -> tuple[str,
         # Keep a precise migration report for tests and local startup diagnostics.
         added_columns.append(column_name)
     # Return only new columns so repeated startup does not imply a new change.
+    return tuple(added_columns)
+
+
+# Add 12-section scope and deep intelligence data columns to jd_segmentation.
+def migrate_jd_segmentation_columns(connection: Connection) -> tuple[str, ...]:
+    table_info = connection.exec_driver_sql("PRAGMA table_info(jd_segmentation)").all()
+    if not table_info:
+        return ()
+    existing_columns = {row[1] for row in table_info}
+    added_columns: list[str] = []
+    for column_name, column_type in _JD_SEGMENTATION_COLUMNS:
+        if column_name in existing_columns:
+            continue
+        connection.exec_driver_sql(
+            f"ALTER TABLE jd_segmentation ADD COLUMN {column_name} {column_type} NULL"
+        )
+        added_columns.append(column_name)
     return tuple(added_columns)
 
 
@@ -214,6 +255,23 @@ def migrate_job_metadata_columns(connection: Connection) -> tuple[str, ...]:
     return tuple(added_columns)
 
 
+# Add 12-section scope and deep intelligence data columns to jd_segmentation.
+def migrate_jd_segmentation_columns(connection: Connection) -> tuple[str, ...]:
+    table_info = connection.exec_driver_sql("PRAGMA table_info(jd_segmentation)").all()
+    if not table_info:
+        return ()
+    existing_columns = {row[1] for row in table_info}
+    added_columns: list[str] = []
+    for column_name, column_type in _JD_SEGMENTATION_COLUMNS:
+        if column_name in existing_columns:
+            continue
+        connection.exec_driver_sql(
+            f"ALTER TABLE jd_segmentation ADD COLUMN {column_name} {column_type} NULL"
+        )
+        added_columns.append(column_name)
+    return tuple(added_columns)
+
+
 # Add additive columns to job_requirement table without altering existing requirements.
 def migrate_job_requirement_columns(connection: Connection) -> tuple[str, ...]:
     # Inspect the job_requirement table schema.
@@ -227,6 +285,23 @@ def migrate_job_requirement_columns(connection: Connection) -> tuple[str, ...]:
             continue
         connection.exec_driver_sql(
             f"ALTER TABLE job_requirement ADD COLUMN {column_name} {column_definition}"
+        )
+        added_columns.append(column_name)
+    return tuple(added_columns)
+
+
+# Add 12-section scope and deep intelligence data columns to jd_segmentation.
+def migrate_jd_segmentation_columns(connection: Connection) -> tuple[str, ...]:
+    table_info = connection.exec_driver_sql("PRAGMA table_info(jd_segmentation)").all()
+    if not table_info:
+        return ()
+    existing_columns = {row[1] for row in table_info}
+    added_columns: list[str] = []
+    for column_name, column_type in _JD_SEGMENTATION_COLUMNS:
+        if column_name in existing_columns:
+            continue
+        connection.exec_driver_sql(
+            f"ALTER TABLE jd_segmentation ADD COLUMN {column_name} {column_type} NULL"
         )
         added_columns.append(column_name)
     return tuple(added_columns)
@@ -277,6 +352,14 @@ def migrate_job_embedding_table(connection: Connection) -> tuple[str, ...]:
     connection.exec_driver_sql(
         "CREATE INDEX IF NOT EXISTS ix_job_embedding_input_hash ON job_embedding (input_hash)"
     )
+
+    # Add generation_method column to job_embedding if missing.
+    cols = connection.exec_driver_sql("PRAGMA table_info(job_embedding)").all()
+    col_names = {c[1] for c in cols}
+    if "generation_method" not in col_names:
+        connection.exec_driver_sql(
+            "ALTER TABLE job_embedding ADD COLUMN generation_method VARCHAR(64) DEFAULT 'provenance_unknown'"
+        )
 
     # Return status indicator tuple.
     return ("job_embedding",) if not table_exists else ()
@@ -391,6 +474,8 @@ def initialize_sqlite_schema(engine: Engine) -> tuple[str, ...]:
         job_columns = migrate_job_metadata_columns(connection)
         # Extend job requirement table with provenance origin column.
         req_columns = migrate_job_requirement_columns(connection)
+        # Extend jd_segmentation table with 12-section scope and intelligence data.
+        seg_columns = migrate_jd_segmentation_columns(connection)
         # Ensure job_embedding table and indexes exist idempotently.
         embedding_table = migrate_job_embedding_table(connection)
         # Enforce partial unique indexes on job_embedding scopes idempotently.
@@ -404,6 +489,7 @@ def initialize_sqlite_schema(engine: Engine) -> tuple[str, ...]:
         + tuple(f"job_description.{name}" for name in jd_columns)
         + tuple(f"job.{name}" for name in job_columns)
         + tuple(f"job_requirement.{name}" for name in req_columns)
+        + tuple(f"jd_segmentation.{name}" for name in seg_columns)
         + tuple(f"table.{name}" for name in embedding_table)
         + tuple(f"index.{name}" for name in uniqueness_indexes)
     )

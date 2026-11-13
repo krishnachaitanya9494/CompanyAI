@@ -158,6 +158,9 @@ class ResumeEmbedding(Base):
     # Store the text-preparation version so cache reuse can detect preprocessing changes.
     preprocessing_version: Mapped[str | None] = mapped_column(String(255), nullable=True)
 
+    # Track the generation method ('nemotron_api', 'provenance_unknown', 'synthetic_fallback', 'pending_regeneration').
+    generation_method: Mapped[str] = mapped_column(String(64), default="provenance_unknown", server_default="provenance_unknown", nullable=False)
+
     # Record when the embedding reference was created.
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
@@ -528,6 +531,12 @@ class JDSegmentation(Base):
     # Optional role summary text.
     role_summary: Mapped[str | None] = mapped_column(Text, nullable=True)
 
+    # 12-section structured scope and responsibilities intelligence.
+    structured_scope: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+
+    # Complete structured JD intelligence (role, skills, domain, boolean queries, inconsistencies).
+    intelligence_data: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+
     # Flag indicating whether a recruiter explicitly approved this segmentation.
     is_approved: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
 
@@ -683,6 +692,9 @@ class JobEmbedding(Base):
 
     # Vector dimension length explicitly validated to 2048 coordinates.
     dimensions: Mapped[int] = mapped_column(Integer, default=2048, nullable=False)
+
+    # Track generation method ('nemotron_api', 'provenance_unknown', 'synthetic_fallback', 'pending_regeneration').
+    generation_method: Mapped[str] = mapped_column(String(64), default="provenance_unknown", server_default="provenance_unknown", nullable=False)
 
     # Dense numeric embedding vector stored as JSON array of floats.
     embedding_vector: Mapped[list[float]] = mapped_column(JSON, nullable=False)

@@ -167,25 +167,56 @@ def heuristic_fallback_segmentation(raw_text: str) -> JDSegmentationOutput:
     current_classification = "Mandatory"
 
     for idx, line in enumerate(lines):
-        upper = line.upper().strip()
-        # Check if line is a bullet item or a section header.
+        clean_header = re.sub(r"^[#•\-\*\d+\.\t\s]+", "", line).strip()
+        upper = clean_header.upper()
         is_bullet = line.startswith(("•", "-", "*", ">")) or bool(re.match(r"^\d+[\.\)]\s", line))
 
-        # Check section headings only on non-bullet lines with reasonable heading length.
-        if not is_bullet and len(line) <= 50:
+        # Check for single-line metadata key:value pairs without changing running category state
+        if re.match(r"^(?:Location|Work Mode|Place|Base Location)\s*[:\-]", clean_header, re.I):
+            requirements.append(ExtractedRequirementItem(
+                category="location_requirements",
+                original_text=clean_header,
+                classification="Mandatory",
+                evidence=line,
+                confidence=0.95,
+            ))
+            continue
+        elif re.match(r"^(?:Domain|Industry)\s*[:\-]", clean_header, re.I):
+            requirements.append(ExtractedRequirementItem(
+                category="domain_knowledge",
+                original_text=clean_header,
+                classification="Mandatory",
+                evidence=line,
+                confidence=0.95,
+            ))
+            continue
+        elif re.match(r"^(?:Experience Level|Experience Required|Exp)\s*[:\-]", clean_header, re.I):
+            exp_m = re.search(r'(\d+(?:\.\d+)?)\s*(?:\+|-)?\s*years?', clean_header, re.I)
+            requirements.append(ExtractedRequirementItem(
+                category="minimum_experience",
+                original_text=clean_header,
+                classification="Mandatory",
+                experience_years=float(exp_m.group(1)) if exp_m else None,
+                evidence=line,
+                confidence=0.95,
+            ))
+            continue
+
+        # Check section headings (supports clean lines with or without leading bullet artifacts)
+        if len(clean_header) <= 60 and not clean_header.endswith("."):
             if "OVERVIEW" in upper or "ABOUT" in upper or "COMPANY" in upper:
                 current_category = "job_overview"
                 current_classification = "Mandatory"
                 continue
-            elif "SUMMARY" in upper or "PURPOSE" in upper or "ROLE" in upper:
+            elif "SUMMARY" in upper or "PURPOSE" in upper or upper == "ROLE" or "ROLE SUMMARY" in upper:
                 current_category = "role_summary"
                 current_classification = "Mandatory"
                 continue
-            elif "RESPONSIBILIT" in upper or "DUTIES" in upper or "WHAT YOU WILL DO" in upper:
+            elif "RESPONSIBILIT" in upper or "DUTIES" in upper or "WHAT YOU WILL DO" in upper or "ACCOUNTABILIT" in upper:
                 current_category = "key_responsibilities"
                 current_classification = "Mandatory"
                 continue
-            elif "MANDATORY" in upper or "MUST HAVE" in upper or "REQUIRED SKILL" in upper:
+            elif "MANDATORY" in upper or "MUST HAVE" in upper or "REQUIRED SKILL" in upper or "CORE SKILL" in upper:
                 current_category = "mandatory_skills"
                 current_classification = "Mandatory"
                 continue
@@ -197,7 +228,7 @@ def heuristic_fallback_segmentation(raw_text: str) -> JDSegmentationOutput:
                 current_category = "technical_skills"
                 current_classification = "Mandatory"
                 continue
-            elif "TOOLS" in upper:
+            elif upper == "TOOLS" or "TOOLS &" in upper or "TOOLS AND" in upper:
                 current_category = "tools_and_technologies"
                 current_classification = "Mandatory"
                 continue
@@ -217,7 +248,7 @@ def heuristic_fallback_segmentation(raw_text: str) -> JDSegmentationOutput:
                 current_category = "certifications"
                 current_classification = "Preferred"
                 continue
-            elif "LOCATION" in upper or "WORKPLACE" in upper:
+            elif upper.startswith("LOCATION") or upper == "WORKPLACE":
                 current_category = "location_requirements"
                 current_classification = "Mandatory"
                 continue
@@ -237,7 +268,7 @@ def heuristic_fallback_segmentation(raw_text: str) -> JDSegmentationOutput:
         exp_years = float(exp_match.group(1)) if exp_match else None
 
         # Clean bullet points from line.
-        item_text = re.sub(r'^[•\-\*\d+\.]\s*', '', line).strip()
+        item_text = re.sub(r'^[#•\-\*\d+\.\t\s]+', '', line).strip()
         if not item_text or len(item_text) < 3:
             continue
 
@@ -319,7 +350,10 @@ def call_nemotron_segmentation_api(
             data = response.json()
 
             # Parse choice content.
-            raw_content = data["choices"][0]["message"]["content"]
+            raw_content = data.get("choices", [{}])[0].get("message", {}).get("content")
+            if not raw_content or not isinstance(raw_content, str):
+                raise ValueError("Empty or invalid LLM response content.")
+
             # Clean possible markdown JSON wrappers.
             clean_content = re.sub(r"^```(?:json)?\s*", "", raw_content.strip(), flags=re.IGNORECASE)
             clean_content = re.sub(r"\s*```$", "", clean_content).strip()
@@ -328,7 +362,7 @@ def call_nemotron_segmentation_api(
             # Validate output using Pydantic schema.
             return JDSegmentationOutput.model_validate(parsed_json)
 
-        except (httpx.RequestError, httpx.HTTPStatusError, json.JSONDecodeError, ValidationError) as exc:
+        except Exception as exc:
             last_error = exc
             continue
 
@@ -573,6 +607,8 @@ def get_segmentation_dict(segmentation: JDSegmentation, source_text: str = "") -
         "approved_at": segmentation.approved_at.isoformat() if segmentation.approved_at else None,
         "created_at": segmentation.created_at.isoformat() if segmentation.created_at else None,
         "updated_at": segmentation.updated_at.isoformat() if segmentation.updated_at else None,
+        "structured_scope": getattr(segmentation, "structured_scope", None) or {},
+        "intelligence_data": getattr(segmentation, "intelligence_data", None) or {},
         "total_requirements": total_reqs,
         "metrics": {
             "total_requirements": total_reqs,

@@ -62,6 +62,14 @@ from app.services.matching_engine_service import (
     CandidateMatchingFilters,
     MatchScoreWeights,
 )
+# Import Centralized JD Intelligence & Boolean Query services.
+from app.services.jd_intelligence_service import (
+    analyze_job_description_intelligence,
+    extract_deterministic_jd_intelligence,
+)
+from app.services.boolean_query_service import (
+    generate_boolean_queries,
+)
 
 # Create a modular FastAPI router for all job description and matching endpoints.
 router = APIRouter(prefix="/api/jobs", tags=["Jobs"])
@@ -178,6 +186,9 @@ def list_jobs(
             "sourceFilename": source_filename,
             "matchedCandidateIds": [],
             "analysis": analysis_data,
+            "structuredScope": (latest_seg.structured_scope if latest_seg else None),
+            "intelligenceData": (latest_seg.intelligence_data if latest_seg else None),
+            "originalText": (source_doc.original_text if source_doc else None),
         })
 
     return results
@@ -273,6 +284,9 @@ def get_job(job_id: str, db: Session = Depends(get_db)) -> dict[str, Any]:
         "sourceFilename": source_filename,
         "matchedCandidateIds": [],
         "analysis": analysis_data,
+        "structuredScope": (latest_seg.structured_scope if latest_seg else None),
+        "intelligenceData": (latest_seg.intelligence_data if latest_seg else None),
+        "originalText": (source_doc.original_text if source_doc else None),
     }
 
 
@@ -440,11 +454,11 @@ def get_job_matches(
     db: Session = Depends(get_db),
 ) -> Any:
     """Retrieve ranked candidate matches for this job using Phase 5C semantic candidate matching engine."""
-    # Clean job ID string.
-    raw_id = job_id.replace("job-", "").lstrip("0") or "0"
+    # Clean job ID string robustly (handles '1', 'job-1', 'JD-001', 'jd-1', etc.).
+    digits = re.sub(r"[^0-9]", "", str(job_id))
     try:
-        j_id = int(raw_id)
-    except ValueError:
+        j_id = int(digits) if digits else int(str(job_id))
+    except (ValueError, TypeError):
         raise HTTPException(status_code=400, detail="Invalid job ID format.")
 
     # Verify job existence in database.
@@ -452,18 +466,24 @@ def get_job_matches(
     if not j:
         raise HTTPException(status_code=404, detail="Job not found.")
 
-    # Construct candidate matching filters.
+    # Construct candidate matching filters handling both FastAPI injection and direct Python calls.
+    def _val(v, default=None):
+        return default if hasattr(v, "default") else v
+
     filters = CandidateMatchingFilters(
-        min_experience=min_experience,
-        max_experience=max_experience,
-        location=location,
-        availability=availability,
-        stage=stage,
-        min_score=min_score,
-        search=search,
-        sort_by=sort_by,
-        sort_order=sort_order,
+        min_experience=_val(min_experience, None),
+        max_experience=_val(max_experience, None),
+        location=_val(location, None),
+        availability=_val(availability, None),
+        stage=_val(stage, None),
+        min_score=_val(min_score, None),
+        search=_val(search, None),
+        sort_by=_val(sort_by, "match_score"),
+        sort_order=_val(sort_order, "desc"),
     )
+    actual_page = _val(page, 1)
+    actual_limit = _val(limit, 50)
+    actual_as_object = _val(as_object, False)
 
     try:
         # Run Phase 5C matching engine across candidate embeddings and JD requirements.
@@ -471,15 +491,15 @@ def get_job_matches(
             db=db,
             job_id=j.id,
             filters=filters,
-            page=page,
-            page_size=limit,
+            page=actual_page,
+            page_size=actual_limit,
         )
     except Exception:
         # Return sanitized 500 error without exposing internal SQL or filesystem trace details.
         raise HTTPException(status_code=500, detail="Matching engine execution failed.")
 
     # Return full object if caller requested structured object format.
-    if as_object:
+    if actual_as_object:
         return result
 
     # Return list of matches directly for legacy client and test compatibility.
@@ -489,10 +509,10 @@ def get_job_matches(
 @router.get("/{job_id}/matches/summary")
 def get_job_matches_summary(job_id: str, db: Session = Depends(get_db)) -> dict[str, Any]:
     """Retrieve aggregate matching KPI metrics and tier counts for a job."""
-    raw_id = job_id.replace("job-", "").lstrip("0") or "0"
+    digits = re.sub(r"[^0-9]", "", str(job_id))
     try:
-        j_id = int(raw_id)
-    except ValueError:
+        j_id = int(digits) if digits else int(str(job_id))
+    except (ValueError, TypeError):
         raise HTTPException(status_code=400, detail="Invalid job ID format.")
 
     j = db.query(Job).filter(Job.id == j_id).first()
@@ -550,6 +570,169 @@ class PreviewTextSchema(BaseModel):
     raw_text: str = Field(..., description="Directly pasted job description text")
     # Optional role title.
     title: Optional[str] = Field(default=None, description="Optional role title")
+
+
+def tune_and_extract_job_text(text: str, fallback_filename: str = "") -> dict[str, Any]:
+    """Intelligently cleans and tunes raw ATS/Excel/unstructured text and extracts metadata."""
+    if not text or not isinstance(text, str):
+        return {
+            "tuned_text": "",
+            "metadata": {
+                "title": "",
+                "job_code": None,
+                "location": "Bengaluru & Hyderabad",
+                "min_experience_years": 4.0,
+                "max_experience_years": 8.0,
+                "required_skills": [],
+                "preferred_skills": [],
+            },
+        }
+
+    raw = text.strip()
+    role_keywords = r'(?:Engineer|Consultant|Developer|Architect|Manager|Lead|Analyst|Specialist|Administrator|Director|Officer|Scientist|Designer|Tester|Associate|Coordinator|Programmer|Technician)'
+
+    # 1. Job Code / Requisition ID
+    code_match = re.search(r'\b([A-Za-z0-9]+(?:[_-][A-Za-z0-9]+){2,})\b', raw) or re.search(r'\b(REQ-[A-Za-z0-9-]+|JD-[A-Za-z0-9-]+)\b', raw, re.I)
+    job_code = code_match.group(1) if code_match else None
+
+    # 2. Role Title
+    title = None
+    explicit = re.search(r'(?:Job\s*Title|Title|Role|Position)\s*[:\-–]\s*([^\n\r,]{3,60})', raw, re.I)
+    if explicit:
+        title = explicit.group(1).strip()
+    if not title:
+        title_match = re.search(r'\b([A-Z][a-zA-Z0-9/&\s-]{2,45}\s+' + role_keywords + r')\b', raw)
+        if title_match:
+            raw_t = title_match.group(1)
+            clean_t = re.sub(r'^(?:\d+[\s_-]*|Yet\s+to\s+Start\s+|Open\s+|Active\s+|Draft\s+|Status\s*[:\-]\s*)+', '', raw_t, flags=re.I).strip()
+            if len(clean_t) >= 3:
+                title = clean_t
+    if not title and fallback_filename:
+        stem = Path(fallback_filename).stem.replace("_", " ").replace("-", " ")
+        clean_stem = re.sub(r'\b(?:jd|job|description|spec|req)\b', '', stem, flags=re.I).strip().title()
+        if len(clean_stem) >= 3:
+            title = clean_stem
+
+    # 3. Experience
+    exp_match = re.search(r'(\d+)(?:\s*[-–]\s*(\d+))?\+?\s*(?:yrs|years|yr|yoe)', raw, re.I)
+    min_exp = float(exp_match.group(1)) if exp_match else 4.0
+    max_exp = float(exp_match.group(2)) if exp_match and exp_match.group(2) else (min_exp + 4.0 if min_exp > 0 else 8.0)
+
+    # 4. Location
+    loc_match = re.search(r'\b(Bengaluru|Bangalore|Hyderabad|Pune|Mumbai|Chennai|Delhi|Noida|Gurgaon|Gurugram|Kolkata|Ahmedabad|Remote|Hybrid)(?:\s*(?:&|/|,|and)\s*(Bengaluru|Bangalore|Hyderabad|Pune|Mumbai|Chennai|Delhi|Noida|Gurgaon|Gurugram|Kolkata|Ahmedabad|Remote|Hybrid))?\b', raw, re.I)
+    location = loc_match.group(0).strip() if loc_match else "Bengaluru & Hyderabad"
+
+    # 5. Skills extraction
+    common_tech = [
+        "Verilog", "SystemVerilog", "UVM", "VHDL", "FPGA design", "FPGA", "SVA",
+        "DO-254", "AXI", "APB", "AHB", "Python", "Perl", "Tcl", "Shell", "ASIC",
+        "C++", "Java", "Oracle EPM", "Hyperion", "PBCS", "FCCS", "ServiceNow",
+        "Flow Designer", "Business Rules", "REST APIs", "AWS", "Azure", "GCP",
+        "Docker", "Kubernetes", "SQL", "Linux", "EDA Tools", "Cadence", "Synopsys",
+        "simulation and debug", "functional/code coverage", "verification & validation",
+        "Team Handling and Co-ordination", "DAL-B exposure",
+    ]
+    found_skills = []
+    for skill in common_tech:
+        pattern = r'\b' + re.escape(skill) + r'\b'
+        if re.search(pattern, raw, re.I):
+            found_skills.append(skill)
+
+    required_skills = [s for s in found_skills if "DAL-B" not in s and "preferred" not in s.lower()]
+    preferred_skills = [s for s in found_skills if "DAL-B" in s or "preferred" in s.lower()]
+    if not preferred_skills and re.search(r'DAL-B exposure preferred', raw, re.I):
+        preferred_skills.append("DAL-B exposure preferred")
+
+    # Check if already structured markdown with ##
+    has_existing_structure = bool(re.search(r'(?:^|\n)#{1,3}\s+(?:Responsibilities|Requirements|Summary|Overview|Competencies|Qualifications)', raw, re.I))
+
+    if has_existing_structure:
+        tuned_text = raw
+    else:
+        # Clean ATS/table prefix noise
+        cleaned = re.sub(r'^\s*\d+\s+[A-Za-z0-9_-]+\s+\d{1,2}/\d{1,2}/\d{4}\s+\d{1,2}:\d{2}\s+(?:Yet to Start|Open|Active|Draft|Pending)?\s*', '', raw, flags=re.I).strip()
+        cleaned = re.sub(r'^\s*\d+\s+', '', cleaned).strip()
+        cleaned = re.sub(r'^(?:Yet to Start\s+)?', '', cleaned, flags=re.I)
+        if title:
+            cleaned = re.sub(r'^\s*' + re.escape(title) + r'\s*', '', cleaned, flags=re.I)
+        cleaned = re.sub(r'^\s*\d+\+?\s*(?:yrs|years|yr|yoe)\s*', '', cleaned, flags=re.I)
+        if location:
+            cleaned = re.sub(r'^\s*(?:' + re.escape(location).replace(r'\&', r'[&,]') + r'|[A-Za-z\s,&]+Hyderabad|[A-Za-z\s,&]+Bengaluru)\s*', '', cleaned, flags=re.I).strip()
+
+        normalized_body = re.sub(r'\s*,\s*(?=Should be capable of|DAL-B exposure|Team Handling|experience in|EDA Tools|Responsible for|Will design|Manage|Lead)', '; ', cleaned, flags=re.I)
+        normalized_body = re.sub(r'\s*,\s*(?=FPGA Design, Verification & Validation)', '; ', normalized_body, flags=re.I)
+
+        segments = [s.strip().strip(',') for s in re.split(r';|\.\s+', normalized_body) if s.strip()]
+        responsibilities = []
+        tech_competencies = []
+        qualifications = []
+
+        for seg in segments:
+            clean_seg = seg.strip().strip(',')
+            if not clean_seg:
+                continue
+            if re.search(r'preferred|is an advantage|plus|desirable', clean_seg, re.I):
+                qualifications.append(clean_seg)
+            elif re.search(r'Verilog|SystemVerilog|UVM|VHDL|FPGA design|SVA|Simulation and debug|Python|Perl|Tcl|Shell|EDA|Cadence|Synopsys|AXI|APB|AHB|C\+\+|Java|ServiceNow|AWS|Azure', clean_seg, re.I) and not re.search(r'Should be capable of|Team Handling|Responsible for', clean_seg, re.I):
+                tech_competencies.append(clean_seg)
+            else:
+                responsibilities.append(clean_seg)
+
+        effective_title = title or "Technical Specialist"
+        exp_display = f"{int(min_exp)}+ Years" if min_exp > 0 else "5+ Years"
+        loc_display = location or "Bengaluru & Hyderabad"
+
+        out_lines = [
+            f"## Role: {effective_title}",
+        ]
+        if job_code:
+            out_lines.append(f"• Requisition ID: {job_code}")
+        out_lines.append(f"• Experience Level: {exp_display}")
+        out_lines.append(f"• Location / Work Mode: {loc_display}")
+        out_lines.append("")
+        out_lines.append("### Role Summary & Scope:")
+        out_lines.append(f"Looking for an experienced {effective_title} with {exp_display} of domain expertise to join the engineering team in {loc_display}. The role owns end-to-end specification analysis, design verification, hardware-software integration, and compliance across key project deliverables.")
+        out_lines.append("")
+        out_lines.append("### Key Responsibilities:")
+        if responsibilities:
+            for r in responsibilities:
+                out_lines.append(f"• {r}")
+        else:
+            out_lines.append("• Lead end-to-end verification, architecture validation, and quality engineering.")
+            out_lines.append("• Oversee development lifecycle milestones and regulatory compliance.")
+        out_lines.append("")
+        out_lines.append("### Mandatory Technical Competencies:")
+        if tech_competencies:
+            for c in tech_competencies:
+                out_lines.append(f"• {c}")
+        elif required_skills:
+            for s in required_skills:
+                out_lines.append(f"• {s}")
+        else:
+            out_lines.append("• Core programming, verification methodologies, and industry-standard tools.")
+        out_lines.append("")
+        if qualifications or preferred_skills:
+            out_lines.append("### Preferred Qualifications & Additional Tools:")
+            for q in (qualifications or preferred_skills):
+                out_lines.append(f"• {q}")
+            out_lines.append("")
+
+        tuned_text = "\n".join(out_lines).strip()
+
+    metadata = {
+        "title": title or "",
+        "job_code": job_code,
+        "location": location,
+        "min_experience_years": min_exp,
+        "max_experience_years": max_exp,
+        "required_skills": required_skills,
+        "preferred_skills": preferred_skills,
+    }
+
+    return {
+        "tuned_text": tuned_text,
+        "metadata": metadata,
+    }
 
 
 # Schema for saving a manual or uploaded job description.
@@ -638,6 +821,11 @@ async def upload_job_description_file(
     # Check for existing duplicates in SQLite without overwriting.
     duplicate_info = check_for_duplicates(db, file_sha256, norm_hash)
 
+    # Intelligently clean, tune, and extract metadata from document text
+    tuning_res = tune_and_extract_job_text(extracted_text, fallback_filename=safe_filename)
+    tuned_text = tuning_res["tuned_text"]
+    extracted_meta = tuning_res["metadata"]
+
     # Return complete extraction preview to frontend recruiter interface.
     return {
         "status": "success",
@@ -645,9 +833,12 @@ async def upload_job_description_file(
         "filename": safe_filename,
         "content_sha256": file_sha256,
         "normalized_text_hash": norm_hash,
-        "extracted_text": extracted_text,
-        "character_count": extraction["character_count"],
-        "word_count": extraction["word_count"],
+        "extracted_text": tuned_text if tuned_text else extracted_text,
+        "tuned_text": tuned_text,
+        "raw_text": extracted_text,
+        "extracted_metadata": extracted_meta,
+        "character_count": len(tuned_text) if tuned_text else extraction["character_count"],
+        "word_count": len(tuned_text.split()) if tuned_text else extraction["word_count"],
         "page_count": extraction.get("page_count", 0),
         "ocr_needed": ocr_needed,
         "ocr_message": (
@@ -682,6 +873,15 @@ def preview_pasted_job_description(
     # Check for existing duplicates.
     duplicate_info = check_for_duplicates(db, content_sha256, norm_hash)
 
+    # Intelligently clean, tune, and extract metadata from pasted text
+    tuning_res = tune_and_extract_job_text(clean_text)
+    tuned_text = tuning_res["tuned_text"]
+    extracted_meta = tuning_res["metadata"]
+
+    # If title was explicitly supplied in payload, override
+    if payload.title and payload.title.strip():
+        extracted_meta["title"] = payload.title.strip()
+
     # Return preview payload.
     return {
         "status": "success",
@@ -689,9 +889,12 @@ def preview_pasted_job_description(
         "filename": "pasted_text.txt",
         "content_sha256": content_sha256,
         "normalized_text_hash": norm_hash,
-        "extracted_text": clean_text,
-        "character_count": len(clean_text),
-        "word_count": len(clean_text.split()),
+        "extracted_text": tuned_text if tuned_text else clean_text,
+        "tuned_text": tuned_text,
+        "raw_text": clean_text,
+        "extracted_metadata": extracted_meta,
+        "character_count": len(tuned_text) if tuned_text else len(clean_text),
+        "word_count": len(tuned_text.split()) if tuned_text else len(clean_text.split()),
         "ocr_needed": False,
         "duplicate_detection": duplicate_info,
     }
@@ -703,24 +906,52 @@ def create_manual_job(
     db: Session = Depends(get_db),
 ) -> dict[str, Any]:
     """Persist a new or versioned job description with full metadata without overwriting existing jobs."""
-    # Ensure role title is non-empty.
-    title = payload.title.strip()
-    if not title:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Job title is required.",
-        )
-
     # Ensure description is non-empty.
-    description = payload.description.strip()
+    description = payload.description.strip() if payload.description else ""
+    original_text = payload.original_text.strip() if payload.original_text else description
+
+    source_for_meta = original_text or description
+
+    # Resolve title: if blank, auto-extract from text so saving doesn't fail.
+    title = payload.title.strip() if payload.title else ""
+    auto_tuning = tune_and_extract_job_text(source_for_meta, fallback_filename=payload.source_filename or "")
+    if not title:
+        title = auto_tuning["metadata"]["title"]
+
+    # Final fallback if still blank: derive from first meaningful line
+    if not title and source_for_meta:
+        first_line = source_for_meta.split("\n")[0].strip()
+        first_line_clean = re.sub(r'^(?:\d+[\s_-]*|Yet\s+to\s+Start\s+|Open\s+|Active\s+|Draft\s+|Status\s*[:\-]\s*)+', '', first_line, flags=re.I).strip()
+        words = first_line_clean.split()[:5]
+        if words:
+            title = " ".join(words)
+
+    if not title:
+        title = "Technical Specialist"
+
+    if not description:
+        description = auto_tuning["tuned_text"] or original_text
+
     if not description:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Job description text is required.",
         )
 
-    # Determine original text (defaults to approved description if not provided separately).
-    original_text = payload.original_text.strip() if payload.original_text else description
+    # Resolve required and preferred skills if omitted
+    req_skills = payload.required_skills
+    if not req_skills and auto_tuning["metadata"]["required_skills"]:
+        req_skills = auto_tuning["metadata"]["required_skills"]
+
+    pref_skills = payload.preferred_skills
+    if not pref_skills and auto_tuning["metadata"]["preferred_skills"]:
+        pref_skills = auto_tuning["metadata"]["preferred_skills"]
+
+    # Resolve location, job_code, exp if omitted or defaulted
+    loc = payload.location if payload.location and payload.location != "Hyderabad / Bangalore" else (auto_tuning["metadata"]["location"] or payload.location or "Bengaluru & Hyderabad")
+    jcode = payload.job_code or auto_tuning["metadata"]["job_code"]
+    min_exp = payload.min_experience_years if payload.min_experience_years > 0 else auto_tuning["metadata"]["min_experience_years"]
+    max_exp = payload.max_experience_years if payload.max_experience_years > min_exp else auto_tuning["metadata"]["max_experience_years"]
 
     # Compute digests if not provided.
     content_sha256 = payload.content_sha256 or hashlib.sha256(original_text.encode("utf-8")).hexdigest()
@@ -786,17 +1017,17 @@ def create_manual_job(
     db.flush()
 
     # Generate job code if omitted.
-    job_code = payload.job_code or f"REQ-{new_jd.id:04d}"
+    job_code = jcode or payload.job_code or f"REQ-{new_jd.id:04d}"
 
     # Create operational Job record linked to the newly stored JobDescription.
     new_job = Job(
         title=title,
         description=description,
-        required_skills=payload.required_skills,
-        preferred_skills=payload.preferred_skills,
-        min_experience_years=payload.min_experience_years,
-        max_experience_years=payload.max_experience_years,
-        location=payload.location,
+        required_skills=req_skills,
+        preferred_skills=pref_skills,
+        min_experience_years=min_exp,
+        max_experience_years=max_exp,
+        location=loc,
         status=payload.status,
         client_name=payload.client_name,
         job_code=job_code,
@@ -1405,7 +1636,186 @@ def list_job_embeddings_metadata(
     if not job:
         raise HTTPException(status_code=404, detail="Job not found.")
 
-    # Return embeddings metadata.
-    return get_job_embeddings_metadata(db, job.id, segmentation_id=segmentation_id)
+    # Return embeddings metadata safely handling direct and FastAPI-injected parameter calls.
+    seg_id = segmentation_id if isinstance(segmentation_id, int) else None
+    return get_job_embeddings_metadata(db, job.id, segmentation_id=seg_id)
+
+
+# Schemas for Boolean queries and structured scope updates
+class BooleanQueryRequestSchema(BaseModel):
+    custom_mandatory: Optional[list[str]] = None
+    custom_preferred: Optional[list[str]] = None
+    custom_exclusions: Optional[list[str]] = None
+    target_companies: Optional[list[str]] = None
+
+
+class UpdateStructuredScopeSchema(BaseModel):
+    role_overview: Optional[str] = None
+    business_context: Optional[str] = None
+    technical_scope: Optional[str] = None
+    core_responsibilities: Optional[list[str]] = None
+    functional_responsibilities: Optional[list[str]] = None
+    required_skills: Optional[list[str]] = None
+    preferred_skills: Optional[list[str]] = None
+    domain_expertise: Optional[list[str]] = None
+    experience_requirements: Optional[str] = None
+    deliverables: Optional[list[str]] = None
+    missing_information: Optional[list[str]] = None
+
+
+@router.get("/{job_id}/intelligence")
+def get_job_intelligence(
+    job_id: str,
+    db: Session = Depends(get_db),
+) -> dict[str, Any]:
+    """Retrieve full structured JD intelligence, 12-section scope, and multi-platform Boolean queries."""
+    raw_id = job_id.replace("job-", "").lstrip("0") or "0"
+    try:
+        j_id = int(raw_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid job ID format.")
+
+    job = db.query(Job).filter(Job.id == j_id).first()
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found.")
+
+    intel = analyze_job_description_intelligence(db=db, job_id=job.id, force_refresh=False)
+    return intel.model_dump()
+
+
+@router.post("/{job_id}/analyze-intelligence")
+def analyze_job_intelligence(
+    job_id: str,
+    db: Session = Depends(get_db),
+) -> dict[str, Any]:
+    """Force re-run of deep JD Intelligence extraction pipeline with AI and deterministic fallback."""
+    raw_id = job_id.replace("job-", "").lstrip("0") or "0"
+    try:
+        j_id = int(raw_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid job ID format.")
+
+    job = db.query(Job).filter(Job.id == j_id).first()
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found.")
+
+    intel = analyze_job_description_intelligence(db=db, job_id=job.id, force_refresh=True)
+    return {
+        "status": "success",
+        "message": f"Intelligence successfully generated for '{job.title}'",
+        "intelligence": intel.model_dump(),
+    }
+
+
+@router.post("/{job_id}/boolean-queries")
+def get_job_boolean_queries(
+    job_id: str,
+    payload: Optional[BooleanQueryRequestSchema] = None,
+    db: Session = Depends(get_db),
+) -> dict[str, Any]:
+    """Generate platform-specific Boolean queries (Naukri, LinkedIn, X-Ray, Simple Keywords, Advanced)."""
+    raw_id = job_id.replace("job-", "").lstrip("0") or "0"
+    try:
+        j_id = int(raw_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid job ID format.")
+
+    job = db.query(Job).filter(Job.id == j_id).first()
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found.")
+
+    # Retrieve current intelligence or generate
+    intel = analyze_job_description_intelligence(db=db, job_id=job.id, force_refresh=False)
+
+    mand_skills = payload.custom_mandatory if (payload and payload.custom_mandatory is not None) else intel.technical_skills.mandatory_skills
+    pref_skills = payload.custom_preferred if (payload and payload.custom_preferred is not None) else intel.technical_skills.preferred_skills
+    exclusions = payload.custom_exclusions if (payload and payload.custom_exclusions is not None) else ["Intern", "Trainee", "Student", "Fresher"]
+
+    queries = generate_boolean_queries(
+        title=job.title,
+        mandatory_skills=mand_skills,
+        preferred_skills=pref_skills,
+        domain_terms=intel.domain_intelligence.industry_terminology,
+        alternative_titles=intel.role_intelligence.alternative_titles,
+        location=job.location,
+        experience_years=job.min_experience_years,
+        target_companies=payload.target_companies if payload else None,
+        exclusions=exclusions,
+        job_id=job.id,
+    )
+    return queries.model_dump()
+
+
+@router.put("/{job_id}/structured-scope")
+def update_job_structured_scope(
+    job_id: str,
+    payload: UpdateStructuredScopeSchema,
+    db: Session = Depends(get_db),
+) -> dict[str, Any]:
+    """Save recruiter edits to the 12-section structured scope while preserving original source text."""
+    raw_id = job_id.replace("job-", "").lstrip("0") or "0"
+    try:
+        j_id = int(raw_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid job ID format.")
+
+    job = db.query(Job).filter(Job.id == j_id).first()
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found.")
+
+    segmentation = (
+        db.query(JDSegmentation)
+        .filter(JDSegmentation.job_id == job.id)
+        .order_by(JDSegmentation.version.desc())
+        .first()
+    )
+    if not segmentation:
+        raise HTTPException(status_code=404, detail="No segmentation found to update.")
+
+    scope = segmentation.structured_scope or {}
+    if payload.role_overview is not None:
+        scope["role_overview"] = payload.role_overview
+    if payload.business_context is not None:
+        scope["business_context"] = payload.business_context
+    if payload.technical_scope is not None:
+        scope["technical_scope"] = payload.technical_scope
+    if payload.core_responsibilities is not None:
+        scope["core_responsibilities"] = payload.core_responsibilities
+    if payload.functional_responsibilities is not None:
+        scope["functional_responsibilities"] = payload.functional_responsibilities
+    if payload.required_skills is not None:
+        scope["required_skills"] = payload.required_skills
+        job.required_skills = payload.required_skills
+    if payload.preferred_skills is not None:
+        scope["preferred_skills"] = payload.preferred_skills
+        job.preferred_skills = payload.preferred_skills
+    if payload.domain_expertise is not None:
+        scope["domain_expertise"] = payload.domain_expertise
+    if payload.experience_requirements is not None:
+        scope["experience_requirements"] = payload.experience_requirements
+    if payload.deliverables is not None:
+        scope["deliverables"] = payload.deliverables
+    if payload.missing_information is not None:
+        scope["missing_information"] = payload.missing_information
+
+    segmentation.structured_scope = scope
+    segmentation.updated_at = datetime.now(timezone.utc)
+
+    # If intelligence_data exists, update its structured_scope too
+    if segmentation.intelligence_data and isinstance(segmentation.intelligence_data, dict):
+        intel_dict = dict(segmentation.intelligence_data)
+        intel_dict["structured_scope"] = scope
+        segmentation.intelligence_data = intel_dict
+
+    db.commit()
+    db.refresh(segmentation)
+    db.refresh(job)
+
+    return {
+        "status": "success",
+        "message": f"Structured scope for '{job.title}' updated successfully.",
+        "structured_scope": scope,
+    }
+
 
 

@@ -38,13 +38,14 @@ def test_resume_embedding_migration_preserves_legacy_row_and_is_idempotent(tmp_p
     # Add all new nullable columns to the temporary legacy schema.
     with engine.begin() as connection:
         added = migrate_resume_embedding_storage(connection)
-    # Confirm the migration adds the five new storage and cache columns.
+    # Confirm the migration adds the storage, cache, and generation_method columns.
     assert added == (
         "embedding_vector",
         "input_hash",
         "requested_model",
         "returned_model",
         "preprocessing_version",
+        "generation_method",
     )
     # Confirm a second run recognizes the current schema and changes nothing.
     with engine.begin() as connection:

@@ -103,7 +103,12 @@ def build_candidate_digital_twin(db: Session, candidate_id: int) -> Dict[str, An
     resume_ids = [r.id for r in resumes]
 
     embeddings = (
-        db.query(ResumeEmbedding).filter(ResumeEmbedding.resume_id.in_(resume_ids)).all()
+        db.query(ResumeEmbedding)
+        .filter(
+            ResumeEmbedding.resume_id.in_(resume_ids),
+            ResumeEmbedding.generation_method == "nemotron_api",
+        )
+        .all()
         if resume_ids
         else []
     )

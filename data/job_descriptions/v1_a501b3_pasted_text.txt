@@ -1,0 +1,30 @@
+. FSO Software Engineer – Financial Institution Complaint Capture
+Role: ServiceNow FSO Software Engineer – Complaint Management
+Location: Offshore
+Domain: Financial Services / Complaints & Case Management
+JD
+Configure and develop the ServiceNow FSO Complaint Management solution supporting M&T's end-to-end complaints lifecycle, from customer complaint intake through investigation, remediation, communication and controlled closure.
+Key responsibilities
+•	Configure and extend ServiceNow FSO Complaint Management.
+•	Develop complaint intake and case-management workflows.
+•	Implement omnichannel complaint capture and normalize incoming complaints into a governed taxonomy. 
+•	Configure customer/product/account context, classification, prioritization and routing.
+•	Build SLA and regulatory-clock controls.
+•	Implement investigation workflows, evidence capture, approvals and escalations.
+•	Develop integrations with banking/payment, CRM, Customer 360, document, fraud and analytics systems.
+•	Develop APIs, business rules, flows and reusable ServiceNow components.
+•	Support unit, integration, regression and UAT testing.
+•	Participate in release management, defect resolution and production readiness.
+•	Maintain secure and auditable complaint history.
+Mandatory skills
+•	Hands-on ServiceNow development
+•	ServiceNow FSO
+•	Complaint Management / Case Management
+•	Flow Designer / workflow development
+•	Business Rules, scripting and integration
+•	REST APIs / integration patterns
+•	ServiceNow security and data controls
+•	Testing and release management
+•	Banking/payments/dispute-management understanding
+The M&T scope specifically brings together ServiceNow platform engineering and banking payment/dispute case management, rather than treating this as a generic ServiceNow developer position.
+Target profile: 5-8+ years ServiceNow experience, with direct FSO or financial-services case-management implementation highly preferred.

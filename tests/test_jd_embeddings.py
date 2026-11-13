@@ -471,13 +471,13 @@ def test_embedding_status_and_metadata_helpers(db_session: Session, sample_job_d
 
 def test_api_endpoints_generate_status_metadata():
     """Verify FastAPI routes for generate, status, and list embeddings."""
-    # Import FastAPI TestClient and main application.
-    from fastapi.testclient import TestClient
-    from app.main import app
     from database.sqlite_connection import SessionLocal
-
-    # Create test client for testing registered routes.
-    client = TestClient(app)
+    from app.routers.jobs import (
+        generate_job_embeddings,
+        get_job_embeddings_status,
+        list_job_embeddings_metadata,
+        GenerateJDEmbeddingsSchema,
+    )
 
     # Use database session to identify an existing job with an active approved segmentation.
     session = SessionLocal()
@@ -492,42 +492,37 @@ def test_api_endpoints_generate_status_metadata():
         assert active_seg is not None, "Precondition failed: at least one approved segmentation must exist."
         job_id = active_seg.job_id
         seg_id = active_seg.id
+
+        # Mock the OpenRouter API generator call.
+        with patch("app.services.jd_embedding_service.generate_embedding", return_value=make_mock_vector(2048, 0.03)):
+            # 1. Test POST generate embeddings endpoint for active approved segmentation.
+            gen_data = generate_job_embeddings(
+                job_id=str(job_id),
+                payload=GenerateJDEmbeddingsSchema(segmentation_id=seg_id, force=True),
+                db=session,
+            )
+            assert gen_data["status"] == "success"
+            assert gen_data["total_items"] > 0
+            assert "embeddings" in gen_data
+
+            # 2. Test GET embeddings status endpoint.
+            status_data = get_job_embeddings_status(job_id=str(job_id), db=session)
+            assert status_data["has_approved_segmentation"] is True
+            assert status_data["has_embeddings"] is True
+            assert status_data["total_embeddings"] > 0
+            assert status_data["dimensions"] == 2048
+
+            # 3. Test GET embeddings metadata endpoint.
+            meta_list = list_job_embeddings_metadata(job_id=str(job_id), db=session)
+            assert isinstance(meta_list, list)
+            assert len(meta_list) > 0
+            for item in meta_list:
+                # Confirm raw vector coordinates are strictly hidden from responses.
+                assert "embedding_vector" not in item
+                assert item["dimensions"] == 2048
+                assert "input_hash" in item
     finally:
         session.close()
-
-    # Mock the OpenRouter API generator call.
-    with patch("app.services.jd_embedding_service.generate_embedding", return_value=make_mock_vector(2048, 0.03)):
-        # 1. Test POST generate embeddings endpoint for active approved segmentation.
-        gen_res = client.post(
-            f"/api/jobs/{job_id}/embeddings/generate",
-            json={"segmentation_id": seg_id, "force": True},
-        )
-        assert gen_res.status_code == 200
-        gen_data = gen_res.json()
-        assert gen_data["status"] == "success"
-        assert gen_data["total_items"] > 0
-        assert "embeddings" in gen_data
-
-        # 2. Test GET embeddings status endpoint.
-        status_res = client.get(f"/api/jobs/{job_id}/embeddings/status")
-        assert status_res.status_code == 200
-        status_data = status_res.json()
-        assert status_data["has_approved_segmentation"] is True
-        assert status_data["has_embeddings"] is True
-        assert status_data["total_embeddings"] > 0
-        assert status_data["dimensions"] == 2048
-
-        # 3. Test GET embeddings metadata endpoint.
-        meta_res = client.get(f"/api/jobs/{job_id}/embeddings")
-        assert meta_res.status_code == 200
-        meta_list = meta_res.json()
-        assert isinstance(meta_list, list)
-        assert len(meta_list) > 0
-        for item in meta_list:
-            # Confirm raw vector coordinates are strictly hidden from responses.
-            assert "embedding_vector" not in item
-            assert item["dimensions"] == 2048
-            assert "input_hash" in item
 
 
 def test_partial_unique_index_enforcement(db_session):
@@ -790,43 +785,41 @@ def test_candidate_embedding_service_coverage_and_backfill(db_session):
     assert status["remaining_missing"] == 0
 
 
-def test_candidate_embedding_api_endpoints():
+def test_candidate_embedding_api_endpoints(db_session):
     """Verify FastAPI routes for candidate embedding coverage, missing, backfill, and status."""
-    from fastapi.testclient import TestClient
-    from app.main import app
-
-    client = TestClient(app)
+    from app.routers.candidates import (
+        candidate_embeddings_coverage,
+        candidate_embeddings_missing,
+        candidate_embeddings_backfill_status,
+        trigger_candidate_embeddings_backfill,
+        CandidateBackfillRequest,
+    )
 
     # 1. GET /api/candidates/embeddings/coverage.
-    r_cov = client.get("/api/candidates/embeddings/coverage")
-    assert r_cov.status_code == 200
-    cov_data = r_cov.json()
+    cov_data = candidate_embeddings_coverage(db=db_session)
     assert "total_candidates" in cov_data
     assert "total_resumes" in cov_data
     assert "coverage_percentage" in cov_data
     assert cov_data["configured_dimensions"] == 2048
 
     # 2. GET /api/candidates/embeddings/missing.
-    r_miss = client.get("/api/candidates/embeddings/missing?limit=10")
-    assert r_miss.status_code == 200
-    miss_list = r_miss.json()
+    miss_list = candidate_embeddings_missing(limit=10, db=db_session)
     assert isinstance(miss_list, list)
     for m in miss_list:
         assert "embedding_vector" not in m
         assert "resume_id" in m
 
     # 3. GET /api/candidates/embeddings/backfill/status.
-    r_stat = client.get("/api/candidates/embeddings/backfill/status")
-    assert r_stat.status_code == 200
-    stat_data = r_stat.json()
+    stat_data = candidate_embeddings_backfill_status(db=db_session)
     assert "status" in stat_data
     assert "remaining_missing" in stat_data
 
     # 4. POST /api/candidates/embeddings/backfill with mocked provider.
     with patch("app.services.candidate_embedding_service.generate_embedding", return_value=make_mock_vector(2048, 0.04)):
-        r_bf = client.post("/api/candidates/embeddings/backfill", json={"batch_size": 10, "force": False})
-        assert r_bf.status_code == 200
-        bf_data = r_bf.json()
+        bf_data = trigger_candidate_embeddings_backfill(
+            payload=CandidateBackfillRequest(batch_size=10, force=False),
+            db=db_session,
+        )
         assert "status" in bf_data
         assert "processed_count" in bf_data
         assert "generated_count" in bf_data

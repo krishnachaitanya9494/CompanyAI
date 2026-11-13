@@ -70,8 +70,8 @@ export const JobList = ({
   // Render job listing container with search bar, 5-card default slice, and Show More/Less toggle.
   return (
     <div className="space-y-3">
-      {/* Compact JD Search & Status Filter Strip */}
-      <div className="flex flex-wrap items-center gap-2 bg-white dark:bg-surface-darkCard p-2.5 rounded-2xl border border-slate-200/80 dark:border-surface-darkBorder shadow-subtle">
+      {/* Compact JD Search & Status Filter Strip - Sticky within the scrollable column */}
+      <div className="sticky top-0 z-10 flex flex-wrap items-center gap-2 bg-white/95 dark:bg-surface-darkCard/95 backdrop-blur-md p-2.5 rounded-2xl border border-slate-200/80 dark:border-surface-darkBorder shadow-subtle">
         <div className="relative flex-1 min-w-[160px]">
           <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
           <input
@@ -136,19 +136,19 @@ export const JobList = ({
               <div className="flex items-start justify-between gap-4 mb-2">
                 <div className="min-w-0">
                   <div className="flex items-center gap-2 mb-1 flex-wrap">
-                    <span className="font-mono text-[11px] font-semibold text-slate-500 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded border border-slate-200/80 dark:border-slate-700">
+                    <span className="font-mono text-xs font-semibold text-slate-500 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded border border-slate-200/80 dark:border-slate-700">
                       {job.jdCode}
                     </span>
-                    <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-blue-50 dark:bg-blue-950/50 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800">
+                    <span className="text-xs font-bold px-1.5 py-0.5 rounded bg-blue-50 dark:bg-blue-950/50 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800">
                       v{job.version || 1}
                     </span>
                     {job.department && (
-                      <span className="text-xs text-slate-500 dark:text-slate-400 font-medium truncate">
+                      <span className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 font-medium truncate">
                         {job.department}
                       </span>
                     )}
                   </div>
-                  <h3 className="text-sm font-bold text-navy-900 dark:text-white group-hover:text-brand-700 transition-colors">
+                  <h3 className="text-base font-bold text-navy-900 dark:text-white group-hover:text-brand-700 transition-colors">
                     {job.title}
                   </h3>
                 </div>
@@ -164,7 +164,7 @@ export const JobList = ({
                     }}
                     ariaLabel={`Status for ${job.title}`}
                     size="sm"
-                    buttonClassName={`!py-1 !px-2.5 !rounded-lg !text-[13px] !font-semibold ${getStatusStyle(
+                    buttonClassName={`!py-1 !px-2.5 !rounded-lg !text-sm !font-semibold ${getStatusStyle(
                       normalizedStatus
                     )}`}
                     menuClassName="right-0 left-auto"
@@ -174,12 +174,12 @@ export const JobList = ({
               </div>
 
               {/* Description excerpt */}
-              <p className="text-xs text-slate-500 dark:text-slate-400 line-clamp-2 mb-3 leading-relaxed">
+              <p className="text-sm text-slate-600 dark:text-slate-300 line-clamp-2 mb-3 leading-relaxed">
                 {job.description}
               </p>
 
               {/* Metadata and required skills pills */}
-              <div className="flex flex-wrap items-center justify-between gap-3 pt-3 border-t border-slate-100 dark:border-surface-darkBorder text-xs">
+              <div className="flex flex-wrap items-center justify-between gap-3 pt-3 border-t border-slate-100 dark:border-surface-darkBorder text-xs sm:text-sm">
                 <div className="flex flex-wrap items-center gap-3 text-slate-500 dark:text-slate-400">
                   <span className="flex items-center gap-1.5">
                     <MapPin className="w-3.5 h-3.5 text-slate-400" />

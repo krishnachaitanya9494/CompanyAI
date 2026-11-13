@@ -177,6 +177,7 @@ def generate_segmentation_embeddings(
                 )
                 generated_count += 1
                 records_saved.append(stored_record)
+                db.commit()
             except Exception as exc:
                 failed_count += 1
                 raise RuntimeError(f"Failed to generate full JD embedding: {exc}") from exc
@@ -184,6 +185,7 @@ def generate_segmentation_embeddings(
     # -------------------------------------------------------------
     # 2. Granular Requirement Embeddings
     # -------------------------------------------------------------
+    import time
     for req in segmentation.requirements:
         req_text = build_requirement_embedding_text(req)
         req_hash = compute_text_sha256(req_text)
@@ -223,6 +225,7 @@ def generate_segmentation_embeddings(
         else:
             # Generate fresh requirement vector coordinates via provider.
             try:
+                time.sleep(0.3)  # Gentle spacing for free tier rate limits
                 raw_vector = provider(req_text)
                 stored_req = store_job_embedding(
                     session=db,
@@ -237,9 +240,10 @@ def generate_segmentation_embeddings(
                 )
                 generated_count += 1
                 records_saved.append(stored_req)
-            except Exception as exc:
+                db.commit()
+            except Exception:
                 failed_count += 1
-                raise RuntimeError(f"Failed to generate requirement embedding (ID {req.id}): {exc}") from exc
+                continue
 
     # Commit all changes atomically.
     db.commit()

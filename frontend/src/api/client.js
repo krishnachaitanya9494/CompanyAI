@@ -375,3 +375,47 @@ export const intelligenceApi = {
   getJobHiringDifficulty: (jobId) =>
     apiRequest(`/intelligence/hiring-difficulty/jobs/${jobId}`),
 };
+
+/**
+ * AI Intelligence & Model Administration API client.
+ */
+export const aiApi = {
+  // Retrieve AI models, 2048-dim verification, vector coverage, and cache status
+  getHealth: () => apiRequest('/ai/health'),
+
+  // Execute live embedding generation test
+  testEmbedding: (text = 'Recruitment test') =>
+    apiRequest('/ai/test-embedding', {
+      method: 'POST',
+      body: JSON.stringify({ text }),
+    }),
+
+  // Execute live chat completion test
+  testChat: (prompt = 'CompanyAI Diagnostic') =>
+    apiRequest('/ai/test-chat', {
+      method: 'POST',
+      body: JSON.stringify({ prompt }),
+    }),
+
+  // Natural language recruitment Q&A grounded in retrieved candidates and JDs
+  ragQuery: (question, jobId = null, topK = 5) =>
+    apiRequest('/ai/rag/query', {
+      method: 'POST',
+      body: JSON.stringify({ question, job_id: jobId, top_k: topK }),
+    }),
+
+  // Discover similar candidates by vector cosine proximity
+  getSimilarCandidates: (candidateId, limit = 5) =>
+    apiRequest(`/ai/similar-candidates/${candidateId}?limit=${limit}`),
+
+  // Discover similar jobs by full JD vector embeddings
+  getSimilarJobs: (jobId, limit = 5) =>
+    apiRequest(`/ai/similar-jobs/${jobId}?limit=${limit}`),
+
+  // Trigger batch re-indexing of missing or selected records
+  reindex: (batchSize = 20, force = false) =>
+    apiRequest('/ai/reindex', {
+      method: 'POST',
+      body: JSON.stringify({ batch_size: batchSize, force }),
+    }),
+};

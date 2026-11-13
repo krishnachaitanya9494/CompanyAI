@@ -567,7 +567,7 @@ export default function App() {
   // Render application shell with hybrid enterprise SaaS styling and responsive layout.
   return (
     <div
-      className={`min-h-screen flex ${
+      className={`h-screen flex overflow-hidden ${
         theme === 'dark' ? 'dark bg-surface-darkCanvas text-slate-100' : 'bg-surface-50 text-navy-900'
       } font-sans selection:bg-brand-100 selection:text-brand-700 transition-colors duration-200`}
     >
@@ -590,7 +590,7 @@ export default function App() {
       />
 
       {/* Main Content Area */}
-      <div className="flex-1 flex flex-col min-w-0">
+      <div className="flex-1 flex flex-col min-w-0 h-screen overflow-hidden">
         {/* Sticky Top Header Bar */}
         <Topbar
           title={headerMeta.title}
@@ -606,7 +606,11 @@ export default function App() {
 
         {/* Scrollable Page Body */}
         <main
-          className={`flex-1 p-4 sm:p-6 md:p-8 overflow-y-auto ${
+          className={`flex-1 min-h-0 ${
+            activeTab === 'jobs'
+              ? 'overflow-y-auto lg:overflow-hidden p-3 sm:p-4 lg:p-6 flex flex-col'
+              : 'overflow-y-auto p-4 sm:p-6 md:p-8'
+          } ${
             theme === 'dark' ? 'bg-surface-darkCanvas' : 'bg-surface-50'
           } transition-colors`}
         >
@@ -661,7 +665,7 @@ export default function App() {
           )}
 
           {/* Subtle PageTransition + Suspense boundary keying on activeTab */}
-          <PageTransition transitionKey={activeTab}>
+          <PageTransition transitionKey={activeTab} className={activeTab === 'jobs' ? 'flex-1 min-h-0 flex flex-col' : ''}>
             <Suspense
               fallback={
                 <div className="p-8 rounded-2xl bg-white dark:bg-surface-darkCard border border-slate-200/80 dark:border-surface-darkBorder flex items-center justify-center shadow-subtle">
