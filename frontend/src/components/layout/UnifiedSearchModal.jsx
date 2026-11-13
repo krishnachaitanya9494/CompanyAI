@@ -89,16 +89,19 @@ export const UnifiedSearchModal = ({
                       key={c.id}
                       onClick={() => {
                         onClose();
-                        onSelectCandidate(c.id);
+                        onSelectCandidate(c);
                       }}
-                      className="p-3 bg-white hover:bg-slate-50 border border-slate-200/70 hover:border-brand-300 rounded-xl cursor-pointer flex items-center justify-between transition-all"
+                      className="p-3 bg-white dark:bg-surface-darkCard hover:bg-slate-50 dark:hover:bg-slate-800/60 border border-slate-200/70 dark:border-surface-darkBorder hover:border-brand-300 rounded-xl cursor-pointer flex items-center justify-between transition-all"
                     >
                       <div>
-                        <div className="font-semibold text-xs text-navy-900">{c.name}</div>
-                        <div className="text-[11px] text-slate-500">{c.role} • {c.location}</div>
+                        <div className="font-semibold text-xs text-navy-900 dark:text-slate-100">{c.name}</div>
+                        <div className="text-[11px] text-slate-500 dark:text-slate-400">
+                          {c.role}{c.location ? ` • ${c.location}` : ''}
+                        </div>
                       </div>
-                      <span className="text-xs font-mono font-semibold text-brand-700 bg-brand-50 px-2 py-0.5 rounded border border-brand-200">
-                        {c.matchScore}% Match
+                      {/* Render factual keyword match classification instead of synthetic hardcoded percentage */}
+                      <span className="text-[11px] font-medium text-brand-700 dark:text-brand-300 bg-brand-50 dark:bg-brand-950/40 px-2 py-0.5 rounded border border-brand-200 dark:border-brand-800">
+                        {c.matchType || 'Matched'}
                       </span>
                     </div>
                   ))}
@@ -110,7 +113,7 @@ export const UnifiedSearchModal = ({
             {results.jobs.length > 0 && (
               <div className="space-y-2">
                 <div className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-slate-400">
-                  <Briefcase className="w-3.5 h-3.5 text-slate-600" />
+                  <Briefcase className="w-3.5 h-3.5 text-slate-600 dark:text-slate-400" />
                   <span>Job Descriptions ({results.jobs.length})</span>
                 </div>
                 <div className="space-y-1.5">
@@ -119,13 +122,15 @@ export const UnifiedSearchModal = ({
                       key={j.id}
                       onClick={() => {
                         onClose();
-                        onSelectJob(j.id);
+                        onSelectJob(j);
                       }}
-                      className="p-3 bg-white hover:bg-slate-50 border border-slate-200/70 hover:border-slate-300 rounded-xl cursor-pointer flex items-center justify-between transition-all"
+                      className="p-3 bg-white dark:bg-surface-darkCard hover:bg-slate-50 dark:hover:bg-slate-800/60 border border-slate-200/70 dark:border-surface-darkBorder hover:border-slate-300 rounded-xl cursor-pointer flex items-center justify-between transition-all"
                     >
                       <div>
-                        <div className="font-semibold text-xs text-navy-900">{j.title}</div>
-                        <div className="text-[11px] text-slate-500">{j.department} • {j.location}</div>
+                        <div className="font-semibold text-xs text-navy-900 dark:text-slate-100">{j.title}</div>
+                        <div className="text-[11px] text-slate-500 dark:text-slate-400">
+                          {j.department || 'Job Description'}{j.location ? ` • ${j.location}` : ''}
+                        </div>
                       </div>
                       <ArrowRight className="w-3.5 h-3.5 text-slate-400" />
                     </div>
@@ -138,7 +143,7 @@ export const UnifiedSearchModal = ({
             {results.requests.length > 0 && (
               <div className="space-y-2">
                 <div className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-slate-400">
-                  <GitPullRequest className="w-3.5 h-3.5 text-slate-600" />
+                  <GitPullRequest className="w-3.5 h-3.5 text-slate-600 dark:text-slate-400" />
                   <span>Recruitment Requests ({results.requests.length})</span>
                 </div>
                 <div className="space-y-1.5">
@@ -147,15 +152,15 @@ export const UnifiedSearchModal = ({
                       key={r.id}
                       onClick={() => {
                         onClose();
-                        onSelectRequest(r.id);
+                        onSelectRequest(r);
                       }}
-                      className="p-3 bg-white hover:bg-slate-50 border border-slate-200/70 hover:border-slate-300 rounded-xl cursor-pointer flex items-center justify-between transition-all"
+                      className="p-3 bg-white dark:bg-surface-darkCard hover:bg-slate-50 dark:hover:bg-slate-800/60 border border-slate-200/70 dark:border-surface-darkBorder hover:border-slate-300 rounded-xl cursor-pointer flex items-center justify-between transition-all"
                     >
                       <div>
-                        <div className="font-semibold text-xs text-navy-900">{r.roleTitle}</div>
-                        <div className="text-[11px] font-mono text-slate-500">{r.reqNumber} • {r.priority} Priority</div>
+                        <div className="font-semibold text-xs text-navy-900 dark:text-slate-100">{r.roleTitle}</div>
+                        <div className="text-[11px] font-mono text-slate-500 dark:text-slate-400">{r.reqNumber} • {r.priority} Priority</div>
                       </div>
-                      <span className="text-[11px] text-slate-600 font-medium">{r.status}</span>
+                      <span className="text-[11px] text-slate-600 dark:text-slate-300 font-medium">{r.status}</span>
                     </div>
                   ))}
                 </div>

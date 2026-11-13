@@ -282,6 +282,7 @@ class DashboardResponse(StrictApiModel):
     total_candidates: int
     total_resumes: int
     total_jobs: int
+    active_jobs: int = 0
     open_requests: int
     # Return ingestion success, failure, and pending counts.
     ingestion_imported: int

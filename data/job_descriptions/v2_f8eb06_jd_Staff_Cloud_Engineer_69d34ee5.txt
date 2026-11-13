@@ -1,0 +1,1 @@
+Version 2 of Staff Cloud Engineer 69d34ee5 with updated salary and extra Rust skill requirement.

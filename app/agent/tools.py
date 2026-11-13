@@ -181,17 +181,19 @@ def search_candidates_tool(query: str, limit: int = 5, session: Session = None) 
         # Combine with matched skills prioritized first.
         ordered_skills = matched_skills + other_skills
 
-        # Append candidate result object.
+        # Append candidate result object preserving honest profile fields without fabricating missing defaults.
         results.append({
             "id": c.id,
             "numeric_id": c.id,
             "candidate_id": c.id,
             "name": c.name,
             "currentRole": role_title,
-            "experienceYears": c.experience_years or 5.0,
-            "location": c.location or "India",
-            "availability": c.availability or "Immediate",
-            "status": c.stage or "Screened",
+            # Preserve exact stored experience or None if not extracted.
+            "experienceYears": c.experience_years,
+            # Report missing locations honestly instead of defaulting to a city.
+            "location": c.location or "Not specified",
+            "availability": c.availability or "Not specified",
+            "status": c.stage or "New",
             "matchScore": score,
             "primarySkills": ordered_skills[:4],
             "secondarySkills": ordered_skills[4:],
@@ -240,12 +242,14 @@ def filter_candidates_tool(
             "numeric_id": c.id,
             "candidate_id": c.id,
             "name": c.name,
-            "currentRole": c.summary.split(".")[0] if c.summary else "Candidate",
-            "experienceYears": c.experience_years or 5.0,
-            "location": c.location or "India",
-            "availability": c.availability or "Immediate",
-            "status": c.stage or "Screened",
-            "matchScore": 88,
+            "currentRole": extract_candidate_role(c.summary),
+            # Preserve exact stored experience and metadata without hardcoded guesses.
+            "experienceYears": c.experience_years,
+            "location": c.location or "Not specified",
+            "availability": c.availability or "Not specified",
+            "status": c.stage or "New",
+            # Attribute filtering does not evaluate a JD score, so keep matchScore unset.
+            "matchScore": None,
             "primarySkills": (c.skills or [])[:4],
             "secondarySkills": (c.skills or [])[4:],
         })
@@ -254,47 +258,194 @@ def filter_candidates_tool(
 
 
 def match_candidates_to_job_tool(
-    job_id_or_title: str,
-    top_k: int = 3,
+    job_id_or_title: str | int,
+    top_k: int = 5,
     session: Session = None,
 ) -> dict[str, Any]:
-    """Tool: Rank and match candidates against a job description with grounding."""
+    """Tool: Rank and match candidates against a job description using the Phase 5C semantic matching engine."""
+    # Ensure database session is active before querying.
     if not session:
         return {"job": None, "matches": []}
 
-    job = session.query(Job).filter(Job.title.ilike(f"%{job_id_or_title}%")).first()
+    # Resolve target job either by numeric ID or case-insensitive title match.
+    job = None
+    if isinstance(job_id_or_title, int) or str(job_id_or_title).isdigit():
+        # Lookup job by primary key ID.
+        job = session.query(Job).filter(Job.id == int(job_id_or_title)).first()
     if not job:
+        # Search job by title substring.
+        job = session.query(Job).filter(Job.title.ilike(f"%{job_id_or_title}%")).first()
+    if not job:
+        # Fallback to the latest job if no specific title match found.
         job = session.query(Job).first()
-
     if not job:
         return {"job": None, "matches": []}
 
-    candidates = session.query(Candidate).all()
-    ranked = []
-
-    for cand in candidates:
-        cand_skills = set(s.lower() for s in (cand.skills or []))
-        req_skills = set(s.lower() for s in (job.required_skills or []))
-        overlap = cand_skills.intersection(req_skills)
-
-        score = 75 + int((len(overlap) / max(len(req_skills), 1)) * 23)
-        score = min(score, 97)
-
-        ranked.append({
-            "id": cand.id,
-            "numeric_id": cand.id,
-            "candidate_id": cand.id,
-            "name": cand.name,
-            "currentRole": cand.summary.split(".")[0] if cand.summary else "Software Professional",
-            "experienceYears": cand.experience_years or 5.0,
-            "matchScore": score,
-            "primarySkills": (cand.skills or [])[:4],
-        })
-
-    ranked.sort(key=lambda x: x["matchScore"], reverse=True)
+    # Invoke the deterministic and vector-grounded Phase 5C matching engine.
+    from app.services.matching_engine_service import search_and_match_candidates
+    # Execute search_and_match_candidates for the resolved job.
+    engine_result = search_and_match_candidates(
+        db=session,
+        job_id=job.id,
+        page=1,
+        page_size=top_k,
+    )
+    # Return structured job summary along with ranked matches containing tier and citations.
     return {
-        "job": {"id": job.id, "title": job.title, "required_skills": job.required_skills},
-        "matches": ranked[:top_k],
+        "job": {
+            "id": job.id,
+            "title": job.title,
+            "location": job.location,
+            "required_skills": job.required_skills,
+            "preferred_skills": job.preferred_skills,
+        },
+        "matches": engine_result.get("matches", [])[:top_k],
+        "summary": engine_result.get("summary", {}),
+    }
+
+
+def get_job_details_tool(
+    job_id_or_title: str | int,
+    session: Session = None,
+) -> dict[str, Any]:
+    """Tool: Retrieve full job specification, mandatory/preferred requirements, and JD intelligence segmentation."""
+    # Return empty payload if session is missing.
+    if not session:
+        return {}
+    # Resolve target job by ID or title substring.
+    job = None
+    if isinstance(job_id_or_title, int) or str(job_id_or_title).isdigit():
+        job = session.query(Job).filter(Job.id == int(job_id_or_title)).first()
+    if not job:
+        job = session.query(Job).filter(Job.title.ilike(f"%{job_id_or_title}%")).first()
+    if not job:
+        return {}
+    # Check for active approved JD segmentation and requirements.
+    from database.models import JDSegmentation, JobRequirement
+    # Fetch latest approved segmentation if available.
+    seg = (
+        session.query(JDSegmentation)
+        .filter(JDSegmentation.job_id == job.id, JDSegmentation.status == "approved")
+        .order_by(JDSegmentation.version.desc())
+        .first()
+    )
+    requirements = []
+    if seg:
+        # Retrieve ordered requirement records associated with the segmentation.
+        reqs = (
+            session.query(JobRequirement)
+            .filter(JobRequirement.segmentation_id == seg.id)
+            .order_by(JobRequirement.order_index.asc())
+            .all()
+        )
+        requirements = [
+            {
+                "id": r.id,
+                "category": r.category,
+                "classification": r.classification,
+                "text": r.original_text,
+            }
+            for r in reqs
+        ]
+    # Return comprehensive job descriptor dictionary.
+    return {
+        "id": job.id,
+        "title": job.title,
+        "job_code": job.job_code,
+        "client": job.client_name,
+        "location": job.location,
+        "status": job.status,
+        "min_experience": job.min_experience_years,
+        "max_experience": job.max_experience_years,
+        "mandatory_skills": job.synced_mandatory_skills or job.required_skills or [],
+        "preferred_skills": job.synced_preferred_skills or job.preferred_skills or [],
+        "description_excerpt": (job.description or "")[:600],
+        "has_approved_segmentation": bool(seg),
+        "requirements": requirements,
+    }
+
+
+def get_candidate_profile_tool(
+    candidate_id_or_name: str | int,
+    session: Session = None,
+) -> dict[str, Any]:
+    """Tool: Retrieve full candidate profile facts, skills, experience, and resume versions."""
+    # Ensure database session exists.
+    if not session:
+        return {}
+    # Resolve candidate by integer ID or case-insensitive name match.
+    cand = None
+    if isinstance(candidate_id_or_name, int) or str(candidate_id_or_name).isdigit():
+        cand = session.query(Candidate).filter(Candidate.id == int(candidate_id_or_name)).first()
+    if not cand:
+        cand = session.query(Candidate).filter(Candidate.name.ilike(f"%{candidate_id_or_name}%")).first()
+    if not cand:
+        return {}
+    # Query resumes owned by candidate.
+    resumes = session.query(Resume).filter(Resume.candidate_id == cand.id).all()
+    # Extract verifiable evidence snippets if available in embedding metadata.
+    evidence = []
+    if resumes and resumes[0].embedding and resumes[0].embedding.embedding_metadata:
+        evidence = resumes[0].embedding.embedding_metadata.get("evidence", [])
+    # Return structured candidate summary payload.
+    return {
+        "id": cand.id,
+        "name": cand.name,
+        "currentRole": extract_candidate_role(cand.summary),
+        "experienceYears": cand.experience_years,
+        "location": cand.location,
+        "availability": cand.availability,
+        "stage": cand.stage,
+        "skills": list(cand.skills or []),
+        "summary": cand.summary,
+        "resumeCount": len(resumes),
+        "resumes": [r.source_filename for r in resumes],
+        "evidenceHighlights": evidence,
+    }
+
+
+def compare_candidates_tool(
+    job_id: int,
+    candidate_ids: list[int],
+    session: Session = None,
+) -> dict[str, Any]:
+    """Tool: Compare multiple candidates side-by-side against a target job using Phase 5C scoring."""
+    # Verify session and candidate list length.
+    if not session or len(candidate_ids) < 2:
+        return {}
+    # Invoke Phase 5C comparison engine.
+    from app.services.matching_engine_service import compare_candidates_for_job
+    # Execute deterministic comparison matrix evaluation.
+    return compare_candidates_for_job(db=session, job_id=job_id, candidate_ids=candidate_ids[:5])
+
+
+def summarize_pipeline_tool(session: Session = None) -> dict[str, Any]:
+    """Tool: Retrieve real-time SQLite database pipeline counts, jobs, requests, and embedding coverage."""
+    # Return empty stats if no active session.
+    if not session:
+        return {}
+    # Query exact SQLite counts across core entities.
+    from database.models import ResumeEmbedding
+    # Gather aggregate metrics.
+    total_candidates = session.query(Candidate).count()
+    total_resumes = session.query(Resume).count()
+    total_embeddings = session.query(ResumeEmbedding).count()
+    total_jobs = session.query(Job).count()
+    active_jobs = session.query(Job).filter(Job.status.in_(["Active", "active", "Open", "open"])).count()
+    # Group candidates by recruitment pipeline stage.
+    candidates = session.query(Candidate).all()
+    stages: dict[str, int] = {}
+    for c in candidates:
+        s = c.stage or "New"
+        stages[s] = stages.get(s, 0) + 1
+    # Return grounded metrics dictionary.
+    return {
+        "total_candidates": total_candidates,
+        "total_resumes": total_resumes,
+        "total_embeddings": total_embeddings,
+        "total_jobs": total_jobs,
+        "active_jobs": active_jobs,
+        "stages": stages,
     }
 
 
@@ -331,23 +482,33 @@ def propose_sensitive_action_tool(
     action_type: str,
     description: str,
     payload: dict[str, Any],
+    requester: str = "Nemotron AI Agent",
     session: Session = None,
 ) -> dict[str, Any]:
-    """Tool: Propose sensitive mutation into Human-in-the-Loop queue."""
+    """Tool: Propose sensitive mutation into Human-in-the-Loop queue using valid ApprovalRequest schema."""
     if not session:
         return {"status": "error", "message": "No database session"}
 
+    # Construct ApprovalRequest using exact ORM column names (action_type, description, payload).
     approval = ApprovalRequest(
-        operation_type=action_type,
-        entity_type="candidate",
-        entity_id=str(payload.get("candidate_id", 0)),
-        proposed_payload=payload,
-        reason=description,
-        requester="Nemotron AI Agent",
+        action_type=action_type,
+        description=description,
+        payload=payload,
+        requester=requester,
         status="pending",
         created_at=datetime.now(timezone.utc),
     )
     session.add(approval)
+    # Flush so database assigns the primary key ID before logging the activity event.
+    session.flush()
+    # Record proposal submission in the workspace audit trail.
+    session.add(ActivityEvent(
+        event_type="approval_proposed",
+        summary=f"Approval #{approval.id} queued ({action_type}): {description[:160]}",
+        entity_type="approval",
+        entity_id=str(approval.id),
+        created_at=datetime.now(timezone.utc),
+    ))
     session.commit()
     session.refresh(approval)
 

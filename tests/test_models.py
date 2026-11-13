@@ -65,7 +65,7 @@ def test_model_tables_are_created(model_database) -> None:
     # Read the isolated engine from the fixture.
     engine, _ = model_database
 
-    # Compare actual table names with all seven registered SQLite models.
+    # Compare actual table names with all registered SQLite models.
     assert set(inspect(engine).get_table_names()) == {
         "candidate",
         "resume",
@@ -77,9 +77,12 @@ def test_model_tables_are_created(model_database) -> None:
         "job",
         "recruitment_request",
         "activity_event",
-            "interview",  # Include the existing interview workflow table.
-            "approval_request",  # Include the existing approval workflow table.
-            "agent_trace",  # Include existing agent execution telemetry storage.
+        "interview",  # Include the existing interview workflow table.
+        "approval_request",  # Include the existing approval workflow table.
+        "agent_trace",  # Include existing agent execution telemetry storage.
+        "jd_segmentation",  # Include Phase 3 JD segmentation table.
+        "job_requirement",  # Include Phase 3 granular recruitment requirement table.
+        "job_embedding",  # Include Phase 5B job embedding table.
     }
 
 

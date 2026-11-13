@@ -6,8 +6,8 @@ from datetime import date, datetime, timezone
 # Import Any for JSON fields that hold nested structured analysis values.
 from typing import Any
 
-# Import SQLAlchemy column types and foreign-key support.
-from sqlalchemy import Date, DateTime, Float, ForeignKey, Integer, JSON, String, Text
+# Import SQLAlchemy column types, index constructs, raw SQL text, and foreign-key support.
+from sqlalchemy import Date, DateTime, Float, ForeignKey, Index, Integer, JSON, String, Text, text
 
 # Import SQLAlchemy 2.x typed column and relationship declarations.
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -200,6 +200,24 @@ class JobDescription(Base):
     # Preserve the original JD wording as local text without AI-generated changes.
     original_text: Mapped[str] = mapped_column(Text, nullable=False)
 
+    # Store incremental JD version number to avoid overwriting previously approved versions.
+    version: Mapped[int] = mapped_column(Integer, default=1, nullable=False)
+
+    # Store current processing status: uploaded, extracting, extracted, ocr_required, failed, duplicate_detected.
+    status: Mapped[str] = mapped_column(String(32), default="extracted", nullable=False, index=True)
+
+    # Store SHA-256 digest of normalized text for whitespace/punctuation invariant duplicate detection.
+    normalized_text_hash: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)
+
+    # Store the parsed/extracted plain text representation separately from the raw file bytes or original text.
+    extracted_text: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+    # Track parent JD identifier if this document is a new version of an earlier job description.
+    parent_jd_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
+
+    # Indicate whether the file is a scanned document lacking extractable text and requiring OCR.
+    ocr_needed: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+
     # Record when this job-description row was first created.
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
@@ -219,6 +237,11 @@ class JobDescription(Base):
     analyses: Mapped[list["JDAnalysis"]] = relationship(
         back_populates="job_description",
         cascade="all, delete-orphan",
+    )
+
+    # Link this source JD to associated operational jobs.
+    jobs: Mapped[list["Job"]] = relationship(
+        back_populates="job_description",
     )
 
 
@@ -374,6 +397,12 @@ class Job(Base):
     # Store optional preferred skills separately from required qualifications.
     preferred_skills: Mapped[list[str]] = mapped_column(JSON, default=list, nullable=False)
 
+    # Store list of JD-synchronized mandatory skills to cleanly isolate from manual skills during reapproval.
+    synced_mandatory_skills: Mapped[list[str]] = mapped_column(JSON, default=list, nullable=True)
+
+    # Store list of JD-synchronized preferred skills to cleanly isolate from manual skills during reapproval.
+    synced_preferred_skills: Mapped[list[str]] = mapped_column(JSON, default=list, nullable=True)
+
     # Store only an explicitly supplied minimum experience requirement.
     min_experience_years: Mapped[float | None] = mapped_column(Float, nullable=True)
 
@@ -385,6 +414,46 @@ class Job(Base):
 
     # Track whether recruiters are sourcing for this job.
     status: Mapped[str] = mapped_column(String(32), default="open", nullable=False, index=True)
+
+    # Store hiring client or company name.
+    client_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
+
+    # Store unique or alphanumeric job requisition code.
+    job_code: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)
+
+    # Store work arrangement (e.g., Remote, Hybrid, On-site).
+    work_mode: Mapped[str | None] = mapped_column(String(64), nullable=True)
+
+    # Store employment type (e.g., Full-time, Contract, Part-time, Internship).
+    employment_type: Mapped[str | None] = mapped_column(String(64), nullable=True)
+
+    # Store stated compensation or salary range string.
+    salary_range: Mapped[str | None] = mapped_column(String(128), nullable=True)
+
+    # Store number of open headcount positions for this role.
+    openings_count: Mapped[int] = mapped_column(Integer, default=1, nullable=False)
+
+    # Store business unit or organizational department.
+    department: Mapped[str | None] = mapped_column(String(128), nullable=True)
+
+    # Store primary recruiter or talent acquisition owner.
+    recruiter_owner: Mapped[str | None] = mapped_column(String(128), nullable=True)
+
+    # Store hiring priority level (e.g., Low, Medium, High, Urgent).
+    priority: Mapped[str] = mapped_column(String(32), default="Medium", nullable=False)
+
+    # Store source channel (e.g., manual_upload, direct_text, imported).
+    source: Mapped[str] = mapped_column(String(64), default="manual_upload", nullable=False)
+
+    # Store version number for job revisions.
+    version: Mapped[int] = mapped_column(Integer, default=1, nullable=False)
+
+    # Optional foreign key linking this operational job to its source JobDescription document.
+    job_description_id: Mapped[int | None] = mapped_column(
+        ForeignKey("job_description.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
 
     # Record when the job was first created.
     created_at: Mapped[datetime] = mapped_column(
@@ -401,8 +470,257 @@ class Job(Base):
         nullable=False,
     )
 
+    # Link to the underlying JobDescription entity.
+    job_description: Mapped[JobDescription | None] = relationship(back_populates="jobs")
+
     # Link job records to their recruitment requests.
     requests: Mapped[list["RecruitmentRequest"]] = relationship(back_populates="job")
+
+    # Link job records to their AI segmentation history.
+    segmentations: Mapped[list["JDSegmentation"]] = relationship(
+        back_populates="job",
+        cascade="all, delete-orphan",
+    )
+
+    # Link job records to their semantic embeddings.
+    embeddings: Mapped[list["JobEmbedding"]] = relationship(
+        back_populates="job",
+        cascade="all, delete-orphan",
+    )
+
+
+# Store structured AI segmentation results and recruiter review state.
+class JDSegmentation(Base):
+    """Store AI-extracted segmentation metadata and recruiter approval state for a job."""
+
+    # Assign stable table identifier for segmentation records.
+    __tablename__ = "jd_segmentation"
+
+    # Define the segmentation primary key.
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+
+    # Link directly to the owning operational job.
+    job_id: Mapped[int] = mapped_column(
+        ForeignKey("job.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+
+    # Optional link to source JobDescription document.
+    job_description_id: Mapped[int | None] = mapped_column(
+        ForeignKey("job_description.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+
+    # Revision version number corresponding to the segmented job version.
+    version: Mapped[int] = mapped_column(Integer, default=1, nullable=False)
+
+    # Lifecycle processing status: pending, processing, review_pending, approved, failed.
+    status: Mapped[str] = mapped_column(String(32), default="review_pending", nullable=False, index=True)
+
+    # AI model identifier that produced the segmentation.
+    model_name: Mapped[str] = mapped_column(String(255), default="nvidia/nemotron-3.5-super-vl", nullable=False)
+
+    # Optional executive overview summary text.
+    job_overview: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+    # Optional role summary text.
+    role_summary: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+    # Flag indicating whether a recruiter explicitly approved this segmentation.
+    is_approved: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+
+    # Recruiter or user who recorded approval.
+    approved_by: Mapped[str | None] = mapped_column(String(128), nullable=True)
+
+    # Timestamp when approval was recorded.
+    approved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+    # Record when this segmentation row was first created.
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        nullable=False,
+    )
+
+    # Record when this segmentation row was last updated.
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
+        nullable=False,
+    )
+
+    # Relationship to parent operational Job.
+    job: Mapped["Job"] = relationship(back_populates="segmentations")
+
+    # Relationship to individual requirement items.
+    requirements: Mapped[list["JobRequirement"]] = relationship(
+        back_populates="segmentation",
+        cascade="all, delete-orphan",
+        order_by="JobRequirement.order_index",
+    )
+
+    # Link this segmentation to its generated semantic embeddings.
+    embeddings: Mapped[list["JobEmbedding"]] = relationship(
+        back_populates="segmentation",
+        cascade="all, delete-orphan",
+    )
+
+
+# Store individual structured recruitment requirements linked to evidence.
+class JobRequirement(Base):
+    """Store one granular, evidence-linked requirement categorized into 1 of 15 domains."""
+
+    # Assign table identifier for individual requirement records.
+    __tablename__ = "job_requirement"
+
+    # Define the requirement primary key.
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+
+    # Foreign key referencing the parent segmentation record.
+    segmentation_id: Mapped[int] = mapped_column(
+        ForeignKey("jd_segmentation.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+
+    # Category name (one of the 15 standard recruitment categories).
+    category: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+
+    # Original requirement wording from the JD.
+    original_text: Mapped[str] = mapped_column(Text, nullable=False)
+
+    # Classification: Mandatory or Preferred.
+    classification: Mapped[str] = mapped_column(String(32), default="Mandatory", nullable=False)
+
+    # Standardized/canonical skill name if applicable.
+    normalized_skill: Mapped[str | None] = mapped_column(String(128), nullable=True, index=True)
+
+    # Stated experience in years if explicitly mentioned.
+    experience_years: Mapped[float | None] = mapped_column(Float, nullable=True)
+
+    # Verbatim quote from source document supporting this requirement.
+    evidence: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+    # Model confidence score (0.0 to 1.0).
+    confidence: Mapped[float] = mapped_column(Float, default=0.95, nullable=False)
+
+    # Flag indicating whether this requirement was verified or edited by a recruiter.
+    is_approved: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+
+    # Display ordering within the category.
+    order_index: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+
+    # Origin provenance: ai_model, heuristic_fallback, recruiter_added, recruiter_edited.
+    source_origin: Mapped[str | None] = mapped_column(String(32), default="ai_extracted", nullable=True)
+
+    # Record when this requirement row was first created.
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        nullable=False,
+    )
+
+    # Record when this requirement row was last updated.
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
+        nullable=False,
+    )
+
+    # Relationship to parent segmentation record.
+    segmentation: Mapped["JDSegmentation"] = relationship(back_populates="requirements")
+
+    # Link this granular requirement to its generated requirement embeddings.
+    embeddings: Mapped[list["JobEmbedding"]] = relationship(
+        back_populates="requirement",
+        cascade="all, delete-orphan",
+    )
+
+
+# Store structured job description embeddings and granular requirement vectors.
+class JobEmbedding(Base):
+    """Store full JD and requirement-level embedding vectors with validation and deduplication metadata."""
+
+    # Assign stable SQLite table identifier for job embeddings.
+    __tablename__ = "job_embedding"
+
+    # Define primary integer key for the job embedding row.
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+
+    # Foreign key referencing the parent operational job.
+    job_id: Mapped[int] = mapped_column(
+        ForeignKey("job.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+
+    # Foreign key referencing the approved segmentation record.
+    segmentation_id: Mapped[int] = mapped_column(
+        ForeignKey("jd_segmentation.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+
+    # Optional foreign key referencing an individual requirement (NULL for full JD scope embedding).
+    requirement_id: Mapped[int | None] = mapped_column(
+        ForeignKey("job_requirement.id", ondelete="CASCADE"),
+        nullable=True,
+        index=True,
+    )
+
+    # Category or scope identifier (e.g., 'full_jd', 'mandatory_requirement', 'preferred_requirement').
+    embedding_type: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+
+    # SHA-256 digest of the exact normalized text embedded for idempotent deduplication.
+    input_hash: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+
+    # OpenRouter embedding model identifier used to produce the vector.
+    model_name: Mapped[str] = mapped_column(String(255), default="nvidia/nemotron-3-embed-1b:free", nullable=False)
+
+    # Vector dimension length explicitly validated to 2048 coordinates.
+    dimensions: Mapped[int] = mapped_column(Integer, default=2048, nullable=False)
+
+    # Dense numeric embedding vector stored as JSON array of floats.
+    embedding_vector: Mapped[list[float]] = mapped_column(JSON, nullable=False)
+
+    # Creation timestamp recorded in UTC for lineage tracking.
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        nullable=False,
+    )
+
+    # Relationship back to the parent operational Job.
+    job: Mapped["Job"] = relationship(back_populates="embeddings")
+
+    # Relationship back to the parent JDSegmentation.
+    segmentation: Mapped["JDSegmentation"] = relationship(back_populates="embeddings")
+
+    # Relationship back to the parent JobRequirement if requirement-level.
+    requirement: Mapped["JobRequirement | None"] = relationship(back_populates="embeddings")
+
+    # Configure SQLite partial unique indexes to guarantee at-most-one vector per requirement and per full JD.
+    __table_args__ = (
+        # Ensure a requirement has at most one embedding record within a segmentation.
+        Index(
+            "uq_job_embedding_segmentation_requirement",
+            "segmentation_id",
+            "requirement_id",
+            unique=True,
+            sqlite_where=text("requirement_id IS NOT NULL"),
+        ),
+        # Ensure at most one full JD scope embedding exists per segmentation.
+        Index(
+            "uq_job_embedding_segmentation_full_jd",
+            "segmentation_id",
+            unique=True,
+            sqlite_where=text("embedding_type = 'full_jd' AND requirement_id IS NULL"),
+        ),
+    )
 
 
 # Track recruiter requisitions independently from source job-description documents.

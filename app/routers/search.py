@@ -33,14 +33,20 @@ def search_entities(
         summary_match = c.summary and query in c.summary.lower()
         loc_match = c.location and query in c.location.lower()
         if name_match or skills_match or summary_match or loc_match:
+            # Classify actual match field without inventing a synthetic percentage score.
+            match_reason = "Name Match" if name_match else ("Skill Match" if skills_match else "Profile / Location Match")
             matched_cands.append({
                 "id": f"cand-{c.id:03d}",
+                # Expose real integer primary key for exact API lookups above 999 or unpadded parsing.
+                "numeric_id": c.id,
                 "name": c.name,
-                "role": c.summary.split(".")[0] if c.summary else "Senior Consultant",
+                # Use stored summary headline or clear unparsed state instead of fabricated Senior Consultant title.
+                "role": c.summary.split(".")[0] if c.summary else "Candidate Profile",
                 "experience": c.experience_years,
-                "location": c.location,
+                "location": c.location or "",
                 "skills": c.skills[:4] if c.skills else [],
-                "matchScore": 92 if (name_match or skills_match) else 85,
+                # Provide honest keyword match label rather than hardcoded 92% or 85% score.
+                "matchType": match_reason,
             })
 
     # Search jobs by title, skills, description.
@@ -53,9 +59,12 @@ def search_entities(
         if title_match or skills_match or desc_match:
             matched_jobs.append({
                 "id": f"job-{j.id:03d}",
+                # Expose integer primary key for deterministic navigation.
+                "numeric_id": j.id,
                 "title": j.title,
-                "department": "Enterprise Cloud Solutions" if "EPM" in j.title else "Digital Engineering",
-                "location": j.location,
+                # Use persisted client metadata instead of fabricated department guessing.
+                "department": j.client_name or "",
+                "location": j.location or "",
                 "requiredSkills": j.required_skills[:3] if j.required_skills else [],
             })
 
@@ -67,6 +76,8 @@ def search_entities(
         if req_match:
             matched_requests.append({
                 "id": f"req-{r.id:03d}",
+                # Expose integer primary key for exact navigation.
+                "numeric_id": r.id,
                 "reqNumber": r.req_number,
                 "roleTitle": r.role_title,
                 "priority": r.priority,

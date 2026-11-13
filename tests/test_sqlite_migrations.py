@@ -124,7 +124,7 @@ def test_candidate_profile_migration_preserves_existing_candidates(tmp_path):
     with engine.begin() as connection:
         # Add only the supported new nullable/defaulted fields to the old table.
         added = migrate_candidate_profile_columns(connection)
-    assert added == ("experience_years", "location", "availability", "stage", "summary")
+    assert added == ("phone", "experience_years", "location", "availability", "stage", "summary")
     with engine.begin() as connection:
         # Confirm a second migration call is a no-op and the original row still exists.
         assert migrate_candidate_profile_columns(connection) == ()

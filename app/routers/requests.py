@@ -6,6 +6,8 @@ from sqlalchemy.orm import Session
 from typing import Any, Optional
 # Import Pydantic models.
 from pydantic import BaseModel, Field
+# Import SQLAlchemy func for case-insensitive status and priority filters.
+from sqlalchemy import func
 # Import database session dependency.
 from database.sqlite_connection import get_db
 # Import database models.
@@ -22,12 +24,14 @@ class RequestCreateSchema(BaseModel):
     role_title: str = Field(..., description="Role title to recruit")
     department: str = Field(default="Engineering", description="Hiring department")
     hiring_manager: str = Field(default="Hiring Manager", description="Hiring manager name")
-    assigned_recruiter: str = Field(default="Ananya Sharma", description="Assigned recruiter")
+    assigned_recruiter: str = Field(default="Unassigned", description="Assigned recruiter")
     priority: str = Field(default="Medium", description="Urgent, High, Medium, or Low")
     status: str = Field(default="Open", description="Open, In Progress, Fulfilled, On Hold")
     target_positions: int = Field(default=1, description="Total target openings")
-    location: Optional[str] = Field(default="Bangalore / Remote", description="Location")
+    location: Optional[str] = Field(default="", description="Location")
     notes: Optional[str] = Field(default="", description="Recruiter notes")
+    # Optional linked job ID so created requisitions associate with a real job record when supplied.
+    job_id: Optional[int] = Field(default=None, description="Linked job numeric ID")
 
 
 # Schema for updating a request.
@@ -49,31 +53,36 @@ def list_requests(
     query = db.query(RecruitmentRequest)
 
     if priority and priority != "All":
-        query = query.filter(RecruitmentRequest.priority == priority)
+        # Apply case-insensitive priority matching so URL query parameters remain resilient.
+        query = query.filter(func.lower(RecruitmentRequest.priority) == priority.strip().lower())
     if status and status != "All":
-        query = query.filter(RecruitmentRequest.status == status)
+        # Apply case-insensitive status matching so filter pills map reliably to stored values.
+        query = query.filter(func.lower(RecruitmentRequest.status) == status.strip().lower())
 
     requests = query.order_by(RecruitmentRequest.id.asc()).all()
     results = []
 
     for req in requests:
-        sla_str = req.sla_deadline.strftime("%Y-%m-%d") if req.sla_deadline else "2026-11-30"
+        # Format persisted SLA deadline without substituting fabricated future dates.
+        sla_str = req.sla_deadline.strftime("%Y-%m-%d") if req.sla_deadline else ""
         results.append({
             "id": f"req-{req.id:03d}",
             "numeric_id": req.id,
             "reqNumber": req.req_number,
             "roleTitle": req.role_title,
-            "jobId": f"job-{req.job_id:03d}" if req.job_id else "job-001",
-            "department": req.department or "Enterprise Cloud Solutions",
-            "hiringManager": req.hiring_manager or "Vikram Malhotra",
-            "assignedRecruiter": req.assigned_recruiter or "Ananya Sharma",
+            # Preserve exact linked job reference instead of fabricating job-001 when unlinked.
+            "jobId": f"job-{req.job_id:03d}" if req.job_id else None,
+            "jobNumericId": req.job_id,
+            "department": req.department or "",
+            "hiringManager": req.hiring_manager or "Unassigned",
+            "assignedRecruiter": req.assigned_recruiter or "Unassigned",
             "priority": req.priority or "Medium",
             "status": req.status or "Open",
             "targetPositions": req.target_positions or 1,
             "filledPositions": req.filled_positions or 0,
-            "createdAt": req.created_at.strftime("%Y-%m-%d") if req.created_at else "2026-11-01",
+            "createdAt": req.created_at.strftime("%Y-%m-%d") if req.created_at else "",
             "slaDeadline": sla_str,
-            "location": req.location or "Bangalore",
+            "location": req.location or "",
             "notes": req.notes or "",
         })
 
@@ -93,23 +102,26 @@ def get_request(request_id: str, db: Session = Depends(get_db)) -> dict[str, Any
     if not req:
         raise HTTPException(status_code=404, detail="Request not found.")
 
-    sla_str = req.sla_deadline.strftime("%Y-%m-%d") if req.sla_deadline else "2026-11-30"
+    # Format stored SLA deadline without inventing fallback defaults.
+    sla_str = req.sla_deadline.strftime("%Y-%m-%d") if req.sla_deadline else ""
     return {
         "id": f"req-{req.id:03d}",
         "numeric_id": req.id,
         "reqNumber": req.req_number,
         "roleTitle": req.role_title,
-        "jobId": f"job-{req.job_id:03d}" if req.job_id else "job-001",
-        "department": req.department or "Enterprise Cloud Solutions",
-        "hiringManager": req.hiring_manager or "Vikram Malhotra",
-        "assignedRecruiter": req.assigned_recruiter or "Ananya Sharma",
+        # Preserve exact linked job reference or None when unlinked.
+        "jobId": f"job-{req.job_id:03d}" if req.job_id else None,
+        "jobNumericId": req.job_id,
+        "department": req.department or "",
+        "hiringManager": req.hiring_manager or "Unassigned",
+        "assignedRecruiter": req.assigned_recruiter or "Unassigned",
         "priority": req.priority or "Medium",
         "status": req.status or "Open",
         "targetPositions": req.target_positions or 1,
         "filledPositions": req.filled_positions or 0,
-        "createdAt": req.created_at.strftime("%Y-%m-%d") if req.created_at else "2026-11-01",
+        "createdAt": req.created_at.strftime("%Y-%m-%d") if req.created_at else "",
         "slaDeadline": sla_str,
-        "location": req.location or "Bangalore",
+        "location": req.location or "",
         "notes": req.notes or "",
     }
 
@@ -134,6 +146,8 @@ def create_request(
         target_positions=payload.target_positions,
         location=payload.location,
         notes=payload.notes,
+        # Persist optional linked job ID so request-to-job navigation works cleanly.
+        job_id=payload.job_id,
         created_at=datetime.now(timezone.utc),
     )
     db.add(req)

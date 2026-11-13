@@ -16,6 +16,7 @@ from app.routers import (
     approvals,
     agent,
     ingestion,
+    intelligence,
 )
 # Import fallback SQLite resources router for file downloads and legacy upload endpoints.
 from app.api_routes import router as sqlite_resources_router
@@ -58,6 +59,7 @@ app.include_router(search.router)
 app.include_router(approvals.router)
 app.include_router(agent.router)
 app.include_router(ingestion.router)
+app.include_router(intelligence.router)
 
 # Mount fallback SQLite resource endpoints for file downloads and legacy operations.
 app.include_router(sqlite_resources_router)

@@ -10,7 +10,7 @@ from typing import Any
 # Import win32com lazily so modules that do not require DOC conversion remain importable.
 try:
     import win32com.client
-except ModuleNotFoundError:  # pragma: no cover - exercised when Word automation is unavailable.
+except ImportError:  # pragma: no cover - exercised when Word automation or pywin32 DLLs are unavailable.
     win32com = None
 
 

@@ -1,0 +1,1 @@
+Version 2 of Staff Cloud Engineer bf137bdb with updated salary and extra Rust skill requirement.

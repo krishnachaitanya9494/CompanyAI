@@ -6,6 +6,11 @@ from pathlib import Path
 
 # Import Any so the function can return a structured dictionary.
 from typing import Any
+# Import logging to configure third-party library log levels safely.
+import logging
+
+# Silence verbose non-fatal parsing warnings emitted by pypdf for damaged PDF streams.
+logging.getLogger("pypdf").setLevel(logging.ERROR)
 
 # Import pypdf to extract text from PDF documents without native DLLs.
 from pypdf import PdfReader

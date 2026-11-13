@@ -12,8 +12,8 @@ from typing import Any
 from sqlalchemy import select
 # Import Session for the caller-managed SQLAlchemy transaction.
 from sqlalchemy.orm import Session
-# Import the two ORM models needed to verify and store a resume embedding.
-from database.models import Resume, ResumeEmbedding
+# Import the ORM models needed to verify and store resume and job embeddings.
+from database.models import Resume, ResumeEmbedding, Job, JDSegmentation, JobRequirement, JobEmbedding
 
 # Match exactly 64 hexadecimal characters for a SHA-256 digest.
 _SHA256_PATTERN = re.compile(r"^[0-9a-fA-F]{64}$")
@@ -136,3 +136,101 @@ def store_resume_embedding(
     session.flush()
     # Return the attached row for the caller to commit or roll back with its unit of work.
     return embedding_record
+
+
+# Look for an existing valid job embedding with the identical SHA-256 text hash and compatible model.
+def find_compatible_job_embedding_by_hash(
+    session: Session,
+    input_hash: str,
+    model_name: str = "nvidia/nemotron-3-embed-1b:free",
+    dimensions: int = 2048,
+) -> JobEmbedding | None:
+    # Query for any job embedding matching the content digest and model configuration.
+    stmt = (
+        select(JobEmbedding)
+        .where(
+            JobEmbedding.input_hash == input_hash,
+            JobEmbedding.model_name == model_name,
+            JobEmbedding.dimensions == dimensions,
+        )
+        .order_by(JobEmbedding.id.desc())
+    )
+    # Return the most recent matching record if one exists.
+    return session.scalars(stmt).first()
+
+
+# Store or update a validated job or requirement embedding within a caller-managed transaction.
+def store_job_embedding(
+    session: Session,
+    job_id: int,
+    segmentation_id: int,
+    embedding_type: str,
+    input_hash: str,
+    vector: Sequence[int | float],
+    *,
+    requirement_id: int | None = None,
+    dimensions: int | None = 2048,
+    model_name: str = "nvidia/nemotron-3-embed-1b:free",
+) -> JobEmbedding:
+    # Confirm the parent operational job exists in the database.
+    job = session.get(Job, job_id)
+    if job is None:
+        raise LookupError("Cannot store an embedding for a job that does not exist.")
+
+    # Confirm the parent approved segmentation exists in the database.
+    segmentation = session.get(JDSegmentation, segmentation_id)
+    if segmentation is None:
+        raise LookupError("Cannot store an embedding for a segmentation that does not exist.")
+
+    # If linked to a requirement, confirm that the requirement exists.
+    if requirement_id is not None:
+        req = session.get(JobRequirement, requirement_id)
+        if req is None:
+            raise LookupError("Cannot store an embedding for a requirement that does not exist.")
+
+    # Validate that the embedding type is non-empty.
+    if not embedding_type or not embedding_type.strip():
+        raise ValueError("embedding_type must be a non-empty string.")
+
+    # Require input_hash to be a valid 64-character SHA-256 hexadecimal digest.
+    if not input_hash or not _SHA256_PATTERN.fullmatch(input_hash):
+        raise ValueError("input_hash must be a 64-character SHA-256 hexadecimal digest.")
+
+    # Validate the numeric vector and enforce expected 2048 dimensions.
+    validated_vector = validate_embedding_vector(vector, dimensions=dimensions)
+
+    # Check for an existing embedding row for this specific segmentation and scope.
+    stmt = select(JobEmbedding).where(
+        JobEmbedding.segmentation_id == segmentation_id,
+        JobEmbedding.embedding_type == embedding_type,
+    )
+    if requirement_id is not None:
+        stmt = stmt.where(JobEmbedding.requirement_id == requirement_id)
+    else:
+        stmt = stmt.where(JobEmbedding.requirement_id.is_(None))
+
+    record = session.scalars(stmt).first()
+
+    # Create a new row if no record exists for this requirement/scope.
+    if record is None:
+        record = JobEmbedding(
+            job_id=job_id,
+            segmentation_id=segmentation_id,
+            requirement_id=requirement_id,
+            embedding_type=embedding_type,
+            input_hash=input_hash,
+            model_name=model_name,
+            dimensions=len(validated_vector),
+            embedding_vector=validated_vector,
+        )
+        session.add(record)
+    else:
+        # Update existing record with the new vector, hash, and model.
+        record.input_hash = input_hash
+        record.model_name = model_name
+        record.dimensions = len(validated_vector)
+        record.embedding_vector = validated_vector
+
+    # Flush session so constraints are validated while caller controls transaction commit.
+    session.flush()
+    return record

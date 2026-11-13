@@ -41,23 +41,23 @@ export const Modal = ({ isOpen, onClose, title, subtitle, children, maxWidth = '
       {/* Background click handler to dismiss */}
       <div className="fixed inset-0" onClick={onClose} aria-hidden="true" />
 
-      {/* Main card dialog surface */}
+      {/* Main card dialog surface with explicit dark mode contrast */}
       <div
-        className={`relative w-full ${maxWidth} max-h-[90vh] flex flex-col bg-white rounded-2xl shadow-dropdown border border-slate-200/80 overflow-hidden z-10 animate-scaleUp`}
+        className={`relative w-full ${maxWidth} max-h-[90vh] flex flex-col bg-white dark:bg-surface-darkCard rounded-2xl shadow-dropdown border border-slate-200/80 dark:border-surface-darkBorder overflow-hidden z-10 animate-scaleUp`}
       >
         {/* Header section with title and close icon button */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 bg-surface-50/50">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 dark:border-surface-darkBorder bg-surface-50/50 dark:bg-slate-900/60">
           <div>
-            {/* Modal main heading */}
-            <h3 className="text-lg font-semibold text-navy-900 tracking-tight">{title}</h3>
+            {/* Modal main heading (18-20px card/dialog scale) */}
+            <h3 className="text-lg sm:text-[20px] font-semibold text-navy-900 dark:text-slate-100 tracking-tight">{title}</h3>
             {/* Optional descriptive subtitle */}
-            {subtitle && <p className="text-xs text-slate-500 mt-0.5">{subtitle}</p>}
+            {subtitle && <p className="text-[13px] sm:text-sm text-slate-500 dark:text-slate-400 mt-0.5">{subtitle}</p>}
           </div>
 
           {/* Dismiss button */}
           <button
             onClick={onClose}
-            className="p-1.5 text-slate-400 hover:text-navy-900 hover:bg-slate-100 rounded-lg transition-colors"
+            className="p-1.5 text-slate-400 hover:text-navy-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors"
             aria-label="Close dialog"
           >
             <X className="w-4 h-4" />
@@ -65,7 +65,7 @@ export const Modal = ({ isOpen, onClose, title, subtitle, children, maxWidth = '
         </div>
 
         {/* Scrollable body content container */}
-        <div className="px-6 py-5 overflow-y-auto max-h-[calc(90vh-120px)]">{children}</div>
+        <div className="px-6 py-5 overflow-y-auto max-h-[calc(90vh-120px)] dark:text-slate-100">{children}</div>
       </div>
     </div>
   );

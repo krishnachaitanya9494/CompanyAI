@@ -29,6 +29,60 @@ _RESUME_INGESTION_STATUS_COLUMNS = (
     ("embedding_status", "VARCHAR(32)"),
 )
 
+# Define additive columns for JobDescription for versioning, extraction, and OCR tracking.
+_JOB_DESCRIPTION_COLUMNS = (
+    # Incremental version identifier for revisions.
+    ("version", "INTEGER NOT NULL DEFAULT 1"),
+    # Extraction and pipeline status tracking.
+    ("status", "VARCHAR(32) NOT NULL DEFAULT 'extracted'"),
+    # Hash of normalized plain text for duplicate checks.
+    ("normalized_text_hash", "VARCHAR(64)"),
+    # Separate storage for extracted text.
+    ("extracted_text", "TEXT"),
+    # Lineage pointer to parent version.
+    ("parent_jd_id", "INTEGER"),
+    # Scanned PDF OCR indicator flag.
+    ("ocr_needed", "INTEGER NOT NULL DEFAULT 0"),
+)
+
+# Define additive columns for Job operational metadata.
+_JOB_METADATA_COLUMNS = (
+    # Client or hiring organization name.
+    ("client_name", "VARCHAR(255)"),
+    # Job code or requisition identifier.
+    ("job_code", "VARCHAR(64)"),
+    # Work arrangement model (Remote, Hybrid, On-site).
+    ("work_mode", "VARCHAR(64)"),
+    # Contract or employment type.
+    ("employment_type", "VARCHAR(64)"),
+    # Stated compensation or salary band.
+    ("salary_range", "VARCHAR(128)"),
+    # Target headcount openings.
+    ("openings_count", "INTEGER NOT NULL DEFAULT 1"),
+    # Department or business unit.
+    ("department", "VARCHAR(128)"),
+    # Assigned recruiter or requisition owner.
+    ("recruiter_owner", "VARCHAR(128)"),
+    # Requisition urgency priority level.
+    ("priority", "VARCHAR(32) NOT NULL DEFAULT 'Medium'"),
+    # Ingestion source channel.
+    ("source", "VARCHAR(64) NOT NULL DEFAULT 'manual_upload'"),
+    # Revision version number.
+    ("version", "INTEGER NOT NULL DEFAULT 1"),
+    # Foreign key reference to underlying source JobDescription.
+    ("job_description_id", "INTEGER"),
+    # JD-synchronized mandatory skills for clean reapproval isolation.
+    ("synced_mandatory_skills", "JSON"),
+    # JD-synchronized preferred skills for clean reapproval isolation.
+    ("synced_preferred_skills", "JSON"),
+)
+
+# Define additive columns for JobRequirement tracking provenance.
+_JOB_REQUIREMENT_COLUMNS = (
+    # Source origin: ai_model, heuristic_fallback, recruiter_added, recruiter_edited.
+    ("source_origin", "VARCHAR(32) DEFAULT 'ai_extracted'"),
+)
+
 
 # Add missing nullable embedding columns while preserving every existing row and field.
 def migrate_resume_embedding_storage(connection: Connection) -> tuple[str, ...]:
@@ -108,6 +162,207 @@ def migrate_resume_ingestion_stage_columns(connection: Connection) -> tuple[str,
     return tuple(added_columns)
 
 
+# Add additive columns to job_description table without altering existing data.
+def migrate_job_description_columns(connection: Connection) -> tuple[str, ...]:
+    # Inspect the job_description table schema.
+    table_info = connection.exec_driver_sql("PRAGMA table_info(job_description)").all()
+    # If table does not exist yet, return cleanly.
+    if not table_info:
+        return ()
+    # Collect existing column names.
+    existing_columns = {row[1] for row in table_info}
+    # Track newly added columns.
+    added_columns: list[str] = []
+    # Iterate through declared additive columns.
+    for column_name, column_definition in _JOB_DESCRIPTION_COLUMNS:
+        # Skip if column already present.
+        if column_name in existing_columns:
+            continue
+        # Execute ALTER TABLE to add missing column.
+        connection.exec_driver_sql(
+            f"ALTER TABLE job_description ADD COLUMN {column_name} {column_definition}"
+        )
+        # Record added column name.
+        added_columns.append(column_name)
+    # Return tuple of added columns.
+    return tuple(added_columns)
+
+
+# Add additive columns to job table without dropping existing rows.
+def migrate_job_metadata_columns(connection: Connection) -> tuple[str, ...]:
+    # Inspect the job table schema.
+    table_info = connection.exec_driver_sql("PRAGMA table_info(job)").all()
+    # If table does not exist yet, return cleanly.
+    if not table_info:
+        return ()
+    # Collect existing column names.
+    existing_columns = {row[1] for row in table_info}
+    # Track newly added columns.
+    added_columns: list[str] = []
+    # Iterate through declared additive columns.
+    for column_name, column_definition in _JOB_METADATA_COLUMNS:
+        # Skip if column already present.
+        if column_name in existing_columns:
+            continue
+        # Execute ALTER TABLE to add missing column.
+        connection.exec_driver_sql(
+            f"ALTER TABLE job ADD COLUMN {column_name} {column_definition}"
+        )
+        # Record added column name.
+        added_columns.append(column_name)
+    # Return tuple of added columns.
+    return tuple(added_columns)
+
+
+# Add additive columns to job_requirement table without altering existing requirements.
+def migrate_job_requirement_columns(connection: Connection) -> tuple[str, ...]:
+    # Inspect the job_requirement table schema.
+    table_info = connection.exec_driver_sql("PRAGMA table_info(job_requirement)").all()
+    if not table_info:
+        return ()
+    existing_columns = {row[1] for row in table_info}
+    added_columns: list[str] = []
+    for column_name, column_definition in _JOB_REQUIREMENT_COLUMNS:
+        if column_name in existing_columns:
+            continue
+        connection.exec_driver_sql(
+            f"ALTER TABLE job_requirement ADD COLUMN {column_name} {column_definition}"
+        )
+        added_columns.append(column_name)
+    return tuple(added_columns)
+
+
+# Ensure job_embedding table and indexes exist without modifying existing tables or data.
+def migrate_job_embedding_table(connection: Connection) -> tuple[str, ...]:
+    # Check whether the job_embedding table exists.
+    table_exists = connection.exec_driver_sql(
+        "SELECT name FROM sqlite_master WHERE type='table' AND name='job_embedding'"
+    ).first()
+
+    # If the table does not exist, create it with all required columns, constraints, and types.
+    if not table_exists:
+        connection.exec_driver_sql(
+            """
+            CREATE TABLE job_embedding (
+                id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+                job_id INTEGER NOT NULL,
+                segmentation_id INTEGER NOT NULL,
+                requirement_id INTEGER,
+                embedding_type VARCHAR(64) NOT NULL,
+                input_hash VARCHAR(64) NOT NULL,
+                model_name VARCHAR(255) NOT NULL DEFAULT 'nvidia/nemotron-3-embed-1b:free',
+                dimensions INTEGER NOT NULL DEFAULT 2048,
+                embedding_vector JSON NOT NULL,
+                created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (job_id) REFERENCES job (id) ON DELETE CASCADE,
+                FOREIGN KEY (segmentation_id) REFERENCES jd_segmentation (id) ON DELETE CASCADE,
+                FOREIGN KEY (requirement_id) REFERENCES job_requirement (id) ON DELETE CASCADE
+            )
+            """
+        )
+
+    # Ensure all required indexes exist for optimal query performance and deduplication lookups.
+    connection.exec_driver_sql(
+        "CREATE INDEX IF NOT EXISTS ix_job_embedding_job_id ON job_embedding (job_id)"
+    )
+    connection.exec_driver_sql(
+        "CREATE INDEX IF NOT EXISTS ix_job_embedding_segmentation_id ON job_embedding (segmentation_id)"
+    )
+    connection.exec_driver_sql(
+        "CREATE INDEX IF NOT EXISTS ix_job_embedding_requirement_id ON job_embedding (requirement_id)"
+    )
+    connection.exec_driver_sql(
+        "CREATE INDEX IF NOT EXISTS ix_job_embedding_embedding_type ON job_embedding (embedding_type)"
+    )
+    connection.exec_driver_sql(
+        "CREATE INDEX IF NOT EXISTS ix_job_embedding_input_hash ON job_embedding (input_hash)"
+    )
+
+    # Return status indicator tuple.
+    return ("job_embedding",) if not table_exists else ()
+
+
+# Enforce SQLite partial unique indexes on job_embedding after inspecting for duplicates.
+def migrate_job_embedding_uniqueness(connection: Connection) -> tuple[str, ...]:
+    """Verify absence of duplicates and apply partial unique indexes to job_embedding."""
+    # Confirm table exists before inspecting records or attempting index creation.
+    table_exists = connection.exec_driver_sql(
+        "SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'job_embedding'"
+    ).first()
+    # If the table does not exist yet, skip index creation safely.
+    if not table_exists:
+        return ()
+
+    # Check for duplicate requirement-level embeddings before adding uniqueness constraint.
+    duplicate_requirements = connection.exec_driver_sql(
+        """
+        SELECT segmentation_id, requirement_id, count(*) AS duplicate_count
+        FROM job_embedding
+        WHERE requirement_id IS NOT NULL
+        GROUP BY segmentation_id, requirement_id
+        HAVING duplicate_count > 1
+        """
+    ).fetchall()
+    # Abort migration safely without modifying data if requirement duplicates exist.
+    if duplicate_requirements:
+        raise RuntimeError(
+            f"Cannot create unique index on job_embedding: duplicate requirement embeddings detected: {duplicate_requirements}. "
+            f"Preserving existing records and aborting migration safely."
+        )
+
+    # Check for duplicate full JD scope embeddings before adding uniqueness constraint.
+    duplicate_full_jds = connection.exec_driver_sql(
+        """
+        SELECT segmentation_id, count(*) AS duplicate_count
+        FROM job_embedding
+        WHERE embedding_type = 'full_jd' AND requirement_id IS NULL
+        GROUP BY segmentation_id
+        HAVING duplicate_count > 1
+        """
+    ).fetchall()
+    # Abort migration safely without modifying data if full JD duplicates exist.
+    if duplicate_full_jds:
+        raise RuntimeError(
+            f"Cannot create unique index on job_embedding: duplicate full JD embeddings detected: {duplicate_full_jds}. "
+            f"Preserving existing records and aborting migration safely."
+        )
+
+    # Create partial unique index guaranteeing at most one embedding per requirement within a segmentation.
+    connection.exec_driver_sql(
+        """
+        CREATE UNIQUE INDEX IF NOT EXISTS uq_job_embedding_segmentation_requirement
+        ON job_embedding (segmentation_id, requirement_id)
+        WHERE requirement_id IS NOT NULL
+        """
+    )
+
+    # Create partial unique index guaranteeing at most one full JD embedding per segmentation.
+    connection.exec_driver_sql(
+        """
+        CREATE UNIQUE INDEX IF NOT EXISTS uq_job_embedding_segmentation_full_jd
+        ON job_embedding (segmentation_id)
+        WHERE embedding_type = 'full_jd' AND requirement_id IS NULL
+        """
+    )
+
+    # Return registered index identifiers for migration auditing.
+    return (
+        "uq_job_embedding_segmentation_requirement",
+        "uq_job_embedding_segmentation_full_jd",
+    )
+
+
+# Safely drop partial unique indexes to revert schema to previous unconstrained state.
+def rollback_job_embedding_uniqueness(connection: Connection) -> tuple[str, ...]:
+    """Safely drop partial unique indexes on job_embedding without touching stored table data."""
+    # Drop granular requirement partial unique index if it exists.
+    connection.exec_driver_sql("DROP INDEX IF EXISTS uq_job_embedding_segmentation_requirement")
+    # Drop full JD scope partial unique index if it exists.
+    connection.exec_driver_sql("DROP INDEX IF EXISTS uq_job_embedding_segmentation_full_jd")
+    # Return reverted index identifiers.
+    return ("uq_job_embedding_segmentation_requirement", "uq_job_embedding_segmentation_full_jd")
+
+
 # Create missing model tables and run additive migrations without dropping stored data.
 def initialize_sqlite_schema(engine: Engine) -> tuple[str, ...]:
     # Import every SQLite model so SQLAlchemy registers its table definitions on Base.
@@ -130,10 +385,25 @@ def initialize_sqlite_schema(engine: Engine) -> tuple[str, ...]:
         embedding_columns = migrate_resume_embedding_storage(connection)
         # Extend file tracking while preserving all existing source-status rows.
         ingestion_columns = migrate_resume_ingestion_stage_columns(connection)
+        # Extend job description table with versioning and extraction columns.
+        jd_columns = migrate_job_description_columns(connection)
+        # Extend job table with full recruitment metadata columns.
+        job_columns = migrate_job_metadata_columns(connection)
+        # Extend job requirement table with provenance origin column.
+        req_columns = migrate_job_requirement_columns(connection)
+        # Ensure job_embedding table and indexes exist idempotently.
+        embedding_table = migrate_job_embedding_table(connection)
+        # Enforce partial unique indexes on job_embedding scopes idempotently.
+        uniqueness_indexes = migrate_job_embedding_uniqueness(connection)
 
     # Report every column added without changing or deleting any existing table rows.
     return (
         tuple(f"candidate.{name}" for name in candidate_columns)
         + tuple(f"resume_embedding.{name}" for name in embedding_columns)
         + tuple(f"resume_ingestion_status.{name}" for name in ingestion_columns)
+        + tuple(f"job_description.{name}" for name in jd_columns)
+        + tuple(f"job.{name}" for name in job_columns)
+        + tuple(f"job_requirement.{name}" for name in req_columns)
+        + tuple(f"table.{name}" for name in embedding_table)
+        + tuple(f"index.{name}" for name in uniqueness_indexes)
     )

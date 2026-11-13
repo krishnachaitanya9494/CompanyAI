@@ -103,9 +103,12 @@ def test_initialize_database_creates_parent_directory_and_file(isolated_sqlite) 
         "job",
         "recruitment_request",
         "activity_event",
-            "interview",  # Include the existing interview workflow table.
-            "approval_request",  # Include the existing approval workflow table.
-            "agent_trace",  # Include existing agent execution telemetry storage.
+        "interview",  # Include the existing interview workflow table.
+        "approval_request",  # Include the existing approval workflow table.
+        "agent_trace",  # Include existing agent execution telemetry storage.
+        "jd_segmentation",  # Include Phase 3 JD segmentation table.
+        "job_requirement",  # Include Phase 3 granular recruitment requirement table.
+        "job_embedding",  # Include Phase 5B job embedding table.
     }
 
 

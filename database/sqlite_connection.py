@@ -34,16 +34,19 @@ engine = create_engine(
     pool_pre_ping=True,
 )
 
-# Enable SQLite foreign-key enforcement on each newly opened DBAPI connection.
+# Enable SQLite foreign-key enforcement and busy timeout on each newly opened DBAPI connection.
 @event.listens_for(engine, "connect")
 def _enable_sqlite_foreign_keys(dbapi_connection: object, connection_record: object) -> None:
-    """Turn on SQLite foreign-key checks for the configured production engine."""
+    """Turn on SQLite foreign-key checks and set busy timeout for concurrency."""
 
     # Create a cursor from the SQLite DBAPI connection.
     cursor = dbapi_connection.cursor()
 
     # Enable declared foreign keys before any transaction begins.
     cursor.execute("PRAGMA foreign_keys=ON")
+
+    # Set busy timeout so concurrent connections wait up to 10 seconds rather than locking immediately.
+    cursor.execute("PRAGMA busy_timeout=10000")
 
     # Close the setup cursor while leaving the pooled DBAPI connection open.
     cursor.close()
@@ -80,6 +83,8 @@ def initialize_database() -> Path:
 
     # Execute a lightweight query after schema setup to verify SQLite access.
     with engine.connect() as connection:
+        # Enable Write-Ahead Logging to permit concurrent reads and non-blocking transactions.
+        connection.execute(text("PRAGMA journal_mode=WAL"))
         # Keep the health check independent of application data contents.
         connection.execute(text("SELECT 1"))
 

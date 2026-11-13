@@ -8,6 +8,17 @@ import react from '@vitejs/plugin-react';
 export default defineConfig({
   // Configure plugins array with the React plugin enabled.
   plugins: [react()],
+  // Configure manual vendor chunking alongside route-level React.lazy splitting for lean initial load.
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          'react-vendor': ['react', 'react-dom'],
+          'icons-vendor': ['lucide-react'],
+        },
+      },
+    },
+  },
   // Configure development server options.
   server: {
     // Specify local development port for the frontend prototype.

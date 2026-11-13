@@ -14,23 +14,23 @@ export const EmptyState = ({
 }) => {
   // Render centered empty state container.
   return (
-    <div className="flex flex-col items-center justify-center p-12 text-center bg-white border border-dashed border-slate-200 rounded-2xl">
+    <div className="flex flex-col items-center justify-center p-12 text-center bg-white dark:bg-surface-darkCard border border-dashed border-slate-200 dark:border-surface-darkBorder rounded-2xl">
       {/* Icon wrapper badge */}
-      <div className="p-3 bg-slate-50 border border-slate-200/80 rounded-2xl text-slate-400 mb-3.5">
+      <div className="p-3 bg-slate-50 dark:bg-slate-800 border border-slate-200/80 dark:border-surface-darkBorder rounded-2xl text-slate-400 dark:text-slate-500 mb-3.5">
         <Icon className="w-6 h-6 stroke-[1.5]" />
       </div>
 
       {/* Primary heading */}
-      <h4 className="text-sm font-semibold text-navy-900 tracking-tight">{title}</h4>
+      <h4 className="text-lg font-semibold text-navy-900 dark:text-slate-100 tracking-tight">{title}</h4>
 
       {/* Explanatory description */}
-      <p className="text-xs text-slate-500 max-w-sm mt-1 mb-4 leading-relaxed">{description}</p>
+      <p className="text-sm sm:text-[15px] text-slate-500 dark:text-slate-400 max-w-md mt-1.5 mb-5 leading-relaxed">{description}</p>
 
       {/* Optional action button */}
       {actionLabel && onAction && (
         <button
           onClick={onAction}
-          className="px-3.5 py-1.5 text-xs font-medium text-white bg-navy-900 hover:bg-navy-800 rounded-lg shadow-subtle transition-colors"
+          className="px-4 py-2 text-[15px] font-medium text-white bg-navy-900 dark:bg-brand-600 hover:bg-navy-800 dark:hover:bg-brand-500 rounded-lg shadow-subtle transition-colors"
         >
           {actionLabel}
         </button>

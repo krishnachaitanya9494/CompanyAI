@@ -26,7 +26,8 @@ def get_ingestion_status(db: Session = Depends(get_db)) -> dict[str, Any]:
 
     return {
         "status": "ready",
-        "scope": "7 Resumes & 7 JDs Approved Scope",
+        # Report actual live database inventory instead of outdated 7x7 seed copy.
+        "scope": f"{cand_count} Candidates / {resume_count} Resumes / {job_count} Jobs",
         "counts": {
             "candidates": cand_count,
             "resumes": resume_count,

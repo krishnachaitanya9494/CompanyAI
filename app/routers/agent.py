@@ -20,6 +20,8 @@ router = APIRouter(prefix="/api/ai", tags=["AI Agent"])
 class ChatQuerySchema(BaseModel):
     query: str = Field(..., description="Recruiter message or instruction")
     session_id: Optional[str] = Field(default="default-session", description="Session identifier")
+    # Optional entity context (job_id, candidate_id, request_id) attached from the UI Context Panel.
+    context: Optional[dict[str, Any]] = Field(default=None, description="Attached workspace entity context")
 
 
 @router.post("/chat")
@@ -29,7 +31,8 @@ def chat_with_agent(
 ) -> dict[str, Any]:
     """Execute AI recruitment agent query with tool calling, evidence retrieval, and trace observability."""
     orchestrator = AgentOrchestrator(session=db)
-    result = orchestrator.execute(user_query=payload.query, session_id=payload.session_id)
+    # Pass attached UI entity context into orchestrator tool dispatch.
+    result = orchestrator.execute(user_query=payload.query, session_id=payload.session_id, context=payload.context)
     return {
         "status": "success",
         "response": result["text"],

@@ -867,6 +867,10 @@ def get_dashboard(session: Session = Depends(get_db)) -> DashboardResponse:
     candidate_count = session.scalar(select(func.count()).select_from(Candidate)) or 0
     resume_count = session.scalar(select(func.count()).select_from(Resume)) or 0
     job_count = session.scalar(select(func.count()).select_from(Job)) or 0
+    # Count positions whose operational status is actively recruiting ("Active").
+    active_job_count = session.scalar(
+        select(func.count()).select_from(Job).where(Job.status.in_(("Active", "active")))
+    ) or 0
     open_request_count = session.scalar(
         select(func.count()).select_from(RecruitmentRequest).where(
             func.lower(RecruitmentRequest.status).not_in(("filled", "closed", "cancelled"))
@@ -904,6 +908,7 @@ def get_dashboard(session: Session = Depends(get_db)) -> DashboardResponse:
         total_candidates=candidate_count,
         total_resumes=resume_count,
         total_jobs=job_count,
+        active_jobs=active_job_count,
         open_requests=open_request_count,
         ingestion_imported=imported_count,
         ingestion_failed=failed_count,

@@ -1,0 +1,1 @@
+Version 1 of Staff Cloud Engineer c3cc7b65. Needs AWS, Golang, and Distributed Systems.
