@@ -1054,11 +1054,11 @@ def search_and_match_candidates(
     paginated_results = evaluated_results[offset : offset + page_size]
     total_pages = max(1, math.ceil(total_evaluated / page_size)) if page_size > 0 else 1
 
-    # Enrich paginated display candidates with full disk text citations if needed.
+    # Enrich paginated display candidates with full disk text citations if needed (top 5 for fast responsive UI).
     enriched_results: List[CandidateMatchResult] = []
-    for cand_res in paginated_results:
-        # If no evidence excerpts yet and candidate has a winning resume, re-evaluate with disk text for display
-        if not cand_res.evidence_highlights and cand_res.winning_resume_id:
+    for idx, cand_res in enumerate(paginated_results):
+        # If no evidence excerpts yet and candidate has a winning resume, re-evaluate with disk text for top 5 candidates
+        if idx < 5 and not cand_res.evidence_highlights and cand_res.winning_resume_id:
             db_cand = db.query(Candidate).filter(Candidate.id == cand_res.candidate_id).first()
             if db_cand:
                 cand_res = evaluate_candidate_multi_resume(

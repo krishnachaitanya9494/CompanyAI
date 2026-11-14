@@ -25,13 +25,17 @@ import {
   ChevronDown,
   ChevronUp,
   Building2,
+  Building,
+  Crown,
+  Globe,
+  Target,
+  Ban,
   Search,
   Copy,
   Check,
   Plus,
   X,
   ExternalLink,
-  Globe,
   Zap,
   Edit3,
   RotateCcw,
@@ -47,37 +51,192 @@ import {
   Minimize2,
 } from 'lucide-react';
 
-// Deterministic stack-to-ecosystem company suggestions for recruiter sourcing (advisory only).
+// Sourcing Company Categories with visual styles and icons
+export const COMPANY_CATEGORIES = [
+  { id: 'all', label: 'All Companies', icon: Building2 },
+  { id: 'oem', label: 'Product & OEMs', icon: Crown, color: 'text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/60 border-emerald-200/80 dark:border-emerald-800' },
+  { id: 'big4', label: 'Big 4 & Advisory', icon: Building, color: 'text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-950/60 border-blue-200/80 dark:border-blue-800' },
+  { id: 'gsi', label: 'Global System Integrators', icon: Globe, color: 'text-purple-700 dark:text-purple-300 bg-purple-50 dark:bg-purple-950/60 border-purple-200/80 dark:border-purple-800' },
+  { id: 'gcc', label: 'Enterprise GCCs & Hubs', icon: Target, color: 'text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/60 border-amber-200/80 dark:border-amber-800' },
+];
+
+// Rich, structured ecosystem intelligence for recruiter talent sourcing across all core domains.
 const STACK_COMPANY_ECOSYSTEMS = [
+  // 1. ServiceNow FSO / Financial Services Operations / Complaint Management / CSM / ITSM
   {
-    keywords: ['sap', 'cpi', 's/4hana', 'abap', 'integration suite', 'pi/po'],
-    companies: ['SAP Labs', 'Accenture', 'Infosys', 'Capgemini', 'Deloitte', 'Wipro', 'TCS', 'IBM Consulting'],
+    keywords: ['servicenow', 'fso', 'complaint', 'financial services operations', 'itsm', 'csm', 'flow designer', 'snow', 'dispute'],
+    ecosystemName: 'ServiceNow Financial Services Operations (FSO) & Workflows',
+    companies: [
+      { name: 'ServiceNow', category: 'oem', tier: 'Platform OEM IDC', location: 'Hyderabad / Bangalore', description: 'Core product engineering, FSO platform & CSM development' },
+      { name: 'Deloitte', category: 'big4', tier: 'Global Elite Partner', location: 'Hyderabad / Bangalore / Mumbai', description: 'Tier-1 ServiceNow practice, large-scale FSO & banking transformation' },
+      { name: 'PwC', category: 'big4', tier: 'Global Elite Partner', location: 'Bangalore / Hyderabad / Kolkata', description: 'Financial services regulatory workflow & complaint management' },
+      { name: 'EY', category: 'big4', tier: 'Global Elite Partner', location: 'Bangalore / Gurgaon / Mumbai', description: 'Risk, compliance, and ServiceNow FSO digital workflows' },
+      { name: 'KPMG', category: 'big4', tier: 'Elite Solution Partner', location: 'Bangalore / Mumbai / Pune', description: 'Banking workflow automation & dispute resolution practice' },
+      { name: 'Cognizant', category: 'gsi', tier: 'Global Elite Partner', location: 'Chennai / Hyderabad / Bangalore', description: 'Dedicated ServiceNow CoE with 4,000+ certified practitioners' },
+      { name: 'Accenture', category: 'gsi', tier: 'Global Elite Leader', location: 'Bangalore / Hyderabad / Pune', description: 'Enterprise ServiceNow delivery & banking sector solutions' },
+      { name: 'Infosys', category: 'gsi', tier: 'Global Elite Partner', location: 'Bangalore / Hyderabad / Pune', description: 'Infosys Cobalt ServiceNow business unit & financial services' },
+      { name: 'LTIMindtree', category: 'gsi', tier: 'Elite Partner', location: 'Bangalore / Mumbai / Pune', description: 'FSO and enterprise service management center of excellence' },
+      { name: 'Wipro', category: 'gsi', tier: 'Global Elite Partner', location: 'Bangalore / Hyderabad', description: 'Financial services workflow modernization & CSM implementation' },
+      { name: 'Barclays', category: 'gcc', tier: 'Banking GCC CoE', location: 'Pune / Mumbai', description: 'Internal ServiceNow FSO & customer complaint management hub' },
+      { name: 'Standard Chartered GBS', category: 'gcc', tier: 'Global Banking GCC', location: 'Bangalore / Chennai', description: 'Banking operations workflow & case management platforms' },
+      { name: 'HSBC Technology India', category: 'gcc', tier: 'Global Tech Center', location: 'Hyderabad / Pune', description: 'Enterprise servicing, complaint tracking & dispute engineering' },
+      { name: 'Wells Fargo India', category: 'gcc', tier: 'Banking GCC', location: 'Hyderabad / Bangalore', description: 'Core financial workflow engineering & regulatory compliance systems' },
+    ],
   },
+
+  // 2. Oracle EPM / Hyperion / FCCS / Financial Consolidation / Smart View / Essbase
   {
-    keywords: ['fccs', 'epm', 'hyperion', 'hfm', 'smart view', 'oracle'],
-    companies: ['Oracle', 'Deloitte', 'PwC', 'EY', 'KPMG', 'Accenture', 'Genpact', 'Cognizant'],
+    keywords: ['oracle', 'epm', 'hyperion', 'fccs', 'financial consolidation', 'essbase', 'smart view', 'pbcs', 'hfm'],
+    ecosystemName: 'Oracle EPM, FCCS & Financial Consolidation',
+    companies: [
+      { name: 'Oracle', category: 'oem', tier: 'Software OEM IDC', location: 'Bangalore / Hyderabad', description: 'Core Oracle EPM, FCCS Cloud & Essbase product engineering' },
+      { name: 'Deloitte', category: 'big4', tier: 'Global EPM Leader', location: 'Hyderabad / Bangalore / Mumbai', description: 'Leading Oracle EPM & financial consolidation transformation practice' },
+      { name: 'PwC', category: 'big4', tier: 'Global Advisory', location: 'Bangalore / Hyderabad / Kolkata', description: 'Finance close, regulatory consolidation & FCCS implementation' },
+      { name: 'EY', category: 'big4', tier: 'Advisory Leader', location: 'Bangalore / Gurgaon / Mumbai', description: 'Financial performance management, FCCS & statutory reporting' },
+      { name: 'KPMG', category: 'big4', tier: 'EPM Advisory Partner', location: 'Bangalore / Mumbai / Gurgaon', description: 'Enterprise planning, budgeting & financial close practice' },
+      { name: 'Accenture', category: 'gsi', tier: 'Global Platinum Partner', location: 'Bangalore / Hyderabad / Pune', description: 'Largest Oracle Cloud EPM delivery practice in India' },
+      { name: 'Genpact', category: 'gsi', tier: 'Record-to-Report Specialist', location: 'Hyderabad / Gurgaon / Bangalore', description: 'Finance & accounting operations with deep Hyperion/EPM CoE' },
+      { name: 'Cognizant', category: 'gsi', tier: 'Global Delivery Partner', location: 'Chennai / Hyderabad / Bangalore', description: 'Oracle Financial Solutions practice with certified FCCS experts' },
+      { name: 'Wipro', category: 'gsi', tier: 'Oracle Cloud Partner', location: 'Bangalore / Hyderabad', description: 'Enterprise EPM transformation & managed support practice' },
+      { name: 'Infosys', category: 'gsi', tier: 'Oracle Practice Group', location: 'Bangalore / Hyderabad / Pune', description: 'Global Oracle financial close and consolidation services' },
+      { name: 'American Express', category: 'gcc', tier: 'Global Financial GCC', location: 'Gurgaon / Bangalore', description: 'Enterprise financial planning & Hyperion analytics center' },
+      { name: 'Goldman Sachs', category: 'gcc', tier: 'Investment Banking Tech', location: 'Bangalore / Hyderabad', description: 'P&L consolidation, ledger reporting & regulatory systems' },
+      { name: 'Bank of America', category: 'gcc', tier: 'Banking GCC', location: 'Hyderabad / Mumbai / Chennai', description: 'Finance tech division managing global consolidations' },
+    ],
   },
+
+  // 3. VLSI / FPGA / Verification / DO-254 / Avionics / SystemVerilog / UVM
   {
-    keywords: ['teamcenter', 'bmide', 'plm', 'active workspace', 'siemens', 'itk'],
-    companies: ['Siemens Digital Industries', 'Tata Technologies', 'L&T Technology Services', 'HCLTech', 'Capgemini', 'Quest Global'],
+    keywords: ['vlsi', 'fpga', 'do-254', 'systemverilog', 'uvm', 'verification', 'asic', 'avionics', 'rtl', 'soc', 'soc verification'],
+    ecosystemName: 'Semiconductor VLSI, FPGA & DO-254 Avionics',
+    companies: [
+      { name: 'Cadence Design Systems', category: 'oem', tier: 'EDA Tool OEM', location: 'Noida / Bangalore / Pune', description: 'Verification IP, simulation tools & formal verification R&D' },
+      { name: 'Synopsys', category: 'oem', tier: 'EDA & IP OEM', location: 'Bangalore / Hyderabad / Noida', description: 'UVM verification methodology, VIP development & emulation tools' },
+      { name: 'AMD', category: 'oem', tier: 'Semiconductor OEM', location: 'Hyderabad / Bangalore', description: 'FPGA design, adaptive SoCs & silicon verification engineering' },
+      { name: 'Intel', category: 'oem', tier: 'Semiconductor OEM', location: 'Bangalore', description: 'FPGA architecture, Quartus Prime & complex SoC verification' },
+      { name: 'Qualcomm', category: 'oem', tier: 'Silicon OEM Hub', location: 'Hyderabad / Bangalore / Chennai', description: 'Advanced SystemVerilog/UVM SoC verification engineering' },
+      { name: 'eInfochips (Arrow)', category: 'gsi', tier: 'DO-254 Specialist', location: 'Ahmedabad / Bangalore / Pune', description: 'Dedicated aerospace DO-254 hardware & FPGA verification lab' },
+      { name: 'Tata Elxsi', category: 'gsi', tier: 'Aerospace Systems Partner', location: 'Bangalore / Trivandrum', description: 'Avionics DO-254 certification & safety-critical FPGA designs' },
+      { name: 'Wipro', category: 'gsi', tier: 'VLSI Design Services', location: 'Bangalore / Hyderabad', description: 'Semiconductor engineering practice with 2,500+ VLSI engineers' },
+      { name: 'HCLTech', category: 'gsi', tier: 'ER&D Silicon Practice', location: 'Bangalore / Noida / Chennai', description: 'ASIC/FPGA verification & DO-254 aerospace compliance' },
+      { name: 'Cyient', category: 'gsi', tier: 'Aerospace Engineering', location: 'Hyderabad / Bangalore', description: 'Avionics hardware design, verification & FAA/EASA certification' },
+      { name: 'Honeywell Aerospace', category: 'gcc', tier: 'Avionics OEM Center', location: 'Bangalore / Hyderabad', description: 'Flight-critical DO-254 hardware, avionics boxes & FPGA R&D' },
+      { name: 'Collins Aerospace (RTX)', category: 'gcc', tier: 'Flight Systems Center', location: 'Bangalore / Hyderabad', description: 'Safety-critical DO-254 FPGA verification & flight management' },
+      { name: 'Texas Instruments', category: 'gcc', tier: 'Semiconductor R&D', location: 'Bangalore', description: 'Analog, mixed-signal & embedded processors verification' },
+      { name: 'GE Aerospace India', category: 'gcc', tier: 'Aviation Tech Center', location: 'Bangalore', description: 'Engine controls, FADEC hardware & DO-254 compliant verification' },
+    ],
   },
+
+  // 4. Siemens Teamcenter / PLM / BMIDE / Active Workspace
   {
-    keywords: ['java', 'spring', 'microservices', 'hibernate', 'kafka'],
-    companies: ['TCS', 'Infosys', 'Cognizant', 'Persistent Systems', 'EPAM Systems', 'Thoughtworks', 'Publicis Sapient'],
+    keywords: ['teamcenter', 'bmide', 'plm', 'active workspace', 'siemens', 'itk', 'awc'],
+    ecosystemName: 'Siemens Teamcenter & Digital PLM Engineering',
+    companies: [
+      { name: 'Siemens Digital Industries', category: 'oem', tier: 'Software OEM IDC', location: 'Pune / Bangalore', description: 'Core Teamcenter product engineering, BMIDE and Active Workspace R&D' },
+      { name: 'PwC', category: 'big4', tier: 'Digital Operations', location: 'Bangalore / Hyderabad / Mumbai', description: 'Smart manufacturing, PLM digital thread and industry 4.0 consulting' },
+      { name: 'Deloitte', category: 'big4', tier: 'PLM Advisory', location: 'Bangalore / Hyderabad / Pune', description: 'Enterprise PLM roadmap, Teamcenter architecture and business change' },
+      { name: 'Tata Technologies', category: 'gsi', tier: 'Premier PLM Integrator', location: 'Pune / Bangalore', description: 'Largest dedicated Teamcenter engineering practice in India' },
+      { name: 'L&T Technology Services', category: 'gsi', tier: 'ER&D Leader', location: 'Bangalore / Mumbai / Vadodara', description: 'Full-lifecycle Teamcenter customization, ITK, BMIDE & data migration' },
+      { name: 'Capgemini', category: 'gsi', tier: 'Digital Engineering', location: 'Bangalore / Mumbai / Pune', description: 'Global PLM center of excellence for aerospace & automotive clients' },
+      { name: 'HCLTech', category: 'gsi', tier: 'Engineering Services', location: 'Noida / Bangalore / Chennai', description: 'Teamcenter AWC modernization & CAD/ERP enterprise integrations' },
+      { name: 'Quest Global', category: 'gsi', tier: 'Aerospace & Auto PLM', location: 'Bangalore / Trivandrum', description: 'Product lifecycle management engineering for Fortune 500 OEMs' },
+      { name: 'Mercedes-Benz R&D India', category: 'gcc', tier: 'Automotive GCC', location: 'Bangalore', description: 'Global digital vehicle engineering & Teamcenter PLM backbone' },
+      { name: 'Boeing India', category: 'gcc', tier: 'Aerospace Engineering', location: 'Bangalore / Chennai', description: 'Commercial & defense aircraft Teamcenter PLM digital thread' },
+      { name: 'Airbus India', category: 'gcc', tier: 'Aerospace Tech Hub', location: 'Bangalore', description: 'PLM design engineering & configuration management platforms' },
+      { name: 'Bosch Global Software', category: 'gcc', tier: 'Industrial Tech Hub', location: 'Bangalore / Coimbatore', description: 'Enterprise engineering data management & PLM solutions' },
+    ],
   },
+
+  // 5. Cloud Infrastructure / AWS / Azure / GCP / DevOps / Kubernetes / Terraform / SRE
   {
-    keywords: ['.net', 'c#', 'azure', 'sql server', 'asp.net'],
-    companies: ['Microsoft', 'Nagarro', 'LTIMindtree', 'HCLTech', 'Accenture', 'Coforge', 'Mphasis'],
+    keywords: ['cloud infrastructure', 'devops', 'kubernetes', 'terraform', 'aws', 'azure', 'gcp', 'sre', 'site reliability', 'docker', 'ansible', 'helm'],
+    ecosystemName: 'Cloud Infrastructure, Platform & SRE Engineering',
+    companies: [
+      { name: 'Amazon Web Services (AWS)', category: 'oem', tier: 'Hyperscaler OEM', location: 'Bangalore / Hyderabad', description: 'Hyperscale cloud architecture, container platforms & core services' },
+      { name: 'Microsoft Azure', category: 'oem', tier: 'Cloud OEM IDC', location: 'Hyderabad / Bangalore', description: 'Azure core compute, Kubernetes service (AKS) & infrastructure engineering' },
+      { name: 'Google Cloud (GCP)', category: 'oem', tier: 'Hyperscaler OEM', location: 'Bangalore / Hyderabad', description: 'Google Cloud Platform infra, Anthos, Kubernetes & network engineering' },
+      { name: 'Deloitte', category: 'big4', tier: 'Cloud Transformation', location: 'Hyderabad / Bangalore / Mumbai', description: 'Enterprise multi-cloud architecture, DevOps governance & SRE practice' },
+      { name: 'PwC', category: 'big4', tier: 'Cloud & Digital', location: 'Bangalore / Hyderabad / Kolkata', description: 'Infrastructure modernization, cloud security & resilience advisory' },
+      { name: 'EY', category: 'big4', tier: 'Cloud Advisory', location: 'Bangalore / Gurgaon / Mumbai', description: 'Enterprise cloud migration, IaC automation & FinOps practice' },
+      { name: 'Accenture', category: 'gsi', tier: 'Cloud First Practice', location: 'Bangalore / Hyderabad / Pune', description: 'Largest multi-cloud delivery and DevOps automation practice' },
+      { name: 'Infosys', category: 'gsi', tier: 'Cobalt Cloud Practice', location: 'Bangalore / Hyderabad / Pune', description: 'Enterprise cloud platform engineering & automated infrastructure' },
+      { name: 'TCS', category: 'gsi', tier: 'Enterprise Cloud Unit', location: 'Chennai / Hyderabad / Bangalore', description: 'Global SRE, hybrid-cloud operations & container management' },
+      { name: 'LTIMindtree', category: 'gsi', tier: 'Cloud Infrastructure BU', location: 'Bangalore / Mumbai / Pune', description: 'Kubernetes orchestration, Terraform automation & SRE delivery' },
+      { name: 'Walmart Global Tech', category: 'gcc', tier: 'Retail Cloud Hub', location: 'Bangalore / Chennai', description: 'Internal multi-cloud platform, large-scale Kubernetes & SRE division' },
+      { name: 'Target India', category: 'gcc', tier: 'Enterprise GCC', location: 'Bangalore', description: 'Cloud infrastructure engineering, automation pipelines & platform reliability' },
+      { name: 'PayPal India', category: 'gcc', tier: 'Fintech Platform Hub', location: 'Chennai / Bangalore', description: 'High-availability infrastructure, edge computing & platform reliability' },
+      { name: 'JPMorgan Chase', category: 'gcc', tier: 'Banking Platform Hub', location: 'Bangalore / Hyderabad', description: 'Global cloud platform services, internal Kubernetes & resilience engineering' },
+    ],
   },
+
+  // 6. SAP CPI / Integration Suite / S/4HANA / ABAP / PS / Security GRC
   {
-    keywords: ['react', 'javascript', 'typescript', 'frontend', 'node', 'python', 'fastapi'],
-    companies: ['Zoho', 'Freshworks', 'Razorpay', 'Flipkart', 'Swiggy', 'Atlassian', 'BrowserStack'],
+    keywords: ['sap', 'cpi', 'integration suite', 's/4hana', 'abap', 'sap ps', 'sap security', 'grc', 'pi/po', 'idoc', 'bapi'],
+    ecosystemName: 'SAP CPI, Integration Suite & S/4HANA Ecosystem',
+    companies: [
+      { name: 'SAP Labs India', category: 'oem', tier: 'Software OEM Lab', location: 'Bangalore / Pune / Gurgaon', description: 'Core SAP Integration Suite, CPI connectors & S/4HANA product engineering' },
+      { name: 'Deloitte', category: 'big4', tier: 'Global SAP Leader', location: 'Hyderabad / Bangalore / Mumbai', description: 'Diamond SAP partner, enterprise CPI integration & S/4HANA transformations' },
+      { name: 'PwC', category: 'big4', tier: 'SAP Advisory', location: 'Bangalore / Hyderabad / Mumbai', description: 'Enterprise SAP architecture, CPI middleware & GRC security controls' },
+      { name: 'EY', category: 'big4', tier: 'SAP Advisory Leader', location: 'Bangalore / Gurgaon / Mumbai', description: 'SAP Security, GRC Access Control, SoD matrices & CPI integrations' },
+      { name: 'KPMG', category: 'big4', tier: 'SAP Systems & Controls', location: 'Bangalore / Mumbai / Pune', description: 'SAP GRC security audit, authorization design & integration risk' },
+      { name: 'Accenture', category: 'gsi', tier: 'SAP Innovation Center', location: 'Bangalore / Hyderabad / Pune', description: 'Global leader in SAP Cloud Platform Integration (CPI) implementations' },
+      { name: 'Infosys', category: 'gsi', tier: 'Enterprise SAP BU', location: 'Bangalore / Hyderabad / Pune', description: 'SAP Integration Suite Center of Excellence & migration services' },
+      { name: 'Capgemini', category: 'gsi', tier: 'SAP Global Partner', location: 'Bangalore / Mumbai / Kolkata', description: 'Enterprise SAP BTP, CPI integration & hybrid-landscape architectures' },
+      { name: 'Wipro', category: 'gsi', tier: 'SAP Practice Group', location: 'Bangalore / Hyderabad', description: 'SAP S/4HANA migration, middleware integration & cloud BTP' },
+      { name: 'TCS', category: 'gsi', tier: 'SAP Delivery Practice', location: 'Chennai / Hyderabad / Bangalore', description: 'End-to-end SAP integration services, IDoc/BAPI interfaces & CPI' },
+      { name: 'Siemens Healthineers', category: 'gcc', tier: 'Healthcare Tech GCC', location: 'Bangalore', description: 'Internal global SAP S/4HANA landscape & enterprise CPI pipelines' },
+      { name: 'Shell India', category: 'gcc', tier: 'Energy Tech Center', location: 'Bangalore / Chennai', description: 'Complex SAP enterprise architecture, supply chain & CPI integration' },
+      { name: 'Bayer Technology', category: 'gcc', tier: 'Life Sciences GCC', location: 'Bangalore / Hyderabad', description: 'Global SAP integration, GRC security & digital supply chain platforms' },
+    ],
   },
+
+  // 7. Java / Spring Boot / Production Support / Microservices / Kafka
   {
-    keywords: ['qa', 'selenium', 'automation testing', 'manual testing', 'playwright', 'cypress'],
-    companies: ['BrowserStack', 'Infosys', 'Cognizant', 'Capgemini', 'Wipro', 'Qualitest', 'GlobalLogic'],
+    keywords: ['java', 'spring', 'microservices', 'production support', 'application support', 'hibernate', 'kafka', 'incident management', 'l2/l3', 'production engineer'],
+    ecosystemName: 'Java Enterprise, Microservices & Production Support',
+    companies: [
+      { name: 'Oracle', category: 'oem', tier: 'Technology OEM', location: 'Bangalore / Hyderabad', description: 'Core Java engineering, JVM optimization & enterprise cloud services' },
+      { name: 'Red Hat', category: 'oem', tier: 'Enterprise Open Source', location: 'Pune / Bangalore', description: 'Quarkus, Spring runtime, OpenShift & enterprise Java middleware' },
+      { name: 'Deloitte', category: 'big4', tier: 'Technology Consulting', location: 'Hyderabad / Bangalore / Mumbai', description: 'Core banking backend systems, Java microservices modernization' },
+      { name: 'PwC', category: 'big4', tier: 'Digital & Apps Practice', location: 'Bangalore / Hyderabad / Kolkata', description: 'Enterprise Java architecture & high-reliability financial systems' },
+      { name: 'TCS', category: 'gsi', tier: 'Banking IT Leader', location: 'Chennai / Hyderabad / Bangalore', description: '24x7 mission-critical application support for top global investment banks' },
+      { name: 'Infosys', category: 'gsi', tier: 'Core Banking & Apps', location: 'Bangalore / Hyderabad / Pune', description: 'Large-scale Java production support, incident resolution & L2/L3 services' },
+      { name: 'Cognizant', category: 'gsi', tier: 'Global Production Ops', location: 'Chennai / Hyderabad / Bangalore', description: 'Application support & maintenance (ASM) practice with deep Java expertise' },
+      { name: 'Persistent Systems', category: 'gsi', tier: 'Digital Engineering', location: 'Pune / Bangalore / Hyderabad', description: 'Cloud-native Java development, API integrations & platform support' },
+      { name: 'EPAM Systems', category: 'gsi', tier: 'Software Engineering', location: 'Hyderabad / Bangalore / Pune', description: 'High-performance Java backend engineering & distributed systems' },
+      { name: 'Virtusa', category: 'gsi', tier: 'Fintech Engineering', location: 'Hyderabad / Chennai / Bangalore', description: 'Banking production operations, payment gateways & Java support' },
+      { name: 'Morgan Stanley', category: 'gcc', tier: 'Investment Banking GCC', location: 'Mumbai / Bangalore', description: 'Low-latency trading platforms, Java microservices & SRE support' },
+      { name: 'Deutsche Bank (DWS)', category: 'gcc', tier: 'Corporate Bank Tech', location: 'Pune / Bangalore', description: 'Transaction banking, payments backbones & Java production engineering' },
+      { name: 'Bank of America', category: 'gcc', tier: 'Global Tech Center', location: 'Hyderabad / Mumbai / Chennai', description: 'Wholesale payments & wealth management Java production operations' },
+      { name: 'Societe Generale GSC', category: 'gcc', tier: 'Capital Markets GCC', location: 'Bangalore / Chennai', description: 'Derivatives trading IT, risk computing & Java application support' },
+    ],
   },
 ];
+
+// Fallback ecosystem if JD does not match specific vertical keywords
+const DEFAULT_COMPANY_ECOSYSTEM = {
+  ecosystemName: 'General Enterprise IT & Consulting Ecosystem',
+  companies: [
+    { name: 'Microsoft', category: 'oem', tier: 'Technology OEM', location: 'Hyderabad / Bangalore / Noida', description: 'Cloud, enterprise software & developer platforms' },
+    { name: 'Google', category: 'oem', tier: 'Hyperscaler OEM', location: 'Bangalore / Hyderabad', description: 'Cloud infrastructure & enterprise AI systems' },
+    { name: 'Amazon', category: 'oem', tier: 'Cloud & Tech OEM', location: 'Bangalore / Hyderabad / Chennai', description: 'Distributed systems & enterprise services' },
+    { name: 'Deloitte', category: 'big4', tier: 'Big 4 Leader', location: 'Hyderabad / Bangalore / Mumbai', description: 'Enterprise advisory & technology consulting' },
+    { name: 'PwC', category: 'big4', tier: 'Global Advisory', location: 'Bangalore / Hyderabad / Kolkata', description: 'Technology transformation & systems advisory' },
+    { name: 'EY', category: 'big4', tier: 'Advisory Practice', location: 'Bangalore / Gurgaon / Mumbai', description: 'Business & technology transformation' },
+    { name: 'KPMG', category: 'big4', tier: 'Advisory Firm', location: 'Bangalore / Mumbai / Pune', description: 'Enterprise systems & management consulting' },
+    { name: 'TCS', category: 'gsi', tier: 'Global Tier 1 GSI', location: 'Chennai / Hyderabad / Bangalore', description: 'Global IT services & enterprise consulting' },
+    { name: 'Infosys', category: 'gsi', tier: 'Global Tier 1 GSI', location: 'Bangalore / Hyderabad / Pune', description: 'Enterprise software & digital services' },
+    { name: 'Accenture', category: 'gsi', tier: 'Global Integrator Leader', location: 'Bangalore / Hyderabad / Pune', description: 'End-to-end enterprise technology delivery' },
+    { name: 'Wipro', category: 'gsi', tier: 'Global Tier 1 GSI', location: 'Bangalore / Hyderabad / Chennai', description: 'IT infrastructure & enterprise solutions' },
+    { name: 'Cognizant', category: 'gsi', tier: 'Global Tier 1 GSI', location: 'Chennai / Hyderabad / Bangalore', description: 'Technology consulting & domain solutions' },
+    { name: 'Capgemini', category: 'gsi', tier: 'European Tier 1 GSI', location: 'Bangalore / Mumbai / Pune', description: 'Digital engineering & enterprise consulting' },
+    { name: 'HCLTech', category: 'gsi', tier: 'Global IT Services', location: 'Noida / Bangalore / Chennai', description: 'Enterprise engineering & IT infrastructure' },
+    { name: 'LTIMindtree', category: 'gsi', tier: 'Tier 1 GSI', location: 'Bangalore / Mumbai / Pune', description: 'Digital transformation & enterprise services' },
+    { name: 'JPMorgan Chase', category: 'gcc', tier: 'Top Banking GCC', location: 'Bangalore / Hyderabad / Mumbai', description: 'Global financial services engineering hub' },
+    { name: 'Wells Fargo', category: 'gcc', tier: 'Banking Tech GCC', location: 'Hyderabad / Bangalore / Chennai', description: 'Enterprise technology & operations center' },
+    { name: 'Walmart Global Tech', category: 'gcc', tier: 'Retail Tech Hub', location: 'Bangalore / Chennai', description: 'Global supply chain & e-commerce technology' },
+  ],
+};
 
 // Skill and technology adjacency knowledge catalog matching the backend taxonomy service.
 const SKILL_ADJACENCY_CATALOG = {
@@ -153,10 +312,17 @@ export const JobDetail = ({
   const [keywordDelimiter, setKeywordDelimiter] = useState('comma'); // 'comma' | 'space' | 'pipe'
   const [candidateKeywordFilter, setCandidateKeywordFilter] = useState('');
   const [selectedCompanies, setSelectedCompanies] = useState([]);
+  const [excludedCompanies, setExcludedCompanies] = useState([]);
+  const [companyCategoryFilter, setCompanyCategoryFilter] = useState('all'); // 'all' | 'oem' | 'big4' | 'gsi' | 'gcc'
+  const [companySearchQuery, setCompanySearchQuery] = useState('');
   const [customCompanies, setCustomCompanies] = useState([]);
   const [customCompanyInput, setCustomCompanyInput] = useState('');
+  const [customCompanyCategory, setCustomCompanyCategory] = useState('gsi');
+  const [customCompanyLocation, setCustomCompanyLocation] = useState('');
   const [showAddCompanyInput, setShowAddCompanyInput] = useState(false);
   const [copiedBoolean, setCopiedBoolean] = useState(false);
+  const [copiedTargetClause, setCopiedTargetClause] = useState(false);
+  const [copiedExcludedClause, setCopiedExcludedClause] = useState(false);
 
   // Custom Query Editor state
   const [isCustomMode, setIsCustomMode] = useState(false);
@@ -258,49 +424,90 @@ export const JobDetail = ({
   // Reset company selection, custom query & copy state when switching jobs.
   useEffect(() => {
     setSelectedCompanies([]);
+    setExcludedCompanies([]);
+    setCompanyCategoryFilter('all');
+    setCompanySearchQuery('');
     setCustomCompanies([]);
     setCustomCompanyInput('');
+    setCustomCompanyCategory('gsi');
+    setCustomCompanyLocation('');
     setShowAddCompanyInput(false);
     setCopiedBoolean(false);
+    setCopiedTargetClause(false);
+    setCopiedExcludedClause(false);
     setIsCustomMode(false);
     setCustomQueryText('');
     setCandidateKeywordFilter('');
   }, [job?.id]);
 
-  // Derive JD-related target sourcing companies from the job's title & skill stack.
-  const relatedCompanies = useMemo(() => {
+  // Derive JD-related target sourcing companies from the job's title, department & skill stack.
+  const relatedCompanyObjects = useMemo(() => {
     if (!job) return [];
     const haystack = [
       job.title || '',
       job.department || '',
+      job.description || '',
       ...(job.requiredSkills || []),
       ...(job.preferredSkills || []),
     ]
       .join(' ')
       .toLowerCase();
 
-    const matched = new Set();
+    const matchedMap = new Map();
     STACK_COMPANY_ECOSYSTEMS.forEach((group) => {
       if (group.keywords.some((kw) => haystack.includes(kw))) {
-        group.companies.forEach((c) => matched.add(c));
+        group.companies.forEach((co) => {
+          if (!matchedMap.has(co.name)) {
+            matchedMap.set(co.name, co);
+          }
+        });
       }
     });
-    if (matched.size === 0) {
-      ['TCS', 'Infosys', 'Accenture', 'Capgemini', 'Cognizant', 'Wipro', 'HCLTech'].forEach((c) =>
-        matched.add(c)
-      );
+
+    if (matchedMap.size === 0) {
+      DEFAULT_COMPANY_ECOSYSTEM.companies.forEach((co) => {
+        matchedMap.set(co.name, co);
+      });
     }
-    return Array.from(matched).slice(0, 8);
+
+    return Array.from(matchedMap.values());
   }, [job]);
 
-  // Combined company list (derived + custom added)
-  const allCompanies = useMemo(() => {
-    const combined = [...relatedCompanies];
-    customCompanies.forEach((c) => {
-      if (!combined.includes(c)) combined.push(c);
+  // Combined company objects list (derived + custom added)
+  const allCompanyObjects = useMemo(() => {
+    const list = [...relatedCompanyObjects];
+    customCompanies.forEach((cust) => {
+      const exists = list.some((c) => c.name.toLowerCase() === cust.name.toLowerCase());
+      if (!exists) {
+        list.push(cust);
+      }
     });
-    return combined;
-  }, [relatedCompanies, customCompanies]);
+    return list;
+  }, [relatedCompanyObjects, customCompanies]);
+
+  // Flat string array of all company names for backward compatibility
+  const allCompanies = useMemo(() => {
+    return allCompanyObjects.map((c) => c.name);
+  }, [allCompanyObjects]);
+
+  // Filtered company objects based on active category tab & search query
+  const filteredCompanyObjects = useMemo(() => {
+    let list = allCompanyObjects;
+    if (companyCategoryFilter !== 'all') {
+      list = list.filter((c) => c.category === companyCategoryFilter);
+    }
+    if (companySearchQuery.trim()) {
+      const q = companySearchQuery.trim().toLowerCase();
+      list = list.filter(
+        (c) =>
+          c.name.toLowerCase().includes(q) ||
+          (c.location && c.location.toLowerCase().includes(q)) ||
+          (c.tier && c.tier.toLowerCase().includes(q)) ||
+          (c.description && c.description.toLowerCase().includes(q))
+      );
+    }
+    return list;
+  }, [allCompanyObjects, companyCategoryFilter, companySearchQuery]);
 
   // Generate tailored technical interview screening questions and evaluation scorecard from JD
   const screeningKit = useMemo(() => {
@@ -551,6 +758,14 @@ export const JobDetail = ({
       coreQuery += ' NOT ("Intern" OR "Trainee" OR "Student" OR "Fresher")';
     }
 
+    // Excluded companies (non-poach / off-limits protection)
+    if (excludedCompanies.length > 0) {
+      const excludedQuoted = excludedCompanies.map(quote).filter(Boolean);
+      if (excludedQuoted.length > 0) {
+        coreQuery += ` NOT (${excludedQuoted.join(' OR ')})`;
+      }
+    }
+
     if (sourcingPlatform === 'xray') {
       return `site:linkedin.com/in ${coreQuery}`;
     }
@@ -567,6 +782,7 @@ export const JobDetail = ({
     includeExclusionsInBoolean,
     sourcingPlatform,
     selectedCompanies,
+    excludedCompanies,
     allCompanies,
     formattedPlainKeywords,
   ]);
@@ -751,14 +967,49 @@ export const JobDetail = ({
     }, 0);
   };
 
-  const handleToggleCompany = (company) => {
+  const handleToggleCompany = (companyName) => {
     setSelectedCompanies((prev) =>
-      prev.includes(company) ? prev.filter((c) => c !== company) : [...prev, company]
+      prev.includes(companyName) ? prev.filter((c) => c !== companyName) : [...prev, companyName]
     );
+    setExcludedCompanies((prev) => prev.filter((c) => c !== companyName));
+    if (!includeCompaniesInBoolean) setIncludeCompaniesInBoolean(true);
+  };
+
+  const handleToggleExcludeCompany = (companyName) => {
+    setExcludedCompanies((prev) =>
+      prev.includes(companyName) ? prev.filter((c) => c !== companyName) : [...prev, companyName]
+    );
+    setSelectedCompanies((prev) => prev.filter((c) => c !== companyName));
+  };
+
+  const handleSelectCategoryCompanies = (catId) => {
+    const pool = catId === 'all'
+      ? filteredCompanyObjects
+      : filteredCompanyObjects.filter((c) => c.category === catId);
+    const names = pool.map((c) => c.name);
+    setSelectedCompanies((prev) => {
+      const merged = new Set([...prev, ...names]);
+      return Array.from(merged);
+    });
+    setExcludedCompanies((prev) => prev.filter((c) => !names.includes(c)));
+    if (!includeCompaniesInBoolean) setIncludeCompaniesInBoolean(true);
+  };
+
+  const handleExcludeCategoryCompanies = (catId) => {
+    const pool = catId === 'all'
+      ? filteredCompanyObjects
+      : filteredCompanyObjects.filter((c) => c.category === catId);
+    const names = pool.map((c) => c.name);
+    setExcludedCompanies((prev) => {
+      const merged = new Set([...prev, ...names]);
+      return Array.from(merged);
+    });
+    setSelectedCompanies((prev) => prev.filter((c) => !names.includes(c)));
   };
 
   const handleSelectAllCompanies = () => {
     setSelectedCompanies([...allCompanies]);
+    setExcludedCompanies([]);
     if (!includeCompaniesInBoolean) setIncludeCompaniesInBoolean(true);
   };
 
@@ -766,25 +1017,81 @@ export const JobDetail = ({
     setSelectedCompanies([]);
   };
 
+  const handleClearExcludedCompanies = () => {
+    setExcludedCompanies([]);
+  };
+
   const handleAddCustomCompany = (e) => {
     e?.preventDefault();
     const trimmed = customCompanyInput.trim();
     if (!trimmed) return;
-    if (!allCompanies.includes(trimmed)) {
-      setCustomCompanies((prev) => [...prev, trimmed]);
-      setSelectedCompanies((prev) => [...prev, trimmed]);
-      if (!includeCompaniesInBoolean) setIncludeCompaniesInBoolean(true);
-    } else if (!selectedCompanies.includes(trimmed)) {
-      setSelectedCompanies((prev) => [...prev, trimmed]);
+
+    const exists = allCompanyObjects.some(
+      (c) => c.name.toLowerCase() === trimmed.toLowerCase()
+    );
+
+    if (!exists) {
+      const newObj = {
+        name: trimmed,
+        category: customCompanyCategory || 'gsi',
+        tier: 'Custom Account',
+        location: customCompanyLocation.trim() || job?.location || 'India',
+        description: 'Recruiter added custom company for talent sourcing or exclusion',
+      };
+      setCustomCompanies((prev) => [...prev, newObj]);
     }
+
+    // Auto-select as target
+    setSelectedCompanies((prev) => (prev.includes(trimmed) ? prev : [...prev, trimmed]));
+    setExcludedCompanies((prev) => prev.filter((c) => c.toLowerCase() !== trimmed.toLowerCase()));
+    if (!includeCompaniesInBoolean) setIncludeCompaniesInBoolean(true);
+
     setCustomCompanyInput('');
+    setCustomCompanyLocation('');
     setShowAddCompanyInput(false);
   };
 
-  const handleRemoveCustomCompany = (company, e) => {
+  const handleRemoveCustomCompany = (companyName, e) => {
     e?.stopPropagation();
-    setCustomCompanies((prev) => prev.filter((c) => c !== company));
-    setSelectedCompanies((prev) => prev.filter((c) => c !== company));
+    setCustomCompanies((prev) => prev.filter((c) => c.name.toLowerCase() !== companyName.toLowerCase()));
+    setSelectedCompanies((prev) => prev.filter((c) => c !== companyName));
+    setExcludedCompanies((prev) => prev.filter((c) => c !== companyName));
+  };
+
+  const handleBulkActionSelect = (actionVal) => {
+    if (!actionVal) return;
+    if (actionVal === 'target_tab') {
+      handleSelectCategoryCompanies(companyCategoryFilter);
+    } else if (actionVal === 'exclude_tab') {
+      handleExcludeCategoryCompanies(companyCategoryFilter);
+    } else if (actionVal === 'target_all') {
+      handleSelectAllCompanies();
+    } else if (actionVal === 'clear_targets') {
+      handleClearSelectedCompanies();
+    } else if (actionVal === 'clear_excluded') {
+      handleClearExcludedCompanies();
+    }
+  };
+
+  const handleCopyTargetClause = async () => {
+    const list = selectedCompanies.length > 0 ? selectedCompanies : allCompanies.slice(0, 4);
+    if (!list.length) return;
+    const clause = `(${list.map((c) => `"${c}"`).join(' OR ')})`;
+    try {
+      await navigator.clipboard.writeText(clause);
+      setCopiedTargetClause(true);
+      setTimeout(() => setCopiedTargetClause(false), 2000);
+    } catch {}
+  };
+
+  const handleCopyExcludedClause = async () => {
+    if (!excludedCompanies.length) return;
+    const clause = `NOT (${excludedCompanies.map((c) => `"${c}"`).join(' OR ')})`;
+    try {
+      await navigator.clipboard.writeText(clause);
+      setCopiedExcludedClause(true);
+      setTimeout(() => setCopiedExcludedClause(false), 2000);
+    } catch {}
   };
 
   const handleCopyBoolean = async (specificText) => {
@@ -1556,50 +1863,77 @@ export const JobDetail = ({
       {/* 4. JD Related Companies & Target Sourcing Ecosystem */}
       {shouldShowSection('companies') && (
         <div className="rounded-2xl border border-slate-200/90 dark:border-surface-darkBorder bg-white dark:bg-surface-darkCard shadow-subtle overflow-hidden transition-all">
-          <div className="w-full flex items-center justify-between p-4 hover:bg-slate-50/70 dark:hover:bg-slate-800/50 transition-colors">
+          {/* Header Bar */}
+          <div className="w-full flex items-center justify-between p-4 hover:bg-slate-50/70 dark:hover:bg-slate-800/50 transition-colors flex-wrap gap-2">
             <button
               type="button"
               onClick={() => toggleSection('companies')}
-              className="flex-1 flex items-center gap-3 text-left"
+              className="flex-1 flex items-center gap-3 text-left min-w-[240px]"
             >
               <div className="w-8 h-8 rounded-xl bg-indigo-50 dark:bg-indigo-950/60 border border-indigo-200/80 dark:border-indigo-800/80 flex items-center justify-center text-indigo-600 dark:text-indigo-400 shadow-subtle flex-shrink-0">
                 <Building2 className="w-4 h-4" />
               </div>
-              <div className="flex items-center gap-2.5 flex-wrap">
+              <div className="flex items-center gap-2 flex-wrap">
                 <h4 className="text-sm font-bold uppercase tracking-wider text-navy-900 dark:text-slate-100">
-                  Job Description Related Companies
+                  Job Description Related Companies &amp; Sourcing Ecosystem
                 </h4>
                 <span className="text-xs font-semibold text-indigo-700 dark:text-indigo-300 bg-indigo-50 dark:bg-indigo-950/60 px-2.5 py-0.5 rounded-full border border-indigo-200/70 dark:border-indigo-800">
-                  {selectedCompanies.length > 0 ? `${selectedCompanies.length} selected` : `${allCompanies.length} suggested`}
+                  {allCompanyObjects.length} suggested
                 </span>
+                {selectedCompanies.length > 0 && (
+                  <span className="text-xs font-bold text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/60 px-2.5 py-0.5 rounded-full border border-emerald-200/70 dark:border-emerald-800">
+                    {selectedCompanies.length} targeted
+                  </span>
+                )}
+                {excludedCompanies.length > 0 && (
+                  <span className="text-xs font-bold text-rose-700 dark:text-rose-300 bg-rose-50 dark:bg-rose-950/60 px-2.5 py-0.5 rounded-full border border-rose-200/70 dark:border-rose-800">
+                    {excludedCompanies.length} off-limits
+                  </span>
+                )}
               </div>
             </button>
 
-            <div className="flex items-center gap-2 flex-shrink-0">
+            {/* Quick Header Actions */}
+            <div className="flex items-center gap-2 flex-shrink-0 flex-wrap">
               {openSections.companies && (
-                selectedCompanies.length > 0 ? (
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleClearSelectedCompanies();
-                    }}
-                    className="text-xs sm:text-sm text-slate-500 hover:text-rose-600 dark:text-slate-400 dark:hover:text-rose-400 font-semibold px-2.5 py-1 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
-                  >
-                    Clear Selection
-                  </button>
-                ) : (
+                <>
+                  {selectedCompanies.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleClearSelectedCompanies();
+                      }}
+                      className="text-xs text-slate-500 hover:text-rose-600 dark:text-slate-400 dark:hover:text-rose-400 font-semibold px-2.5 py-1 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                      title="Clear all target selections"
+                    >
+                      Clear Targets ({selectedCompanies.length})
+                    </button>
+                  )}
+                  {excludedCompanies.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleClearExcludedCompanies();
+                      }}
+                      className="text-xs text-rose-600 dark:text-rose-400 hover:text-rose-700 font-semibold px-2.5 py-1 rounded-lg hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors"
+                      title="Clear all off-limits exclusions"
+                    >
+                      Clear Off-Limits ({excludedCompanies.length})
+                    </button>
+                  )}
                   <button
                     type="button"
                     onClick={(e) => {
                       e.stopPropagation();
                       handleSelectAllCompanies();
                     }}
-                    className="text-xs sm:text-sm text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 font-semibold px-3 py-1 rounded-lg hover:bg-indigo-50 dark:hover:bg-indigo-950/40 transition-colors"
+                    className="text-xs text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 font-semibold px-2.5 py-1 rounded-lg hover:bg-indigo-50 dark:hover:bg-indigo-950/40 transition-colors"
                   >
-                    Select All
+                    Target All ({allCompanies.length})
                   </button>
-                )
+                </>
               )}
               <button
                 type="button"
@@ -1617,110 +1951,459 @@ export const JobDetail = ({
           </div>
 
           {openSections.companies && (
-            <div className="p-5 pt-1 border-t border-slate-100 dark:border-surface-darkBorder animate-fadeIn space-y-4">
-          {/* Target Hiring Client Banner if present */}
-          {(job.client || job.client_name) && (
-            <div className="flex items-center gap-2 flex-wrap pb-3 border-b border-slate-100 dark:border-surface-darkBorder">
-              <span className="text-xs sm:text-sm font-semibold text-slate-500 dark:text-slate-400">Target Hiring Client:</span>
-              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs sm:text-sm font-semibold bg-brand-50 dark:bg-brand-950/60 text-brand-700 dark:text-brand-300 border border-brand-200 dark:border-brand-800">
-                <Building2 className="w-4 h-4" />
-                {job.client || job.client_name}
-              </span>
-              <span className="text-xs text-slate-400 dark:text-slate-500">
-                • Target competitors for candidate talent sourcing
-              </span>
-            </div>
-          )}
+            <div className="p-5 pt-2 border-t border-slate-100 dark:border-surface-darkBorder animate-fadeIn space-y-4">
+              {/* Target Hiring Client Callout & Non-Poach Sourcing Advisory */}
+              <div className="flex items-center justify-between flex-wrap gap-2.5 p-3 rounded-xl bg-slate-50 dark:bg-surface-darkBg border border-slate-200/80 dark:border-surface-darkBorder">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="text-xs sm:text-sm font-semibold text-slate-500 dark:text-slate-400">
+                    {job.client || job.client_name ? 'Target Hiring Client:' : 'Talent Sourcing Strategy:'}
+                  </span>
+                  {(job.client || job.client_name) ? (
+                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs sm:text-sm font-bold bg-brand-50 dark:bg-brand-950/60 text-brand-700 dark:text-brand-300 border border-brand-200 dark:border-brand-800">
+                      <Building2 className="w-3.5 h-3.5" />
+                      {job.client || job.client_name}
+                    </span>
+                  ) : (
+                    <span className="text-xs sm:text-sm font-semibold text-navy-900 dark:text-slate-100">
+                      Tier-1 Competitors &amp; Parallel Ecosystems
+                    </span>
+                  )}
+                  <span className="text-xs text-slate-400 dark:text-slate-500 hidden sm:inline">•</span>
+                  <span className="text-xs text-slate-500 dark:text-slate-400">
+                    Categorized by Product OEMs, Big 4 Advisory, GSIs &amp; Tech GCCs
+                  </span>
+                </div>
+                <div className="text-xs text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
+                  <Ban className="w-3.5 h-3.5 text-rose-500" />
+                  <span>Mark companies as <b>⛔ Off-Limits</b> to prevent non-poach breaches</span>
+                </div>
+              </div>
 
-          {/* Interactive Sourcing Company Pills */}
-          <div>
-            <div className="flex items-center justify-between mb-3">
-              <span className="text-xs sm:text-sm font-bold text-navy-950 dark:text-slate-200">
-                Suggested Target Sourcing Companies:
-              </span>
-              <span className="text-xs text-slate-500 dark:text-slate-400 hidden sm:inline">
-                Click to include in Boolean query
-              </span>
-            </div>
+              {/* Industry Ecosystem Category Filter & Toolbar Controls */}
+              <div className="space-y-2.5 pt-1">
+                {/* Main Control Bar with Dropdown Buttons */}
+                <div className="flex items-center justify-between flex-wrap gap-2.5">
+                  {/* Category Selector Dropdown Button */}
+                  <div className="w-full sm:w-60 flex-shrink-0">
+                    <CustomSelect
+                      value={companyCategoryFilter}
+                      onChange={setCompanyCategoryFilter}
+                      options={COMPANY_CATEGORIES.map((cat) => {
+                        const count =
+                          cat.id === 'all'
+                            ? allCompanyObjects.length
+                            : allCompanyObjects.filter((co) => co.category === cat.id).length;
+                        return {
+                          value: cat.id,
+                          label: cat.label,
+                          badge: count,
+                        };
+                      })}
+                      icon={Building2}
+                      size="sm"
+                      placeholder="Select Category..."
+                      ariaLabel="Filter companies by ecosystem category"
+                    />
+                  </div>
 
-            <div className="flex flex-wrap items-center gap-2.5">
-              {allCompanies.map((company) => {
-                const isPicked = selectedCompanies.includes(company);
-                const isCustom = customCompanies.includes(company);
+                  {/* Sourcing Actions Dropdown Button */}
+                  <div className="w-full sm:w-52 flex-shrink-0">
+                    <CustomSelect
+                      value=""
+                      onChange={handleBulkActionSelect}
+                      options={[
+                        {
+                          value: 'target_tab',
+                          label: `Target All in View (${filteredCompanyObjects.length})`,
+                        },
+                        {
+                          value: 'exclude_tab',
+                          label: `Exclude All in View (${filteredCompanyObjects.length})`,
+                        },
+                        {
+                          value: 'target_all',
+                          label: `Target All Suggested (${allCompanies.length})`,
+                        },
+                        {
+                          value: 'clear_targets',
+                          label: `Clear Targets (${selectedCompanies.length})`,
+                        },
+                        {
+                          value: 'clear_excluded',
+                          label: `Clear Off-Limits (${excludedCompanies.length})`,
+                        },
+                      ]}
+                      icon={SlidersHorizontal}
+                      size="sm"
+                      placeholder="Sourcing Actions ▾"
+                      ariaLabel="Sourcing bulk actions"
+                    />
+                  </div>
 
-                return (
-                  <button
-                    key={company}
-                    type="button"
-                    onClick={() => {
-                      handleToggleCompany(company);
-                      if (!includeCompaniesInBoolean) setIncludeCompaniesInBoolean(true);
-                    }}
-                    className={`group inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs sm:text-sm font-semibold border transition-all duration-150 active:scale-95 ${
-                      isPicked
-                        ? 'bg-indigo-600 text-white border-indigo-600 shadow-sm ring-2 ring-indigo-500/20'
-                        : 'bg-slate-50 dark:bg-surface-darkBg text-slate-700 dark:text-slate-200 border-slate-200/90 dark:border-surface-darkBorder hover:border-indigo-400 dark:hover:border-indigo-500 hover:bg-indigo-50/40 dark:hover:bg-indigo-950/20'
-                    }`}
-                  >
-                    <span className="text-xs">{isPicked ? '✓' : '+'}</span>
-                    <span>{company}</span>
-                    {isCustom && (
-                      <span
-                        onClick={(e) => handleRemoveCustomCompany(company, e)}
-                        className={`ml-1 hover:text-rose-400 p-0.5 rounded ${
-                          isPicked ? 'text-indigo-200' : 'text-slate-400'
-                        }`}
-                        title="Remove custom company"
+                  {/* Search Filter Input */}
+                  <div className="relative flex-1 min-w-[180px]">
+                    <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                    <input
+                      type="text"
+                      value={companySearchQuery}
+                      onChange={(e) => setCompanySearchQuery(e.target.value)}
+                      placeholder="Search company, location, tier..."
+                      className="w-full pl-8 pr-7 py-1.5 text-xs rounded-xl border border-slate-200 dark:border-surface-darkBorder bg-white dark:bg-surface-darkBg text-navy-900 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/30"
+                    />
+                    {companySearchQuery && (
+                      <button
+                        type="button"
+                        onClick={() => setCompanySearchQuery('')}
+                        className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-0.5"
+                        title="Clear search"
                       >
                         <X className="w-3.5 h-3.5" />
-                      </span>
+                      </button>
                     )}
-                  </button>
-                );
-              })}
+                  </div>
 
-              {/* Add Custom Company Button / Inline Input */}
-              {showAddCompanyInput ? (
-                <form onSubmit={handleAddCustomCompany} className="inline-flex items-center gap-2">
-                  <input
-                    type="text"
-                    value={customCompanyInput}
-                    onChange={(e) => setCustomCompanyInput(e.target.value)}
-                    placeholder="Enter company..."
-                    autoFocus
-                    className="w-40 px-3 py-1.5 text-xs sm:text-sm rounded-xl border border-indigo-400 dark:border-indigo-600 bg-white dark:bg-surface-darkBg text-navy-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500/30"
-                  />
+                  {/* Add Custom Company Button */}
                   <button
-                    type="submit"
-                    className="p-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-semibold"
-                    title="Add company"
+                    type="button"
+                    onClick={() => setShowAddCompanyInput((prev) => !prev)}
+                    className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold border transition-all ${
+                      showAddCompanyInput
+                        ? 'bg-slate-200 dark:bg-slate-700 text-slate-800 dark:text-slate-200 border-slate-300 dark:border-slate-600'
+                        : 'border-dashed border-indigo-300 dark:border-indigo-700 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50/50 dark:hover:bg-indigo-950/30'
+                    }`}
                   >
-                    <Check className="w-4 h-4" />
+                    <Plus className="w-3.5 h-3.5" />
+                    <span>{showAddCompanyInput ? 'Close Form' : 'Add Custom Company'}</span>
                   </button>
+                </div>
+
+                {/* Responsive Non-Scrolling Category Quick Filter Chips */}
+                <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
+                  {COMPANY_CATEGORIES.map((cat) => {
+                    const Icon = cat.icon;
+                    const isActive = companyCategoryFilter === cat.id;
+                    const count =
+                      cat.id === 'all'
+                        ? allCompanyObjects.length
+                        : allCompanyObjects.filter((c) => c.category === cat.id).length;
+
+                    return (
+                      <button
+                        key={cat.id}
+                        type="button"
+                        onClick={() => setCompanyCategoryFilter(cat.id)}
+                        className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-semibold border transition-all duration-150 ${
+                          isActive
+                            ? 'bg-indigo-600 text-white border-indigo-600 shadow-sm ring-1 ring-indigo-500/30'
+                            : 'bg-white dark:bg-surface-darkBg text-slate-700 dark:text-slate-200 border-slate-200/90 dark:border-surface-darkBorder hover:border-indigo-400 hover:bg-slate-50 dark:hover:bg-slate-800/50'
+                        }`}
+                      >
+                        <Icon className="w-3 h-3" />
+                        <span>{cat.label}</span>
+                        <span
+                          className={`text-[10px] px-1.5 py-0.2 rounded-full font-bold ${
+                            isActive
+                              ? 'bg-white/20 text-white'
+                              : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400'
+                          }`}
+                        >
+                          {count}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Add Custom Company Drawer / Inline Form */}
+              {showAddCompanyInput && (
+                <form
+                  onSubmit={handleAddCustomCompany}
+                  className="p-4 rounded-xl bg-slate-50 dark:bg-surface-darkBg border border-indigo-200 dark:border-indigo-800 animate-fadeIn space-y-3"
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-navy-950 dark:text-slate-200 flex items-center gap-1.5">
+                      <Plus className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
+                      Add Custom Target or Off-Limits Organization
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setShowAddCompanyInput(false)}
+                      className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <div>
+                      <label className="text-[11px] font-bold text-slate-500 dark:text-slate-400 block mb-1">Company Name *</label>
+                      <input
+                        type="text"
+                        value={customCompanyInput}
+                        onChange={(e) => setCustomCompanyInput(e.target.value)}
+                        placeholder="e.g. JPMorgan Chase, Synopsys"
+                        autoFocus
+                        required
+                        className="w-full px-3 py-1.5 text-xs sm:text-sm rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-surface-darkCard text-navy-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500/30"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[11px] font-bold text-slate-500 dark:text-slate-400 block mb-1">Industry Category</label>
+                      <select
+                        value={customCompanyCategory}
+                        onChange={(e) => setCustomCompanyCategory(e.target.value)}
+                        className="w-full px-3 py-1.5 text-xs sm:text-sm rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-surface-darkCard text-navy-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500/30"
+                      >
+                        <option value="oem">Product &amp; OEM</option>
+                        <option value="big4">Big 4 &amp; Advisory</option>
+                        <option value="gsi">Global System Integrator (GSI)</option>
+                        <option value="gcc">Enterprise Captive / Tech Hub (GCC)</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="text-[11px] font-bold text-slate-500 dark:text-slate-400 block mb-1">Location / Practice Hub</label>
+                      <input
+                        type="text"
+                        value={customCompanyLocation}
+                        onChange={(e) => setCustomCompanyLocation(e.target.value)}
+                        placeholder="e.g. Bangalore / Hyderabad"
+                        className="w-full px-3 py-1.5 text-xs sm:text-sm rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-surface-darkCard text-navy-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500/30"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-end gap-2 pt-1">
+                    <button
+                      type="button"
+                      onClick={() => setShowAddCompanyInput(false)}
+                      className="px-3 py-1.5 text-xs font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-xl"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      className="px-4 py-1.5 text-xs font-semibold bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl shadow-sm"
+                    >
+                      + Add &amp; Target Company
+                    </button>
+                  </div>
+                </form>
+              )}
+
+              {/* Rich Company Cards Grid */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3.5 pt-1">
+                {filteredCompanyObjects.map((company) => {
+                  const isTargeted = selectedCompanies.includes(company.name);
+                  const isExcluded = excludedCompanies.includes(company.name);
+                  const isCustom = customCompanies.some(
+                    (c) => c.name.toLowerCase() === company.name.toLowerCase()
+                  );
+
+                  const catMeta =
+                    COMPANY_CATEGORIES.find((c) => c.id === company.category) ||
+                    COMPANY_CATEGORIES[3];
+                  const CatIcon = catMeta.icon;
+
+                  const searchUrl = `https://www.linkedin.com/search/results/people/?keywords=${encodeURIComponent(
+                    `"${job.title || 'Engineer'}" "${company.name}"`
+                  )}`;
+
+                  return (
+                    <div
+                      key={company.name}
+                      className={`relative flex flex-col justify-between p-3.5 rounded-2xl border overflow-hidden transition-all duration-150 ${
+                        isTargeted
+                          ? 'border-indigo-500 dark:border-indigo-400 bg-indigo-50/30 dark:bg-indigo-950/20 shadow-sm ring-1 ring-indigo-500/20'
+                          : isExcluded
+                          ? 'border-rose-400 dark:border-rose-600 bg-rose-50/30 dark:bg-rose-950/20 shadow-sm ring-1 ring-rose-500/20'
+                          : 'border-slate-200/90 dark:border-surface-darkBorder bg-white dark:bg-surface-darkBg hover:border-slate-300 dark:hover:border-slate-700 hover:shadow-subtle'
+                      }`}
+                    >
+                      {/* Card Top: Category Badge & External LinkedIn Search */}
+                      <div>
+                        <div className="flex items-center justify-between gap-1 mb-2">
+                          <span
+                            className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[10px] font-bold border uppercase tracking-wider ${
+                              catMeta.color ||
+                              'text-slate-600 bg-slate-50 border-slate-200'
+                            }`}
+                          >
+                            <CatIcon className="w-3 h-3" />
+                            <span>{catMeta.label.split(' ')[0]}</span>
+                          </span>
+
+                          <div className="flex items-center gap-1">
+                            {/* LinkedIn Candidate Search Shortcut */}
+                            <a
+                              href={searchUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="p-1 text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                              title={`Search ${job.title} candidates at ${company.name} on LinkedIn`}
+                            >
+                              <ExternalLink className="w-3.5 h-3.5" />
+                            </a>
+
+                            {/* Remove Custom Company */}
+                            {isCustom && (
+                              <button
+                                type="button"
+                                onClick={(e) => handleRemoveCustomCompany(company.name, e)}
+                                className="p-1 text-slate-400 hover:text-rose-500 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                                title="Remove custom company"
+                              >
+                                <X className="w-3.5 h-3.5" />
+                              </button>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Company Name & Tier */}
+                        <div className="mb-1">
+                          <h5 className="text-sm font-bold text-navy-950 dark:text-slate-100 leading-snug">
+                            {company.name}
+                          </h5>
+                          {company.tier && (
+                            <span className="text-[11px] font-semibold text-indigo-600 dark:text-indigo-400">
+                              {company.tier}
+                            </span>
+                          )}
+                        </div>
+
+                        {/* Location */}
+                        {company.location && (
+                          <div className="flex items-center gap-1 text-[11px] text-slate-500 dark:text-slate-400 mb-1.5">
+                            <MapPin className="w-3 h-3 flex-shrink-0 text-slate-400" />
+                            <span className="truncate">{company.location}</span>
+                          </div>
+                        )}
+
+                        {/* Description / Practice Notes */}
+                        {company.description && (
+                          <p className="text-[11px] text-slate-600 dark:text-slate-300 leading-relaxed line-clamp-2 mb-2">
+                            {company.description}
+                          </p>
+                        )}
+                      </div>
+
+                      {/* Card Bottom: Segmented Target vs Off-Limits Control */}
+                      <div className="mt-3 pt-2.5 border-t border-slate-100 dark:border-surface-darkBorder/60">
+                        <div className="grid grid-cols-2 gap-1.5 p-1 rounded-xl bg-slate-100 dark:bg-slate-800/80">
+                          {/* Target Button */}
+                          <button
+                            type="button"
+                            onClick={() => handleToggleCompany(company.name)}
+                            className={`flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-lg text-xs font-bold transition-all duration-150 truncate ${
+                              isTargeted
+                                ? 'bg-indigo-600 text-white shadow-sm'
+                                : 'text-slate-600 dark:text-slate-300 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-white dark:hover:bg-slate-700/60'
+                            }`}
+                            title={isTargeted ? 'Targeted in Boolean pool' : 'Click to add to target sourcing pool'}
+                          >
+                            <Target className="w-3.5 h-3.5 flex-shrink-0" />
+                            <span className="truncate">{isTargeted ? 'Targeted' : 'Target'}</span>
+                          </button>
+
+                          {/* Off-Limits / Non-Poach Exclude Button */}
+                          <button
+                            type="button"
+                            onClick={() => handleToggleExcludeCompany(company.name)}
+                            className={`flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-lg text-xs font-bold transition-all duration-150 truncate ${
+                              isExcluded
+                                ? 'bg-rose-600 text-white shadow-sm'
+                                : 'text-slate-600 dark:text-slate-300 hover:text-rose-600 dark:hover:text-rose-400 hover:bg-white dark:hover:bg-slate-700/60'
+                            }`}
+                            title={isExcluded ? 'Marked as off-limits / non-poach protected' : 'Click to mark as off-limits (NOT clause)'}
+                          >
+                            <Ban className="w-3.5 h-3.5 flex-shrink-0" />
+                            <span className="truncate">{isExcluded ? 'Off-Limits' : 'Exclude'}</span>
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {filteredCompanyObjects.length === 0 && (
+                <div className="text-center py-8 text-slate-400 dark:text-slate-500 text-xs sm:text-sm">
+                  No companies found matching &ldquo;{companySearchQuery}&rdquo; in this category.
                   <button
                     type="button"
                     onClick={() => {
-                      setShowAddCompanyInput(false);
-                      setCustomCompanyInput('');
+                      setCompanySearchQuery('');
+                      setCompanyCategoryFilter('all');
                     }}
-                    className="p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-xl text-xs"
-                    title="Cancel"
+                    className="block mx-auto mt-2 text-indigo-600 dark:text-indigo-400 font-semibold hover:underline"
                   >
-                    <X className="w-4 h-4" />
+                    Reset filters
                   </button>
-                </form>
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => setShowAddCompanyInput(true)}
-                  className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs sm:text-sm font-medium border border-dashed border-slate-300 dark:border-surface-darkBorder text-slate-600 dark:text-slate-400 hover:border-indigo-400 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-indigo-50/20 transition-colors"
-                >
-                  <Plus className="w-4 h-4" />
-                  <span>Add Company</span>
-                </button>
+                </div>
               )}
-            </div>
-          </div>
+
+              {/* Live Sourcing Boolean Clause Preview Drawer */}
+              {(selectedCompanies.length > 0 || excludedCompanies.length > 0) && (
+                <div className="mt-4 p-4 rounded-xl bg-slate-50 dark:bg-surface-darkBg border border-slate-200 dark:border-surface-darkBorder space-y-3">
+                  <div className="flex items-center justify-between flex-wrap gap-2">
+                    <span className="text-xs font-bold uppercase tracking-wider text-navy-950 dark:text-slate-200 flex items-center gap-1.5">
+                      <Zap className="w-3.5 h-3.5 text-brand-600 dark:text-brand-400" />
+                      Live Boolean Sourcing Clauses Preview
+                    </span>
+                    <span className="text-[11px] text-slate-500 dark:text-slate-400">
+                      Auto-synced with Boolean Query Generator below
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    {/* Target Pool Clause */}
+                    <div className="p-3 rounded-lg bg-white dark:bg-surface-darkCard border border-slate-200 dark:border-surface-darkBorder">
+                      <div className="flex items-center justify-between mb-1.5">
+                        <span className="text-xs font-bold text-indigo-700 dark:text-indigo-300 flex items-center gap-1">
+                          <Target className="w-3 h-3" />
+                          Target Pool ({selectedCompanies.length || 'Top 4'}):
+                        </span>
+                        <button
+                          type="button"
+                          onClick={handleCopyTargetClause}
+                          className="inline-flex items-center gap-1 text-[11px] font-semibold text-indigo-600 dark:text-indigo-400 hover:underline"
+                        >
+                          {copiedTargetClause ? <Check className="w-3 h-3 text-emerald-500" /> : <Copy className="w-3 h-3" />}
+                          <span>{copiedTargetClause ? 'Copied' : 'Copy Clause'}</span>
+                        </button>
+                      </div>
+                      <code className="text-xs font-mono text-slate-800 dark:text-slate-200 break-words line-clamp-3 block bg-slate-50 dark:bg-slate-900 p-2 rounded">
+                        {`(${ (selectedCompanies.length > 0 ? selectedCompanies : allCompanies.slice(0, 4)).map((c) => `"${c}"`).join(' OR ') })`}
+                      </code>
+                    </div>
+
+                    {/* Non-Poach Off-Limits Clause */}
+                    <div className="p-3 rounded-lg bg-white dark:bg-surface-darkCard border border-slate-200 dark:border-surface-darkBorder">
+                      <div className="flex items-center justify-between mb-1.5">
+                        <span className="text-xs font-bold text-rose-700 dark:text-rose-300 flex items-center gap-1">
+                          <Ban className="w-3 h-3" />
+                          Non-Poach Exclusions ({excludedCompanies.length}):
+                        </span>
+                        {excludedCompanies.length > 0 && (
+                          <button
+                            type="button"
+                            onClick={handleCopyExcludedClause}
+                            className="inline-flex items-center gap-1 text-[11px] font-semibold text-rose-600 dark:text-rose-400 hover:underline"
+                          >
+                            {copiedExcludedClause ? <Check className="w-3 h-3 text-emerald-500" /> : <Copy className="w-3 h-3" />}
+                            <span>{copiedExcludedClause ? 'Copied' : 'Copy Clause'}</span>
+                          </button>
+                        )}
+                      </div>
+                      <code className="text-xs font-mono text-slate-800 dark:text-slate-200 break-words line-clamp-3 block bg-slate-50 dark:bg-slate-900 p-2 rounded">
+                        {excludedCompanies.length > 0
+                          ? `NOT (${excludedCompanies.map((c) => `"${c}"`).join(' OR ')})`
+                          : 'No off-limits companies designated (safe to source from all)'}
+                      </code>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </div>

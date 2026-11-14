@@ -3,7 +3,7 @@ export const API_ROOT = import.meta.env.VITE_API_ROOT || 'http://127.0.0.1:8000/
 
 // Decode JSON responses and turn backend validation messages into readable UI errors.
 export async function apiRequest(path, options = {}) {
-  const { timeoutMs = 12000, ...fetchOptions } = options;
+  const { timeoutMs = 30000, ...fetchOptions } = options;
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {

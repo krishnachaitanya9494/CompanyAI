@@ -102,7 +102,7 @@ export const JobsPage = ({
 
     // Fetch Phase 5C matches for the currently active job using clean numeric id when available.
     const jobIdParam = currentJob.numeric_id || currentJob.id;
-    apiRequest(`/jobs/${jobIdParam}/matches?limit=50`)
+    apiRequest(`/jobs/${jobIdParam}/matches?limit=50`, { timeoutMs: 35000 })
       .then((data) => {
         setIsLoadingMatches(false);
         // Clear any previous error on success
@@ -216,15 +216,60 @@ export const JobsPage = ({
             <AlertCircle className="w-4 h-4 text-red-600 dark:text-red-400 flex-shrink-0" />
             <span>Unable to load job matches: {matchError}</span>
           </div>
-          <button
-            type="button"
-            onClick={() => setMatchError('')}
-            className="inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-lg bg-red-100 dark:bg-red-900/50 hover:bg-red-200 dark:hover:bg-red-900 text-red-700 dark:text-red-300 transition-colors flex-shrink-0"
-            title="Dismiss error"
-          >
-            <X className="w-3.5 h-3.5" />
-            <span>Dismiss</span>
-          </button>
+          <div className="flex items-center gap-2 flex-shrink-0">
+            <button
+              type="button"
+              onClick={() => {
+                setMatchError('');
+                setIsLoadingMatches(true);
+                const jobIdParam = currentJob?.numeric_id || currentJob?.id;
+                if (jobIdParam) {
+                  apiRequest(`/jobs/${jobIdParam}/matches?limit=50`, { timeoutMs: 35000 })
+                    .then((data) => {
+                      setIsLoadingMatches(false);
+                      setMatchError('');
+                      const rows = Array.isArray(data) ? data : (data.matches || []);
+                      setMatchingCandidates(rows.map((row) => {
+                        const rowCandId = row.candidate_id || row.id;
+                        const baseCand = candidates.find((c) =>
+                          String(c.numeric_id || c.id) === String(rowCandId) ||
+                          String(c.code || '').toLowerCase() === String(row.code || '').toLowerCase()
+                        ) || {};
+                        return {
+                          ...baseCand,
+                          ...row,
+                          id: rowCandId,
+                          numeric_id: row.numeric_id || baseCand.numeric_id || rowCandId,
+                          name: row.name || row.candidate_name || baseCand.name || 'Candidate',
+                          matchScore: row.matchScore ?? row.match_score ?? null,
+                          skills: row.skills || baseCand.skills || [],
+                          currentRole: row.currentRole || baseCand.currentRole || row.title || 'Candidate Profile',
+                          experienceYears: row.experienceYears ?? row.experience_years ?? baseCand.experienceYears ?? null,
+                          location: row.location || baseCand.location || '',
+                          status: row.status || row.stage || baseCand.status || 'New',
+                        };
+                      }));
+                    })
+                    .catch((err) => {
+                      setIsLoadingMatches(false);
+                      setMatchError(String(err?.message || 'Failed to load matches').trim());
+                    });
+                }
+              }}
+              className="inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-lg bg-red-100 dark:bg-red-900/50 hover:bg-red-200 dark:hover:bg-red-900 text-red-700 dark:text-red-300 transition-colors"
+            >
+              <span>Retry</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setMatchError('')}
+              className="inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-lg bg-red-100 dark:bg-red-900/50 hover:bg-red-200 dark:hover:bg-red-900 text-red-700 dark:text-red-300 transition-colors"
+              title="Dismiss error"
+            >
+              <X className="w-3.5 h-3.5" />
+              <span>Dismiss</span>
+            </button>
+          </div>
         </div>
       )}
 
