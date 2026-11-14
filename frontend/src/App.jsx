@@ -7,6 +7,7 @@ import { Topbar } from './components/layout/Topbar';
 import { ApprovalBanner } from './components/common/ApprovalBanner';
 import { PageTransition } from './components/common/PageTransition';
 import { LatticeLoader } from './components/reactbits/LatticeLoader';
+import { ErrorBoundary } from './components/common/ErrorBoundary';
 
 // Lazy-load page modules cleanly so initial bundle stays compact while preserving named exports.
 const DashboardPage = lazy(() => import('./pages/DashboardPage').then((m) => ({ default: m.DashboardPage })));
@@ -666,13 +667,14 @@ export default function App() {
 
           {/* Subtle PageTransition + Suspense boundary keying on activeTab */}
           <PageTransition transitionKey={activeTab} className={activeTab === 'jobs' ? 'flex-1 min-h-0 flex flex-col' : ''}>
-            <Suspense
-              fallback={
-                <div className="p-8 rounded-2xl bg-white dark:bg-surface-darkCard border border-slate-200/80 dark:border-surface-darkBorder flex items-center justify-center shadow-subtle">
-                  <LatticeLoader label="Loading workspace module" pattern="orbit" grid={3} color="#059669" cellSize={5} fontSize={12} />
-                </div>
-              }
-            >
+            <ErrorBoundary title="Workspace Tab Error" message="A problem occurred while loading this workspace view. You can retry or switch tabs.">
+              <Suspense
+                fallback={
+                  <div className="p-8 rounded-2xl bg-white dark:bg-surface-darkCard border border-slate-200/80 dark:border-surface-darkBorder flex items-center justify-center shadow-subtle">
+                    <LatticeLoader label="Loading workspace module" pattern="orbit" grid={3} color="#059669" cellSize={5} fontSize={12} />
+                  </div>
+                }
+              >
               {/* Dashboard Tab */}
               {activeTab === 'dashboard' && (
             <DashboardPage
@@ -874,7 +876,8 @@ export default function App() {
               resumeDiscovery={apiState.discovery}
             />
           )}
-            </Suspense>
+              </Suspense>
+            </ErrorBoundary>
           </PageTransition>
         </main>
       </div>
