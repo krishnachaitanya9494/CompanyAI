@@ -2289,35 +2289,53 @@ export const JobDetail = ({
 
                       {/* Card Bottom: Segmented Target vs Off-Limits Control */}
                       <div className="mt-3 pt-2.5 border-t border-slate-100 dark:border-surface-darkBorder/60">
-                        <div className="grid grid-cols-2 gap-1.5 p-1 rounded-xl bg-slate-100 dark:bg-slate-800/80">
+                        <div className="grid grid-cols-2 gap-1 p-0.5 rounded-xl bg-slate-100/90 dark:bg-slate-800/80 border border-slate-200/60 dark:border-surface-darkBorder/40">
                           {/* Target Button */}
                           <button
                             type="button"
                             onClick={() => handleToggleCompany(company.name)}
-                            className={`flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-lg text-xs font-bold transition-all duration-150 truncate ${
+                            className={`h-7 px-1.5 rounded-lg text-[11px] font-bold transition-all duration-150 inline-flex items-center justify-center gap-1 min-w-0 w-full overflow-hidden ${
                               isTargeted
-                                ? 'bg-indigo-600 text-white shadow-sm'
+                                ? 'bg-indigo-600 text-white shadow-xs'
                                 : 'text-slate-600 dark:text-slate-300 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-white dark:hover:bg-slate-700/60'
                             }`}
-                            title={isTargeted ? 'Targeted in Boolean pool' : 'Click to add to target sourcing pool'}
+                            title={isTargeted ? 'Targeted in Boolean pool (click to untarget)' : 'Click to add to target sourcing pool'}
                           >
-                            <Target className="w-3.5 h-3.5 flex-shrink-0" />
-                            <span className="truncate">{isTargeted ? 'Targeted' : 'Target'}</span>
+                            {isTargeted ? (
+                              <>
+                                <Check className="w-3 h-3 flex-shrink-0" />
+                                <span className="truncate">Targeted</span>
+                              </>
+                            ) : (
+                              <>
+                                <Target className="w-3 h-3 flex-shrink-0 text-slate-400" />
+                                <span className="truncate">Target</span>
+                              </>
+                            )}
                           </button>
 
                           {/* Off-Limits / Non-Poach Exclude Button */}
                           <button
                             type="button"
                             onClick={() => handleToggleExcludeCompany(company.name)}
-                            className={`flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-lg text-xs font-bold transition-all duration-150 truncate ${
+                            className={`h-7 px-1.5 rounded-lg text-[11px] font-bold transition-all duration-150 inline-flex items-center justify-center gap-1 min-w-0 w-full overflow-hidden ${
                               isExcluded
-                                ? 'bg-rose-600 text-white shadow-sm'
+                                ? 'bg-rose-600 text-white shadow-xs'
                                 : 'text-slate-600 dark:text-slate-300 hover:text-rose-600 dark:hover:text-rose-400 hover:bg-white dark:hover:bg-slate-700/60'
                             }`}
-                            title={isExcluded ? 'Marked as off-limits / non-poach protected' : 'Click to mark as off-limits (NOT clause)'}
+                            title={isExcluded ? 'Marked as off-limits / non-poach protected (click to unmark)' : 'Click to mark as off-limits (NOT clause)'}
                           >
-                            <Ban className="w-3.5 h-3.5 flex-shrink-0" />
-                            <span className="truncate">{isExcluded ? 'Off-Limits' : 'Exclude'}</span>
+                            {isExcluded ? (
+                              <>
+                                <Ban className="w-3 h-3 flex-shrink-0" />
+                                <span className="truncate">Off-Limits</span>
+                              </>
+                            ) : (
+                              <>
+                                <Ban className="w-3 h-3 flex-shrink-0 text-slate-400" />
+                                <span className="truncate">Exclude</span>
+                              </>
+                            )}
                           </button>
                         </div>
                       </div>

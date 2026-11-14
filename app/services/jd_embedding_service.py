@@ -434,6 +434,9 @@ def get_job_embedding_status(db: Session, job_id: int) -> Dict[str, Any]:
         "has_full_jd_embedding": has_full_jd,
         "total_embeddings": len(embeddings),
         "total_requirements": len(expected_requirements),
+        "requirement_embeddings_count": len(req_embeddings),
+        "embeddings_count": len(req_embeddings),  # backward compatibility for UI
+        "full_jd_embeddings_count": len(full_jd_embeddings),
         "expected_embeddings": expected_count,
         "is_complete": is_complete,
         "status": status_code,

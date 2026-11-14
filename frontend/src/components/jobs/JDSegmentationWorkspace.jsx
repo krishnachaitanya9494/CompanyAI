@@ -1,10 +1,11 @@
 // Import React and hooks for managing state and effects in the workspace.
-import React, { useState, useEffect, useRef } from 'react';
-// Import icons including Cpu and Users for embedding readiness & direct matching navigation.
+import React, { useState, useEffect, useRef, useMemo } from 'react';
+// Import icons for embedding readiness, verification, categories, and actions.
 import {
   X,
   Sparkles,
   CheckCircle,
+  CheckCircle2,
   AlertTriangle,
   Layers,
   Edit2,
@@ -18,6 +19,7 @@ import {
   Quote,
   Sliders,
   ChevronDown,
+  ChevronUp,
   Loader2,
   ShieldCheck,
   Eye,
@@ -29,10 +31,54 @@ import {
   History,
   Cpu,
   Users,
+  Building2,
+  ArrowLeft,
+  Crown,
+  Briefcase,
+  MapPin,
+  Award,
+  BookOpen,
+  Wrench,
+  Globe,
+  Tag,
+  ChevronRight,
 } from 'lucide-react';
 // Import apiRequest and jobApi embedding helpers.
 import { apiRequest } from '../../api';
 import { jobApi } from '../../api/client';
+import { CustomSelect } from '../common/CustomSelect';
+
+// Utility to clean raw markdown headers, bulletin symbols, and prefix artifacts from structured text
+const sanitizeStructuredText = (raw) => {
+  if (!raw || typeof raw !== 'string') return '';
+  return raw
+    .replace(/\[section=[^;\]]+;\s*source_line=\d+\]\s*/g, '')
+    .replace(/^##\s*Role:.*$/gim, '')
+    .replace(/^##\s*Requisition ID:.*$/gim, '')
+    .replace(/^##\s*Experience:.*$/gim, '')
+    .replace(/^##\s*Location:.*$/gim, '')
+    .replace(/^#+\s+/gm, '')
+    .replace(/^[-*•]\s+/gm, '')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+};
+
+// Domain category icons mapping
+const CATEGORY_ICONS = {
+  mandatory_skills: Crown,
+  preferred_skills: Award,
+  key_responsibilities: CheckCircle2,
+  technical_skills: Cpu,
+  tools_and_technologies: Wrench,
+  domain_knowledge: Globe,
+  minimum_experience: Clock,
+  preferred_experience: Clock,
+  educational_qualifications: BookOpen,
+  certifications: Award,
+  location_requirements: MapPin,
+  employment_type: Briefcase,
+  other_requirements: Tag,
+};
 
 // Export enhanced JDSegmentationWorkspace component presenting interactive 15-category requirement review.
 export const JDSegmentationWorkspace = ({
@@ -72,6 +118,10 @@ export const JDSegmentationWorkspace = ({
   const [editableReqs, setEditableReqs] = useState([]);
   const [overviewText, setOverviewText] = useState('');
   const [roleSummaryText, setRoleSummaryText] = useState('');
+  // Toggle inline editing of Executive Scope card
+  const [isEditingScope, setIsEditingScope] = useState(false);
+  // Responsive mobile/tablet viewport active panel toggle ('source' | 'structured')
+  const [mobileActivePanel, setMobileActivePanel] = useState('structured');
 
   // Track ID of requirement currently in inline edit mode.
   const [editingItemId, setEditingItemId] = useState(null);
@@ -99,8 +149,20 @@ export const JDSegmentationWorkspace = ({
     const flat = [];
     if (segObj?.categories) {
       Object.entries(segObj.categories).forEach(([catCode, items]) => {
+        // Skip document-level overview and summary items from individual requirements
+        if (catCode === 'job_overview' || catCode === 'role_summary') {
+          // If items has valid skill-like content, remap it to mandatory_skills or key_responsibilities
+          items.forEach((item) => {
+            const text = (item.original_text || '').replace(/\[section=[^;\]]+;\s*source_line=\d+\]\s*/g, '').trim();
+            if (text && text.length > 5 && !text.toLowerCase().startsWith('looking for') && !text.toLowerCase().startsWith('seeking a')) {
+              flat.push({ ...item, original_text: text, category: item.normalized_skill ? 'mandatory_skills' : 'key_responsibilities' });
+            }
+          });
+          return;
+        }
         items.forEach((item) => {
-          flat.push({ ...item, category: catCode });
+          const cleanText = (item.original_text || '').replace(/\[section=[^;\]]+;\s*source_line=\d+\]\s*/g, '').trim();
+          flat.push({ ...item, original_text: cleanText || item.original_text, category: catCode });
         });
       });
     }
@@ -131,8 +193,8 @@ export const JDSegmentationWorkspace = ({
       const seg = segRes.segmentation;
       setSegmentation(seg);
       setSelectedVersion(seg.version);
-      setOverviewText(seg.job_overview || '');
-      setRoleSummaryText(seg.role_summary || '');
+      setOverviewText(sanitizeStructuredText(seg.job_overview || ''));
+      setRoleSummaryText(sanitizeStructuredText(seg.role_summary || ''));
       setEditableReqs(flattenSegmentationCategories(seg));
       setDeletedIds([]);
     } catch (err) {
@@ -148,6 +210,13 @@ export const JDSegmentationWorkspace = ({
       loadSegmentationData();
     }
   }, [isOpen, job?.id]);
+
+  // Requirement categories only (filters out document-level narrative keys)
+  const requirementCategories = useMemo(() => {
+    return (segmentation?.available_categories || []).filter(
+      (cat) => cat.code !== 'job_overview' && cat.code !== 'role_summary' && !cat.is_narrative
+    );
+  }, [segmentation?.available_categories]);
 
   if (!isOpen || !job) return null;
 
@@ -260,6 +329,7 @@ export const JDSegmentationWorkspace = ({
     if (!quote) return;
     setHighlightedQuote(quote);
     setSourceSearch(quote.slice(0, 30));
+    setMobileActivePanel('source');
   };
 
   // Persist all edits, additions, and tracked deletions to PUT /api/jobs/{id}/segmentation.
@@ -304,10 +374,10 @@ export const JDSegmentationWorkspace = ({
 
       const updated = res.segmentation;
       setSegmentation(updated);
-      // Sync newly generated numeric IDs from SQLite so repeat saves never duplicate added items.
       setEditableReqs(flattenSegmentationCategories(updated));
       setDeletedIds([]);
-      setSuccessMessage('Segmentation changes and deletions saved to SQLite.');
+      setIsEditingScope(false);
+      setSuccessMessage('Segmentation changes saved to SQLite.');
       if (onSegmentationUpdated) {
         onSegmentationUpdated(updated);
       }
@@ -384,18 +454,9 @@ export const JDSegmentationWorkspace = ({
 
       const reseg = res.segmentation;
       setSegmentation(reseg);
-      setOverviewText(reseg.job_overview || '');
-      setRoleSummaryText(reseg.role_summary || '');
-
-      const flat = [];
-      if (reseg.categories) {
-        Object.entries(reseg.categories).forEach(([catCode, items]) => {
-          items.forEach((item) => {
-            flat.push({ ...item, category: catCode });
-          });
-        });
-      }
-      setEditableReqs(flat);
+      setOverviewText(sanitizeStructuredText(reseg.job_overview || ''));
+      setRoleSummaryText(sanitizeStructuredText(reseg.role_summary || ''));
+      setEditableReqs(flattenSegmentationCategories(reseg));
       setSuccessMessage('AI Segmentation re-executed successfully across 15 categories.');
       if (onSegmentationUpdated) {
         onSegmentationUpdated(reseg);
@@ -424,6 +485,7 @@ export const JDSegmentationWorkspace = ({
   const verifiedCount = editableReqs.filter((r) => r.is_approved).length;
   const unreviewedCount = totalCount - verifiedCount;
   const groundedCount = editableReqs.filter((r) => r.evidence_verification?.is_verified !== false).length;
+  const groundedPercent = totalCount > 0 ? Math.round((groundedCount / totalCount) * 100) : 100;
 
   // Filter requirements across category, classification, provenance origin, and search keyword.
   const filteredRequirements = editableReqs.filter((r) => {
@@ -441,16 +503,59 @@ export const JDSegmentationWorkspace = ({
     return true;
   });
 
-  // Calculate empty categories to highlight gaps.
-  const emptyCategoryCodes = (segmentation?.available_categories || [])
-    .filter((cat) => !editableReqs.some((r) => r.category === cat.code))
-    .map((cat) => cat.code);
+  // Calculate grouped requirements when "all" categories are shown
+  const groupedRequirements = useMemo(() => {
+    if (selectedCategory !== 'all') return [];
+    const groups = [];
+    const categoryOrder = [
+      { code: 'mandatory_skills', label: 'Mandatory Technical Stack', icon: Crown, color: 'text-rose-600 bg-rose-50 border-rose-200' },
+      { code: 'preferred_skills', label: 'Preferred Qualifications & Differentiators', icon: Award, color: 'text-emerald-600 bg-emerald-50 border-emerald-200' },
+      { code: 'key_responsibilities', label: 'Key Responsibilities & Deliverables', icon: CheckCircle2, color: 'text-sky-600 bg-sky-50 border-sky-200' },
+      { code: 'technical_skills', label: 'Technical Competencies & Architecture', icon: Cpu, color: 'text-indigo-600 bg-indigo-50 border-indigo-200' },
+      { code: 'tools_and_technologies', label: 'Tools, Platforms & Frameworks', icon: Wrench, color: 'text-amber-600 bg-amber-50 border-amber-200' },
+      { code: 'domain_knowledge', label: 'Domain Knowledge & Governance', icon: Globe, color: 'text-teal-600 bg-teal-50 border-teal-200' },
+      { code: 'minimum_experience', label: 'Experience Level Requirements', icon: Clock, color: 'text-purple-600 bg-purple-50 border-purple-200' },
+      { code: 'educational_qualifications', label: 'Education & Academic Criteria', icon: BookOpen, color: 'text-blue-600 bg-blue-50 border-blue-200' },
+      { code: 'certifications', label: 'Professional Certifications', icon: Award, color: 'text-emerald-600 bg-emerald-50 border-emerald-200' },
+      { code: 'location_requirements', label: 'Location & Work Arrangement', icon: MapPin, color: 'text-violet-600 bg-violet-50 border-violet-200' },
+      { code: 'employment_type', label: 'Employment Terms', icon: Briefcase, color: 'text-slate-600 bg-slate-50 border-slate-200' },
+      { code: 'other_requirements', label: 'Additional Criteria', icon: Tag, color: 'text-slate-600 bg-slate-50 border-slate-200' },
+    ];
+
+    categoryOrder.forEach((grp) => {
+      const items = filteredRequirements.filter((r) => r.category === grp.code);
+      if (items.length > 0) {
+        groups.push({
+          ...grp,
+          items,
+        });
+      }
+    });
+
+    // Catch any items that didn't fit into standard groups
+    const groupedCodes = new Set(categoryOrder.map((c) => c.code));
+    const remaining = filteredRequirements.filter((r) => !groupedCodes.has(r.category));
+    if (remaining.length > 0) {
+      groups.push({
+        code: 'other',
+        label: 'General Requirements',
+        icon: Tag,
+        color: 'text-slate-600 bg-slate-50 border-slate-200',
+        items: remaining,
+      });
+    }
+
+    return groups;
+  }, [filteredRequirements, selectedCategory]);
+
+  const activeCategoryMeta = requirementCategories.find((c) => c.code === selectedCategory);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-navy-950/70 backdrop-blur-sm p-3 md:p-6 overflow-hidden">
-      <div className="bg-white dark:bg-surface-darkCard rounded-2xl shadow-2xl border border-slate-200 dark:border-surface-darkBorder w-full max-w-7xl h-[94vh] flex flex-col overflow-hidden animate-scaleIn">
-        {/* Workspace Top Header */}
-        <div className="px-6 py-3.5 bg-slate-50 dark:bg-slate-900/70 border-b border-slate-200 dark:border-surface-darkBorder flex flex-col sm:flex-row sm:items-center justify-between gap-3 shrink-0">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-navy-950/75 backdrop-blur-sm p-2 sm:p-4 overflow-hidden">
+      <div className="bg-white dark:bg-surface-darkCard rounded-2xl shadow-2xl border border-slate-200 dark:border-surface-darkBorder w-[min(96vw,1440px)] max-h-[calc(100vh-2rem)] h-[calc(100vh-2rem)] flex flex-col overflow-hidden animate-scaleIn">
+        
+        {/* Workspace Top Header Bar */}
+        <div className="px-5 py-3 bg-slate-50 dark:bg-slate-900/70 border-b border-slate-200 dark:border-surface-darkBorder flex flex-col sm:flex-row sm:items-center justify-between gap-3 shrink-0">
           <div>
             <div className="flex items-center gap-2.5 flex-wrap">
               <h2 className="text-base font-bold text-navy-950 dark:text-slate-100 tracking-tight flex items-center gap-2">
@@ -459,7 +564,7 @@ export const JDSegmentationWorkspace = ({
               </h2>
 
               <span className="font-mono text-xs px-2 py-0.5 rounded bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-200 font-semibold">
-                {job.jobCode || job.code}
+                {job.jobCode || job.code || `REQ-${job.id}`}
               </span>
 
               {/* Version Selector Dropdown */}
@@ -485,7 +590,7 @@ export const JDSegmentationWorkspace = ({
               {segmentation?.status === 'approved' ? (
                 <span className="text-xs px-2.5 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 font-bold border border-emerald-300 dark:border-emerald-800 flex items-center gap-1">
                   <ShieldCheck className="w-3.5 h-3.5 text-emerald-700 dark:text-emerald-400" />
-                  Approved by {segmentation.approved_by || 'Recruiter'}
+                  Approved by {segmentation.approved_by || 'Lead Recruiter'}
                 </span>
               ) : (
                 <span className="text-xs px-2.5 py-0.5 rounded-full bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 font-semibold border border-amber-300 dark:border-amber-800 flex items-center gap-1">
@@ -496,14 +601,17 @@ export const JDSegmentationWorkspace = ({
 
               {/* Embedding Readiness Pill */}
               {embeddingStatus && (
-                <span className="text-[11px] font-mono px-2 py-0.5 rounded-full bg-purple-50 dark:bg-purple-950/50 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800 flex items-center gap-1">
-                  <Cpu className="w-3 h-3" />
-                  Vectors: {embeddingStatus.embeddings_count ?? 0}/{embeddingStatus.total_requirements ?? totalCount}
+                <span
+                  className="text-[11px] font-mono px-2 py-0.5 rounded-full bg-purple-50 dark:bg-purple-950/50 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800 flex items-center gap-1"
+                  title={`${embeddingStatus.requirement_embeddings_count ?? embeddingStatus.embeddings_count ?? 0} requirement vectors + ${embeddingStatus.full_jd_embeddings_count ?? 1} Full JD vector`}
+                >
+                  <Cpu className="w-3 h-3 text-purple-600 dark:text-purple-400" />
+                  Vectors: {embeddingStatus.requirement_embeddings_count ?? embeddingStatus.embeddings_count ?? embeddingStatus.total_embeddings ?? 0}/{embeddingStatus.total_requirements ?? totalCount}
                 </span>
               )}
             </div>
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-              {job.title} • Mandatory ({mandatoryCount}) • Preferred ({preferredCount}) • Grounded 15-Category Extraction
+              {job.title} • {mandatoryCount} Mandatory • {preferredCount} Preferred • {groundedPercent}% Grounding in Source
             </p>
           </div>
 
@@ -525,12 +633,13 @@ export const JDSegmentationWorkspace = ({
               <button
                 type="button"
                 onClick={() => onNavigateToMatrix(job)}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-brand-600 hover:bg-brand-700 text-white rounded-lg text-xs font-semibold transition-colors"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-brand-600 hover:bg-brand-700 text-white rounded-lg text-xs font-semibold transition-colors shadow-xs"
               >
                 <Users className="w-3.5 h-3.5" />
-                <span>View Matching Candidates</span>
+                <span>View Candidates</span>
               </button>
             )}
+
             <button
               onClick={() => {
                 if (segmentation?.is_approved) {
@@ -540,7 +649,7 @@ export const JDSegmentationWorkspace = ({
                 }
               }}
               disabled={isResegmenting || !isLatestVersion}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-slate-300 rounded-lg text-xs font-semibold text-slate-700 hover:bg-slate-100 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-slate-300 dark:border-surface-darkBorder rounded-lg text-xs font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors disabled:opacity-40"
               title={isLatestVersion ? "Re-run AI segmentation from original document" : "Historical revisions cannot be re-segmented"}
             >
               {isResegmenting ? (
@@ -559,30 +668,26 @@ export const JDSegmentationWorkspace = ({
             <button
               onClick={handleSaveAllChanges}
               disabled={isSaving || !isLatestVersion}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-slate-300 rounded-lg text-xs font-semibold text-slate-700 hover:bg-slate-100 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-slate-300 dark:border-surface-darkBorder rounded-lg text-xs font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors disabled:opacity-40"
               title={isLatestVersion ? "Save progress" : "Historical versions are read-only"}
             >
-              <Save className="w-3.5 h-3.5 text-slate-600" />
+              <Save className="w-3.5 h-3.5 text-slate-600 dark:text-slate-400" />
               Save Progress
             </button>
 
             <button
               onClick={() => setShowApproveConfirm(true)}
               disabled={isSaving || !isLatestVersion}
-              className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 text-white rounded-lg text-xs font-semibold shadow-sm transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${
-                segmentation?.status === 'approved'
-                  ? 'bg-slate-700 hover:bg-slate-800'
-                  : 'bg-emerald-600 hover:bg-emerald-700'
-              }`}
-              title={isLatestVersion ? "Approve final segmentation" : "Historical versions are read-only"}
+              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-semibold transition-colors shadow-xs disabled:opacity-40"
             >
-              <CheckCircle className="w-3.5 h-3.5" />
+              <Check className="w-3.5 h-3.5" />
               {segmentation?.status === 'approved' ? 'Re-Approve & Sync' : 'Approve Final Segmentation'}
             </button>
 
             <button
               onClick={onClose}
-              className="p-1 rounded-md text-slate-400 hover:text-slate-600 hover:bg-slate-200/60 transition-colors ml-1"
+              className="p-1 rounded-md text-slate-400 hover:text-slate-600 hover:bg-slate-200/60 dark:hover:bg-slate-800 transition-colors ml-1"
+              aria-label="Close workspace"
             >
               <X className="w-5 h-5" />
             </button>
@@ -591,134 +696,94 @@ export const JDSegmentationWorkspace = ({
 
         {/* Read-Only Historical Version Banner */}
         {!isLatestVersion && (
-          <div className="px-6 py-2.5 bg-blue-50 dark:bg-blue-950/40 border-b border-blue-200 dark:border-blue-900/50 text-xs text-blue-900 dark:text-blue-200 flex items-center justify-between shrink-0 animate-fadeIn">
+          <div className="px-6 py-2 bg-blue-50 dark:bg-blue-950/40 border-b border-blue-200 dark:border-blue-900/50 text-xs text-blue-900 dark:text-blue-200 flex items-center justify-between shrink-0 animate-fadeIn">
             <span className="flex items-center gap-2 font-medium">
               <History className="w-4 h-4 text-blue-700 dark:text-blue-400 shrink-0" />
-              Viewing Historical Version <strong>v{selectedVersion}</strong> (Read-only mode). Editing and approval are disabled for historical revisions.
+              Viewing Historical Revision <strong>v{selectedVersion}</strong> (Read-only).
             </span>
             <button
               onClick={() => handleSwitchVersion(latestVersionNumber)}
-              className="text-xs font-bold text-blue-800 dark:text-blue-100 bg-blue-100 dark:bg-blue-900/60 hover:bg-blue-200 dark:hover:bg-blue-900 px-2.5 py-1 rounded transition-colors cursor-pointer"
+              className="text-xs font-bold text-blue-800 dark:text-blue-100 bg-blue-100 dark:bg-blue-900/60 hover:bg-blue-200 px-2.5 py-1 rounded transition-colors"
             >
               Switch to Latest (v{latestVersionNumber})
             </button>
           </div>
         )}
 
-        {/* Status Notification Banners */}
+        {/* Notification Banners */}
         {errorMessage && (
-          <div className="px-6 py-2 bg-red-50 dark:bg-rose-950/40 border-b border-red-200 dark:border-rose-900/50 text-xs text-red-700 dark:text-rose-200 flex items-center justify-between shrink-0">
+          <div className="px-6 py-2 bg-red-50 dark:bg-rose-950/40 border-b border-red-200 text-xs text-red-700 dark:text-rose-200 flex items-center justify-between shrink-0">
             <span>{errorMessage}</span>
             <button onClick={() => setErrorMessage(null)}><X className="w-3.5 h-3.5" /></button>
           </div>
         )}
         {successMessage && (
-          <div className="px-6 py-2 bg-emerald-50 dark:bg-emerald-950/40 border-b border-emerald-200 dark:border-emerald-900/50 text-xs text-emerald-800 dark:text-emerald-200 flex items-center justify-between shrink-0">
+          <div className="px-6 py-2 bg-emerald-50 dark:bg-emerald-950/40 border-b border-emerald-200 text-xs text-emerald-800 dark:text-emerald-200 flex items-center justify-between shrink-0">
             <span>{successMessage}</span>
             <button onClick={() => setSuccessMessage(null)}><X className="w-3.5 h-3.5" /></button>
           </div>
         )}
 
-        {/* Confirmation Modal for Overwriting Approved Segmentation */}
+        {/* Resegment Confirmation Alert */}
         {showResegmentConfirm && (
-          <div className="px-6 py-3 bg-amber-50 dark:bg-amber-950/40 border-b border-amber-300 dark:border-amber-900/50 text-xs text-amber-900 dark:text-amber-200 flex items-center justify-between shrink-0 animate-fadeIn">
+          <div className="px-6 py-2.5 bg-amber-50 dark:bg-amber-950/40 border-b border-amber-300 text-xs text-amber-900 dark:text-amber-200 flex items-center justify-between shrink-0 animate-fadeIn">
             <div className="flex items-center gap-2">
-              <AlertTriangle className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0" />
-              <span>
-                <strong>Warning:</strong> This segmentation version was approved by recruiter. Re-running AI will generate a fresh revision version. Proceed?
-              </span>
+              <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
+              <span><strong>Warning:</strong> Re-running AI will create a fresh version from the source document. Proceed?</span>
             </div>
-            <div className="flex items-center gap-2 shrink-0">
-              <button
-                onClick={() => setShowResegmentConfirm(false)}
-                className="px-2.5 py-1 border border-slate-300 dark:border-surface-darkBorder rounded bg-white dark:bg-surface-darkCard text-slate-700 dark:text-slate-200 font-medium"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleResegment}
-                className="px-2.5 py-1 bg-amber-600 hover:bg-amber-700 text-white rounded font-semibold"
-              >
-                Yes, Re-segment
-              </button>
+            <div className="flex items-center gap-2">
+              <button onClick={() => setShowResegmentConfirm(false)} className="px-2.5 py-1 border border-slate-300 rounded bg-white text-slate-700 font-medium">Cancel</button>
+              <button onClick={handleResegment} className="px-2.5 py-1 bg-amber-600 hover:bg-amber-700 text-white rounded font-semibold">Yes, Re-segment</button>
             </div>
           </div>
         )}
 
         {/* Delete Confirmation Modal */}
         {itemToDelete && (
-          <div className="px-6 py-3 bg-rose-50 border-b border-rose-300 text-xs text-rose-900 flex items-center justify-between shrink-0 animate-fadeIn">
+          <div className="px-6 py-2.5 bg-rose-50 border-b border-rose-300 text-xs text-rose-900 flex items-center justify-between shrink-0 animate-fadeIn">
+            <span>Delete requirement <strong>"{itemToDelete.original_text.slice(0, 50)}..."</strong>?</span>
             <div className="flex items-center gap-2">
-              <Trash2 className="w-4 h-4 text-rose-600 shrink-0" />
-              <span>
-                Are you sure you want to delete requirement: <em>"{itemToDelete.original_text.slice(0, 50)}..."</em>?
-              </span>
-            </div>
-            <div className="flex items-center gap-2 shrink-0">
-              <button
-                onClick={() => setItemToDelete(null)}
-                className="px-2.5 py-1 border border-slate-300 rounded bg-white font-medium text-slate-700"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={confirmDeleteItem}
-                className="px-2.5 py-1 bg-rose-600 hover:bg-rose-700 text-white rounded font-semibold"
-              >
-                Confirm Delete
-              </button>
+              <button onClick={() => setItemToDelete(null)} className="px-2.5 py-1 border border-slate-300 rounded bg-white text-slate-700 font-medium">Cancel</button>
+              <button onClick={confirmDeleteItem} className="px-2.5 py-1 bg-rose-600 hover:bg-rose-700 text-white rounded font-semibold">Confirm Delete</button>
             </div>
           </div>
         )}
 
-        {/* Approval Confirmation Modal */}
+        {/* Approval Confirmation Dialog */}
         {showApproveConfirm && (
           <div className="fixed inset-0 z-60 flex items-center justify-center bg-navy-950/60 p-4">
-            <div className="bg-white rounded-xl shadow-2xl border border-slate-200 max-w-md w-full p-6 space-y-4 animate-scaleIn">
-              <div className="flex items-center gap-2.5 text-navy-950 font-bold text-sm">
+            <div className="bg-white dark:bg-surface-darkCard rounded-xl shadow-2xl border border-slate-200 dark:border-surface-darkBorder max-w-md w-full p-6 space-y-4 animate-scaleIn">
+              <div className="flex items-center gap-2.5 text-navy-950 dark:text-slate-100 font-bold text-sm">
                 <CheckCircle className="w-5 h-5 text-emerald-600" />
                 <span>Confirm Final Segmentation Approval</span>
               </div>
-              <p className="text-xs text-slate-600 leading-relaxed">
-                Approving will lock this version as the verified recruitment baseline and synchronize approved skills to the operational Job profile:
+              <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
+                Approving locks this version as the recruitment baseline and synchronizes skills to the live matching engine:
               </p>
-              <div className="p-3 bg-slate-50 rounded-lg text-xs space-y-1.5 border border-slate-200">
+              <div className="p-3 bg-slate-50 dark:bg-slate-900/60 rounded-lg text-xs space-y-1.5 border border-slate-200 dark:border-surface-darkBorder">
                 <div className="flex justify-between">
-                  <span className="font-semibold text-rose-700">Mandatory Skills to sync:</span>
-                  <strong className="text-slate-800">{mandatoryCount}</strong>
+                  <span className="font-semibold text-rose-700 dark:text-rose-300">Mandatory Skills:</span>
+                  <strong className="text-slate-800 dark:text-slate-200">{mandatoryCount}</strong>
                 </div>
                 <div className="flex justify-between">
-                  <span className="font-semibold text-emerald-700">Preferred Skills to sync:</span>
-                  <strong className="text-slate-800">{preferredCount}</strong>
+                  <span className="font-semibold text-emerald-700 dark:text-emerald-300">Preferred Skills:</span>
+                  <strong className="text-slate-800 dark:text-slate-200">{preferredCount}</strong>
                 </div>
-                <div className="flex justify-between text-slate-500 pt-1 border-t border-slate-200">
+                <div className="flex justify-between text-slate-500 pt-1 border-t border-slate-200 dark:border-surface-darkBorder">
                   <span>Recruiter Verified Items:</span>
                   <strong>{verifiedCount} of {totalCount}</strong>
                 </div>
               </div>
-              <p className="text-[11px] text-slate-400">
-                Candidate semantic search and vector matching will reference these approved requirements.
-              </p>
               <div className="flex justify-end gap-2 pt-2">
-                <button
-                  onClick={() => setShowApproveConfirm(false)}
-                  className="px-3.5 py-1.5 border border-slate-300 rounded text-xs font-semibold text-slate-700 hover:bg-slate-100"
-                >
-                  Review More
-                </button>
-                <button
-                  onClick={handleApproveSegmentation}
-                  className="px-4 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded text-xs font-semibold shadow-sm"
-                >
-                  Approve & Synchronize Skills
-                </button>
+                <button onClick={() => setShowApproveConfirm(false)} className="px-3.5 py-1.5 border border-slate-300 dark:border-surface-darkBorder rounded text-xs font-semibold text-slate-700 dark:text-slate-300">Review More</button>
+                <button onClick={handleApproveSegmentation} className="px-4 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded text-xs font-semibold shadow-sm">Approve &amp; Synchronize Skills</button>
               </div>
             </div>
           </div>
         )}
 
-        {/* Interactive KPI Metrics Ribbon & Provenance Filter Controls with Dark Mode */}
-        <div className="px-6 py-2.5 bg-slate-100/70 dark:bg-slate-900/50 border-b border-slate-200 dark:border-surface-darkBorder flex items-center gap-2.5 overflow-x-auto text-xs shrink-0 scrollbar-none">
+        {/* KPI Filter Ribbon */}
+        <div className="px-5 py-2.5 bg-slate-100/70 dark:bg-slate-900/50 border-b border-slate-200 dark:border-surface-darkBorder flex items-center gap-2 overflow-x-auto text-xs shrink-0 scrollbar-none">
           <span className="text-slate-400 font-semibold uppercase tracking-wider text-[10px]">Filter:</span>
 
           <button
@@ -757,18 +822,6 @@ export const JDSegmentationWorkspace = ({
           </button>
 
           <button
-            onClick={() => setStatusFilter('unreviewed')}
-            className={`px-2.5 py-1 rounded-md font-semibold text-xs transition-colors flex items-center gap-1 shrink-0 ${
-              statusFilter === 'unreviewed'
-                ? 'bg-amber-700 text-white shadow-xs'
-                : 'bg-white dark:bg-surface-darkCard text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800 hover:bg-amber-50'
-            }`}
-          >
-            <span className="w-2 h-2 rounded-full bg-amber-500" />
-            Unreviewed ({unreviewedCount})
-          </button>
-
-          <button
             onClick={() => setStatusFilter('verified')}
             className={`px-2.5 py-1 rounded-md font-semibold text-xs transition-colors flex items-center gap-1 shrink-0 ${
               statusFilter === 'verified'
@@ -776,31 +829,30 @@ export const JDSegmentationWorkspace = ({
                 : 'bg-white dark:bg-surface-darkCard text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800 hover:bg-blue-50'
             }`}
           >
-            <Check className="w-3 h-3" />
+            <Check className="w-3 h-3 text-blue-500" />
             Verified ({verifiedCount})
           </button>
 
-          {/* Provenance origin dropdown */}
-          <select
-            value={provenanceFilter}
-            onChange={(e) => setProvenanceFilter(e.target.value)}
-            className="px-2 py-1 rounded-md border border-slate-200 dark:border-surface-darkBorder bg-white dark:bg-surface-darkCard text-navy-900 dark:text-slate-200 text-xs shrink-0"
+          <button
+            onClick={() => setStatusFilter('unreviewed')}
+            className={`px-2.5 py-1 rounded-md font-semibold text-xs transition-colors flex items-center gap-1 shrink-0 ${
+              statusFilter === 'unreviewed'
+                ? 'bg-amber-600 text-white shadow-xs'
+                : 'bg-white dark:bg-surface-darkCard text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800 hover:bg-amber-50'
+            }`}
           >
-            <option value="all">All Sources</option>
-            <option value="ai_model">AI Model Extracted</option>
-            <option value="heuristic_fallback">Heuristic Fallback</option>
-            <option value="recruiter_edited">Recruiter Edited</option>
-            <option value="recruiter_added">Recruiter Added</option>
-          </select>
+            <span className="w-2 h-2 rounded-full bg-amber-500" />
+            Unreviewed ({unreviewedCount})
+          </button>
 
-          {/* Requirement search filter input */}
-          <div className="relative shrink-0">
+          {/* Requirement search input */}
+          <div className="relative shrink-0 ml-2">
             <input
               type="text"
               value={reqSearch}
               onChange={(e) => setReqSearch(e.target.value)}
-              placeholder="Filter requirements..."
-              className="pl-7 pr-2 py-1 text-xs rounded-md border border-slate-200 dark:border-surface-darkBorder bg-white dark:bg-surface-darkCard text-navy-900 dark:text-slate-100 w-36"
+              placeholder="Search specifications..."
+              className="pl-7 pr-2 py-1 text-xs rounded-md border border-slate-200 dark:border-surface-darkBorder bg-white dark:bg-surface-darkCard text-navy-900 dark:text-slate-100 w-44"
             />
             <Search className="w-3 h-3 text-slate-400 absolute left-2 top-2 pointer-events-none" />
           </div>
@@ -808,15 +860,44 @@ export const JDSegmentationWorkspace = ({
           <div className="ml-auto flex items-center gap-2 text-[11px] text-slate-500 dark:text-slate-400 shrink-0">
             <span className="flex items-center gap-1">
               <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
-              Grounding: <strong>{totalCount > 0 ? Math.round((groundedCount / totalCount) * 100) : 100}%</strong>
+              Grounding: <strong>{groundedPercent}%</strong>
             </span>
           </div>
         </div>
 
+        {/* Mobile/Tablet Segmented Control (< lg) */}
+        <div className="lg:hidden flex items-center justify-around border-b border-slate-200 dark:border-surface-darkBorder bg-slate-50 dark:bg-slate-900/60 p-1.5 shrink-0">
+          <button
+            type="button"
+            onClick={() => setMobileActivePanel('source')}
+            className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-bold inline-flex items-center justify-center gap-2 transition-all ${
+              mobileActivePanel === 'source'
+                ? 'bg-white dark:bg-surface-darkCard text-navy-950 dark:text-slate-100 shadow-xs'
+                : 'text-slate-600 dark:text-slate-400'
+            }`}
+          >
+            <FileText className="w-3.5 h-3.5" />
+            <span>Source Document</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setMobileActivePanel('structured')}
+            className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-bold inline-flex items-center justify-center gap-2 transition-all ${
+              mobileActivePanel === 'structured'
+                ? 'bg-white dark:bg-surface-darkCard text-navy-950 dark:text-slate-100 shadow-xs'
+                : 'text-slate-600 dark:text-slate-400'
+            }`}
+          >
+            <Sparkles className="w-3.5 h-3.5 text-brand-600 dark:text-brand-400" />
+            <span>Structured Intelligence ({editableReqs.length})</span>
+          </button>
+        </div>
+
         {/* Workspace Body: Split Screen View */}
         <div className="flex-1 grid grid-cols-1 lg:grid-cols-12 overflow-hidden min-h-0">
+          
           {/* Left Panel: Original JD Source Text (38% width) */}
-          <div className="lg:col-span-5 border-r border-slate-200 dark:border-surface-darkBorder flex flex-col bg-slate-50/50 dark:bg-slate-900/40 overflow-hidden">
+          <div className={`lg:col-span-5 border-r border-slate-200 dark:border-surface-darkBorder flex-col bg-slate-50/50 dark:bg-slate-900/40 overflow-hidden h-full min-h-0 ${mobileActivePanel === 'source' ? 'flex' : 'hidden lg:flex'}`}>
             <div className="p-3 border-b border-slate-200 dark:border-surface-darkBorder bg-white dark:bg-surface-darkCard flex items-center justify-between gap-3 shrink-0">
               <div className="flex items-center gap-2 text-xs font-bold text-navy-950 dark:text-slate-100">
                 <FileText className="w-4 h-4 text-slate-500" />
@@ -839,10 +920,9 @@ export const JDSegmentationWorkspace = ({
 
             <div
               ref={sourceTextRef}
-              className="p-4 flex-1 overflow-y-auto font-mono text-xs text-slate-700 dark:text-slate-300 whitespace-pre-wrap leading-relaxed select-text bg-white dark:bg-surface-darkCanvas"
+              className="p-4 flex-1 overflow-y-auto overscroll-contain font-mono text-xs text-slate-700 dark:text-slate-300 whitespace-pre-wrap leading-relaxed select-text bg-white dark:bg-surface-darkCanvas"
             >
               {highlightedQuote && sourceSearch ? (
-                // Highlight search matches
                 job.description
                   ?.split(new RegExp(`(${sourceSearch.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi'))
                   .map((chunk, idx) =>
@@ -875,146 +955,255 @@ export const JDSegmentationWorkspace = ({
             )}
           </div>
 
-          {/* Right Panel: Structured 15-Category Requirements Workspace (62% width) */}
-          <div className="lg:col-span-7 flex flex-col bg-white dark:bg-surface-darkCard overflow-hidden">
-            {/* Category Filter Navigation Bar */}
-            <div className="p-2.5 border-b border-slate-200 dark:border-surface-darkBorder bg-slate-50/70 dark:bg-slate-900/40 overflow-x-auto shrink-0 flex items-center gap-1.5 scrollbar-thin">
-              <button
-                onClick={() => setSelectedCategory('all')}
-                className={`px-3 py-1.5 rounded-full text-xs font-semibold shrink-0 transition-colors ${
-                  selectedCategory === 'all'
-                    ? 'bg-navy-900 dark:bg-brand-600 text-white shadow-xs'
-                    : 'bg-white dark:bg-surface-darkCard text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-surface-darkBorder hover:bg-slate-100'
-                }`}
-              >
-                All 15 Categories ({editableReqs.length})
-              </button>
+          {/* Right Panel: Structured Requirements Workspace (62% width) */}
+          <div className={`lg:col-span-7 flex-col bg-white dark:bg-surface-darkCard overflow-hidden h-full min-h-0 ${mobileActivePanel === 'structured' ? 'flex' : 'hidden lg:flex'}`}>
+            
+            {/* Domain Category Filter Toolbar */}
+            <div className="p-3 border-b border-slate-200 dark:border-surface-darkBorder bg-slate-50/70 dark:bg-slate-900/40 shrink-0 space-y-2">
+              <div className="flex items-center justify-between gap-2.5 flex-wrap">
+                {/* Category Selector Dropdown Button */}
+                <div className="w-full sm:w-64 flex-shrink-0">
+                  <CustomSelect
+                    value={selectedCategory}
+                    onChange={setSelectedCategory}
+                    options={[
+                      { value: 'all', label: 'All Specifications', badge: editableReqs.length },
+                      ...requirementCategories.map((cat) => ({
+                        value: cat.code,
+                        label: cat.label,
+                        badge: editableReqs.filter((r) => r.category === cat.code).length,
+                      })),
+                    ]}
+                    icon={Building2}
+                    size="sm"
+                    placeholder="Select Domain..."
+                    ariaLabel="Filter requirements by domain"
+                  />
+                </div>
+                <span className="text-[11px] text-slate-500 dark:text-slate-400 font-medium hidden sm:inline">
+                  {editableReqs.length} verified specifications across {requirementCategories.length} domains
+                </span>
+              </div>
 
-              {segmentation?.available_categories?.map((cat) => {
-                const count = editableReqs.filter((r) => r.category === cat.code).length;
-                const isCatEmpty = count === 0;
+              {/* Wrapping Quick Category Chips */}
+              <div className="flex flex-wrap items-center gap-1.5 max-h-24 overflow-y-auto">
+                <button
+                  type="button"
+                  onClick={() => setSelectedCategory('all')}
+                  className={`px-2.5 py-1 rounded-xl text-xs font-semibold shrink-0 transition-all ${
+                    selectedCategory === 'all'
+                      ? 'bg-navy-900 dark:bg-brand-600 text-white shadow-xs'
+                      : 'bg-white dark:bg-surface-darkCard text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-surface-darkBorder hover:bg-slate-100'
+                  }`}
+                >
+                  All ({editableReqs.length})
+                </button>
 
-                return (
-                  <button
-                    key={cat.code}
-                    onClick={() => setSelectedCategory(cat.code)}
-                    className={`px-2.5 py-1.5 rounded-full text-xs shrink-0 transition-colors flex items-center gap-1.5 ${
-                      selectedCategory === cat.code
-                        ? 'bg-navy-900 dark:bg-brand-600 text-white font-semibold shadow-xs'
-                        : isCatEmpty
-                        ? 'bg-slate-100 dark:bg-slate-800/60 text-slate-400 border border-slate-200 dark:border-slate-700 hover:bg-slate-200/60'
-                        : 'bg-white dark:bg-surface-darkCard text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-surface-darkBorder hover:bg-slate-100 font-medium'
-                    }`}
-                  >
-                    <span>{cat.label}</span>
-                    <span
-                      className={`text-[10px] px-1.5 py-0.2 rounded-full font-bold ${
+                {requirementCategories.map((cat) => {
+                  const count = editableReqs.filter((r) => r.category === cat.code).length;
+                  const isCatEmpty = count === 0;
+
+                  return (
+                    <button
+                      key={cat.code}
+                      type="button"
+                      onClick={() => setSelectedCategory(cat.code)}
+                      className={`px-2.5 py-1 rounded-xl text-xs shrink-0 transition-all flex items-center gap-1.5 ${
                         selectedCategory === cat.code
-                          ? 'bg-white/20 text-white'
+                          ? 'bg-navy-900 dark:bg-brand-600 text-white font-semibold shadow-xs'
                           : isCatEmpty
-                          ? 'bg-slate-200 text-slate-400'
-                          : 'bg-slate-100 text-slate-600'
+                          ? 'bg-slate-100 dark:bg-slate-800/60 text-slate-400 border border-slate-200 dark:border-slate-700 hover:bg-slate-200/60'
+                          : 'bg-white dark:bg-surface-darkCard text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-surface-darkBorder hover:bg-slate-100 font-medium'
                       }`}
                     >
-                      {count}
-                    </span>
-                  </button>
-                );
-              })}
+                      <span>{cat.label}</span>
+                      <span
+                        className={`text-[10px] px-1.5 py-0.2 rounded-full font-bold ${
+                          selectedCategory === cat.code
+                            ? 'bg-white/20 text-white'
+                            : isCatEmpty
+                            ? 'bg-slate-200 dark:bg-slate-700 text-slate-400'
+                            : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300'
+                        }`}
+                      >
+                        {count}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
             </div>
 
-            {/* Structured Content Area */}
-            <div className="flex-1 p-5 overflow-y-auto space-y-5">
-              {/* Executive Overview & Role Summary Cards */}
-              {(selectedCategory === 'all' || selectedCategory === 'job_overview' || selectedCategory === 'role_summary') && (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pb-4 border-b border-slate-200">
-                  <div className="space-y-1.5">
-                    <label className="text-xs font-bold text-navy-950 uppercase tracking-wider flex items-center gap-1.5">
-                      <Sparkles className="w-3.5 h-3.5 text-brand-600" />
-                      Job Overview
-                    </label>
-                    <textarea
-                      rows={3}
-                      value={overviewText}
-                      onChange={(e) => setOverviewText(e.target.value)}
-                      placeholder="High-level overview of the company, team, and hiring scope..."
-                      className="w-full text-xs p-2.5 border border-slate-300 rounded-lg focus:ring-1 focus:ring-navy-900 leading-relaxed font-sans"
-                    />
+            {/* Structured Content Area with Independent Scroll */}
+            <div className="flex-1 p-5 overflow-y-auto overscroll-contain space-y-4">
+              
+              {/* Executive Narrative Scope & Position Architecture Card */}
+              <div className="p-4 rounded-2xl bg-slate-50/80 dark:bg-slate-900/60 border border-slate-200/80 dark:border-surface-darkBorder space-y-3.5 shadow-subtle">
+                <div className="flex items-center justify-between flex-wrap gap-2 pb-2 border-b border-slate-200/60 dark:border-surface-darkBorder/60">
+                  <div className="flex items-center gap-2">
+                    <Sparkles className="w-4 h-4 text-brand-600 dark:text-brand-400" />
+                    <h3 className="text-xs font-bold uppercase tracking-wider text-navy-950 dark:text-slate-100">
+                      Role Scope &amp; Narrative Architecture
+                    </h3>
                   </div>
-                  <div className="space-y-1.5">
-                    <label className="text-xs font-bold text-navy-950 uppercase tracking-wider flex items-center gap-1.5">
-                      <Layers className="w-3.5 h-3.5 text-brand-600" />
-                      Role Summary
-                    </label>
-                    <textarea
-                      rows={3}
-                      value={roleSummaryText}
-                      onChange={(e) => setRoleSummaryText(e.target.value)}
-                      placeholder="Role summary and primary deliverables..."
-                      className="w-full text-xs p-2.5 border border-slate-300 rounded-lg focus:ring-1 focus:ring-navy-900 leading-relaxed font-sans"
-                    />
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (isEditingScope) {
+                        handleSaveAllChanges();
+                      } else {
+                        setIsEditingScope(true);
+                      }
+                    }}
+                    className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-surface-darkCard text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                  >
+                    {isEditingScope ? (
+                      <>
+                        <Check className="w-3.5 h-3.5 text-emerald-600" />
+                        <span>Done Editing</span>
+                      </>
+                    ) : (
+                      <>
+                        <Edit2 className="w-3.5 h-3.5 text-slate-400" />
+                        <span>Edit Scope</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+
+                {/* Position Metadata Cards */}
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 text-xs">
+                  <div className="p-2.5 rounded-xl bg-white dark:bg-surface-darkCard border border-slate-200/70 dark:border-surface-darkBorder">
+                    <span className="text-[10px] uppercase font-bold text-slate-400 dark:text-slate-500 block tracking-wider">Role Title</span>
+                    <span className="font-semibold text-navy-950 dark:text-slate-100 truncate block mt-0.5">{job.title || 'Technical Role'}</span>
+                  </div>
+                  <div className="p-2.5 rounded-xl bg-white dark:bg-surface-darkCard border border-slate-200/70 dark:border-surface-darkBorder">
+                    <span className="text-[10px] uppercase font-bold text-slate-400 dark:text-slate-500 block tracking-wider">Requisition Code</span>
+                    <span className="font-semibold text-navy-950 dark:text-slate-100 block font-mono mt-0.5">{job.jobCode || job.code || `REQ-${job.id}`}</span>
+                  </div>
+                  <div className="p-2.5 rounded-xl bg-white dark:bg-surface-darkCard border border-slate-200/70 dark:border-surface-darkBorder">
+                    <span className="text-[10px] uppercase font-bold text-slate-400 dark:text-slate-500 block tracking-wider">Experience Level</span>
+                    <span className="font-semibold text-navy-950 dark:text-slate-100 block mt-0.5">{job.experienceRequired || job.experience || '5 - 8 Years'}</span>
+                  </div>
+                  <div className="p-2.5 rounded-xl bg-white dark:bg-surface-darkCard border border-slate-200/70 dark:border-surface-darkBorder">
+                    <span className="text-[10px] uppercase font-bold text-slate-400 dark:text-slate-500 block tracking-wider">Location / Mode</span>
+                    <span className="font-semibold text-navy-950 dark:text-slate-100 block mt-0.5">{job.location || 'Remote / Hybrid'}</span>
                   </div>
                 </div>
-              )}
 
-              {/* Requirement Section Header & Add Requirement Trigger */}
-              <div className="flex items-center justify-between">
+                {/* Scope Content (View mode vs Edit mode) */}
+                {isEditingScope ? (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-1">
+                    <div className="space-y-1">
+                      <label className="text-[11px] font-bold text-slate-600 dark:text-slate-300 flex items-center gap-1.5">
+                        <Sparkles className="w-3 h-3 text-brand-600" />
+                        Job Overview
+                      </label>
+                      <textarea
+                        rows={3}
+                        value={overviewText}
+                        onChange={(e) => setOverviewText(e.target.value)}
+                        placeholder="Comprehensive role overview..."
+                        className="w-full text-xs p-2.5 border border-slate-300 dark:border-surface-darkBorder rounded-xl focus:ring-2 focus:ring-brand-500/20 leading-relaxed bg-white dark:bg-surface-darkCard text-navy-950 dark:text-slate-100"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[11px] font-bold text-slate-600 dark:text-slate-300 flex items-center gap-1.5">
+                        <Layers className="w-3 h-3 text-teal-600" />
+                        Role Mission &amp; Deliverables
+                      </label>
+                      <textarea
+                        rows={3}
+                        value={roleSummaryText}
+                        onChange={(e) => setRoleSummaryText(e.target.value)}
+                        placeholder="Core role mission and deliverables..."
+                        className="w-full text-xs p-2.5 border border-slate-300 dark:border-surface-darkBorder rounded-xl focus:ring-2 focus:ring-brand-500/20 leading-relaxed bg-white dark:bg-surface-darkCard text-navy-950 dark:text-slate-100"
+                      />
+                    </div>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-0.5">
+                    <div className="p-3 rounded-xl bg-white dark:bg-surface-darkCard border border-slate-200/70 dark:border-surface-darkBorder space-y-1">
+                      <span className="text-[10px] uppercase font-bold text-slate-400 dark:text-slate-500 flex items-center gap-1 tracking-wider">
+                        <Sparkles className="w-3 h-3 text-brand-600" />
+                        Job Overview
+                      </span>
+                      <p className="text-xs text-slate-700 dark:text-slate-300 leading-relaxed font-sans">
+                        {overviewText || 'Comprehensive role owning technical delivery and system architecture.'}
+                      </p>
+                    </div>
+                    <div className="p-3 rounded-xl bg-white dark:bg-surface-darkCard border border-slate-200/70 dark:border-surface-darkBorder space-y-1">
+                      <span className="text-[10px] uppercase font-bold text-slate-400 dark:text-slate-500 flex items-center gap-1 tracking-wider">
+                        <Layers className="w-3 h-3 text-teal-600" />
+                        Role Mission
+                      </span>
+                      <p className="text-xs text-slate-700 dark:text-slate-300 leading-relaxed font-sans">
+                        {roleSummaryText || 'Strategic contributor driving platform architecture, engineering excellence, and lifecycle delivery.'}
+                      </p>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Requirements Toolbar Header */}
+              <div className="flex items-center justify-between flex-wrap gap-2 pt-1">
                 <div>
-                  <h3 className="text-xs font-bold text-navy-950 uppercase tracking-wider flex items-center gap-2">
+                  <h3 className="text-xs font-bold text-navy-950 dark:text-slate-100 uppercase tracking-wider flex items-center gap-2">
                     <span>
                       {selectedCategory === 'all'
                         ? 'Structured Requirement Records'
-                        : segmentation?.available_categories?.find((c) => c.code === selectedCategory)?.label || selectedCategory}
+                        : activeCategoryMeta?.label || selectedCategory}
                     </span>
-                    <span className="text-slate-400 font-normal">({filteredRequirements.length} shown)</span>
+                    <span className="text-slate-400 font-normal">({filteredRequirements.length} specifications)</span>
                   </h3>
-                  <p className="text-[11px] text-slate-500 mt-0.5">
-                    Toggle Mandatory / Preferred, verify quotes against original JD, and edit standardized skill names.
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+                    Toggle Mandatory / Preferred, verify quotes against original document, and customize skill tags.
                   </p>
                 </div>
 
-                {/* Add Requirement button (only enabled for latest active version) */}
+                {/* Add Requirement button */}
                 <button
+                  type="button"
                   onClick={() => {
                     setNewItemCategory(selectedCategory === 'all' ? 'mandatory_skills' : selectedCategory);
                     setIsAddingNew(true);
                   }}
                   disabled={!isLatestVersion}
                   className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-brand-50 hover:bg-brand-100 text-brand-700 border border-brand-200 rounded-lg text-xs font-semibold transition-colors shadow-xs disabled:opacity-40 disabled:cursor-not-allowed"
-                  title={isLatestVersion ? "Add requirement" : "Historical revisions are read-only"}
                 >
                   <Plus className="w-3.5 h-3.5" />
-                  Add Requirement
+                  Add Specification
                 </button>
               </div>
 
-              {/* Add New Requirement Inline Card */}
+              {/* Add New Requirement Drawer */}
               {isAddingNew && (
-                <div className="p-4 bg-brand-50/50 border border-brand-200 rounded-xl space-y-3 animate-fadeIn">
-                  <div className="flex items-center justify-between text-xs font-bold text-navy-950">
-                    <span>Add New Requirement</span>
+                <div className="p-4 bg-brand-50/50 dark:bg-brand-950/30 border border-brand-200 dark:border-brand-800 rounded-xl space-y-3 animate-fadeIn">
+                  <div className="flex items-center justify-between text-xs font-bold text-navy-950 dark:text-slate-100">
+                    <span>Add New Requirement Specification</span>
                     <button onClick={() => setIsAddingNew(false)}><X className="w-4 h-4 text-slate-400" /></button>
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 text-xs">
                     <div>
-                      <label className="block text-[11px] font-semibold text-slate-700 mb-1">Category</label>
+                      <label className="block text-[11px] font-semibold text-slate-700 dark:text-slate-300 mb-1">Domain Category</label>
                       <select
                         value={newItemCategory}
                         onChange={(e) => setNewItemCategory(e.target.value)}
-                        className="w-full p-2 border border-slate-300 rounded bg-white text-xs"
+                        className="w-full p-2 border border-slate-300 dark:border-slate-600 rounded bg-white dark:bg-surface-darkCard text-xs text-navy-950 dark:text-slate-100"
                       >
-                        {segmentation?.available_categories?.map((cat) => (
+                        {requirementCategories.map((cat) => (
                           <option key={cat.code} value={cat.code}>{cat.label}</option>
                         ))}
                       </select>
                     </div>
 
                     <div>
-                      <label className="block text-[11px] font-semibold text-slate-700 mb-1">Classification</label>
+                      <label className="block text-[11px] font-semibold text-slate-700 dark:text-slate-300 mb-1">Classification</label>
                       <select
                         value={newItemClassification}
                         onChange={(e) => setNewItemClassification(e.target.value)}
-                        className="w-full p-2 border border-slate-300 rounded bg-white text-xs font-semibold"
+                        className="w-full p-2 border border-slate-300 dark:border-slate-600 rounded bg-white dark:bg-surface-darkCard text-xs font-semibold text-navy-950 dark:text-slate-100"
                       >
                         <option value="Mandatory">Mandatory</option>
                         <option value="Preferred">Preferred</option>
@@ -1022,35 +1211,35 @@ export const JDSegmentationWorkspace = ({
                     </div>
 
                     <div>
-                      <label className="block text-[11px] font-semibold text-slate-700 mb-1">Normalized Skill (Optional)</label>
+                      <label className="block text-[11px] font-semibold text-slate-700 dark:text-slate-300 mb-1">Standardized Skill Name</label>
                       <input
                         type="text"
                         value={newItemSkill}
                         onChange={(e) => setNewItemSkill(e.target.value)}
-                        placeholder="e.g. Oracle FCCS, React"
-                        className="w-full p-2 border border-slate-300 rounded text-xs"
+                        placeholder="e.g. Oracle FCCS, Groovy"
+                        className="w-full p-2 border border-slate-300 dark:border-slate-600 rounded text-xs bg-white dark:bg-surface-darkCard text-navy-950 dark:text-slate-100"
                       />
                     </div>
 
                     <div className="sm:col-span-3">
-                      <label className="block text-[11px] font-semibold text-slate-700 mb-1">Requirement Description</label>
+                      <label className="block text-[11px] font-semibold text-slate-700 dark:text-slate-300 mb-1">Specification Text *</label>
                       <input
                         type="text"
                         value={newItemText}
                         onChange={(e) => setNewItemText(e.target.value)}
                         placeholder="e.g. 5+ years of hands-on experience designing cloud architectures"
-                        className="w-full p-2 border border-slate-300 rounded text-xs"
+                        className="w-full p-2 border border-slate-300 dark:border-slate-600 rounded text-xs bg-white dark:bg-surface-darkCard text-navy-950 dark:text-slate-100"
                       />
                     </div>
 
                     <div className="sm:col-span-3">
-                      <label className="block text-[11px] font-semibold text-slate-700 mb-1">Source Evidence Quote (Optional)</label>
+                      <label className="block text-[11px] font-semibold text-slate-700 dark:text-slate-300 mb-1">Verbatim Source Quote (Optional)</label>
                       <input
                         type="text"
                         value={newItemEvidence}
                         onChange={(e) => setNewItemEvidence(e.target.value)}
-                        placeholder="Verbatim quote from JD supporting this requirement"
-                        className="w-full p-2 border border-slate-300 rounded text-xs"
+                        placeholder="Exact phrase from JD supporting this requirement"
+                        className="w-full p-2 border border-slate-300 dark:border-slate-600 rounded text-xs bg-white dark:bg-surface-darkCard text-navy-950 dark:text-slate-100"
                       />
                     </div>
                   </div>
@@ -1064,283 +1253,86 @@ export const JDSegmentationWorkspace = ({
                     </button>
                     <button
                       onClick={handleAddNewItem}
-                      className="px-4 py-1.5 bg-navy-900 text-white rounded text-xs font-semibold hover:bg-navy-950"
+                      className="px-4 py-1.5 bg-navy-900 text-white rounded text-xs font-semibold hover:bg-navy-950 shadow-xs"
                     >
-                      Add to Workspace
+                      Add Specification
                     </button>
                   </div>
                 </div>
               )}
 
-              {/* Requirement Items List */}
-              <div className="space-y-3">
+              {/* Requirement Items Section */}
+              <div className="space-y-4">
                 {isLoading ? (
                   <div className="p-8 text-center text-xs text-slate-500">
                     <Loader2 className="w-5 h-5 animate-spin mx-auto mb-2 text-brand-600" />
-                    Loading structured requirements...
+                    Loading structured specifications...
                   </div>
                 ) : filteredRequirements.length === 0 ? (
-                  <div className="p-8 text-center text-xs text-slate-400 border border-dashed border-slate-200 rounded-xl space-y-2">
-                    <p className="font-semibold text-slate-600">No requirements matched active filters.</p>
-                    <p className="text-[11px]">
-                      {emptyCategoryCodes.includes(selectedCategory)
-                        ? 'This section was not mentioned in the source JD. Click "Add Requirement" to specify one.'
-                        : 'Try selecting "All Items" or reset status filters.'}
-                    </p>
-                  </div>
-                ) : (
-                  filteredRequirements.map((item) => {
-                    const isInlineEditing = editingItemId === item.id;
-                    const isVerifiedInSource = item.evidence_verification?.is_verified !== false;
-
-                    return (
-                      <div
-                        key={item.id}
-                        className={`p-3.5 rounded-xl border transition-all text-xs space-y-2.5 ${
-                          item.is_approved
-                            ? 'bg-white border-slate-200 shadow-xs ring-1 ring-emerald-500/10'
-                            : 'bg-slate-50/70 border-slate-200'
-                        }`}
+                  /* Domain Assistant State: Never leaves the recruiter in a blank box */
+                  <div className="p-6 text-center rounded-2xl bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-surface-darkBorder space-y-3 animate-fadeIn">
+                    <div className="w-10 h-10 mx-auto rounded-xl bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 flex items-center justify-center">
+                      <Sparkles className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <h4 className="text-xs font-bold text-navy-950 dark:text-slate-100 uppercase tracking-wider">
+                        No {activeCategoryMeta?.label || 'matching'} specifications currently logged
+                      </h4>
+                      <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1 max-w-md mx-auto">
+                        This section was not explicitly detailed in the source document. You can add one manually or return to all {editableReqs.length} specifications.
+                      </p>
+                    </div>
+                    <div className="flex items-center justify-center gap-2 pt-1 flex-wrap">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setNewItemCategory(selectedCategory === 'all' ? 'mandatory_skills' : selectedCategory);
+                          setIsAddingNew(true);
+                        }}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold shadow-xs transition-colors"
                       >
-                        {isInlineEditing ? (
-                          /* Inline Edit Mode */
-                          <div className="space-y-2.5">
-                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                              <div>
-                                <label className="text-[10px] font-semibold text-slate-500">Category</label>
-                                <select
-                                  value={inlineEditValues.category}
-                                  onChange={(e) =>
-                                    setInlineEditValues({ ...inlineEditValues, category: e.target.value })
-                                  }
-                                  className="w-full p-1.5 border border-slate-300 rounded text-xs bg-white"
-                                >
-                                  {segmentation?.available_categories?.map((cat) => (
-                                    <option key={cat.code} value={cat.code}>{cat.label}</option>
-                                  ))}
-                                </select>
-                              </div>
-                              <div>
-                                <label className="text-[10px] font-semibold text-slate-500">Classification</label>
-                                <select
-                                  value={inlineEditValues.classification}
-                                  onChange={(e) =>
-                                    setInlineEditValues({ ...inlineEditValues, classification: e.target.value })
-                                  }
-                                  className="w-full p-1.5 border border-slate-300 rounded text-xs bg-white font-semibold"
-                                >
-                                  <option value="Mandatory">Mandatory</option>
-                                  <option value="Preferred">Preferred</option>
-                                </select>
-                              </div>
-                              <div>
-                                <label className="text-[10px] font-semibold text-slate-500">Normalized Skill</label>
-                                <input
-                                  type="text"
-                                  value={inlineEditValues.normalized_skill}
-                                  onChange={(e) =>
-                                    setInlineEditValues({ ...inlineEditValues, normalized_skill: e.target.value })
-                                  }
-                                  className="w-full p-1.5 border border-slate-300 rounded text-xs"
-                                />
-                              </div>
-                            </div>
+                        <Plus className="w-3.5 h-3.5" />
+                        <span>Add {activeCategoryMeta?.label || 'Requirement'}</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setSelectedCategory('all')}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-300 dark:border-surface-darkBorder bg-white dark:bg-surface-darkCard text-slate-700 dark:text-slate-300 text-xs font-semibold hover:bg-slate-100 transition-colors"
+                      >
+                        <ArrowLeft className="w-3.5 h-3.5" />
+                        <span>View All Specifications ({editableReqs.length})</span>
+                      </button>
+                    </div>
+                  </div>
+                ) : selectedCategory === 'all' ? (
+                  /* Grouped View across all domains */
+                  groupedRequirements.map((group) => {
+                    const GroupIcon = group.icon;
+                    return (
+                      <div key={group.code} className="space-y-2.5">
+                        <div className="flex items-center gap-2 pt-2 border-b border-slate-100 dark:border-surface-darkBorder pb-1">
+                          <span className={`p-1 rounded-lg ${group.color} border`}>
+                            <GroupIcon className="w-3.5 h-3.5" />
+                          </span>
+                          <span className="text-xs font-bold text-navy-950 dark:text-slate-100">
+                            {group.label}
+                          </span>
+                          <span className="text-[10px] font-semibold px-2 py-0.2 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
+                            {group.items.length}
+                          </span>
+                        </div>
 
-                            <div>
-                              <label className="text-[10px] font-semibold text-slate-500">Requirement Text</label>
-                              <input
-                                type="text"
-                                value={inlineEditValues.original_text}
-                                onChange={(e) =>
-                                  setInlineEditValues({ ...inlineEditValues, original_text: e.target.value })
-                                }
-                                className="w-full p-1.5 border border-slate-300 rounded text-xs"
-                              />
-                            </div>
-
-                            <div>
-                              <label className="text-[10px] font-semibold text-slate-500">Evidence Quote</label>
-                              <input
-                                type="text"
-                                value={inlineEditValues.evidence}
-                                onChange={(e) =>
-                                  setInlineEditValues({ ...inlineEditValues, evidence: e.target.value })
-                                }
-                                className="w-full p-1.5 border border-slate-300 rounded text-xs font-mono"
-                              />
-                            </div>
-
-                            <div className="flex justify-end gap-2 pt-1">
-                              <button
-                                onClick={() => setEditingItemId(null)}
-                                className="px-2.5 py-1 border border-slate-300 rounded text-[11px]"
-                              >
-                                Cancel
-                              </button>
-                              <button
-                                onClick={() => handleSaveInlineEdit(item.id)}
-                                className="px-3 py-1 bg-navy-900 text-white rounded text-[11px] font-semibold"
-                              >
-                                Save Edit
-                              </button>
-                            </div>
-                          </div>
-                        ) : (
-                          /* View Mode */
-                          <>
-                            <div className="flex items-start justify-between gap-3">
-                              <div className="flex-1 space-y-1.5">
-                                <div className="flex items-center gap-2 flex-wrap">
-                                  {/* Interactive Mandatory / Preferred Toggle Pill */}
-                                  <button
-                                    onClick={() => isLatestVersion && handleToggleClassification(item.id)}
-                                    disabled={!isLatestVersion}
-                                    title={isLatestVersion ? "Click to toggle Mandatory / Preferred" : "Historical revisions are read-only"}
-                                    className={`px-2.5 py-0.5 rounded text-[11px] font-bold border transition-all shadow-2xs flex items-center gap-1 ${
-                                      !isLatestVersion
-                                        ? 'opacity-70 cursor-not-allowed bg-slate-100 text-slate-600 border-slate-300'
-                                        : item.classification === 'Mandatory'
-                                        ? 'bg-rose-50 text-rose-700 border-rose-300 hover:bg-rose-100 cursor-pointer'
-                                        : 'bg-emerald-50 text-emerald-700 border-emerald-300 hover:bg-emerald-100 cursor-pointer'
-                                    }`}
-                                  >
-                                    <span
-                                      className={`w-1.5 h-1.5 rounded-full ${
-                                        item.classification === 'Mandatory' ? 'bg-rose-500' : 'bg-emerald-500'
-                                      }`}
-                                    />
-                                    {item.classification}
-                                  </button>
-
-                                  {/* Category Label Badge */}
-                                  <span className="text-[10px] font-semibold px-2 py-0.5 rounded bg-slate-100 text-slate-600 border border-slate-200">
-                                    {segmentation?.available_categories?.find((c) => c.code === item.category)?.label || item.category}
-                                  </span>
-
-                                  {/* Normalized Skill Tag */}
-                                  {item.normalized_skill && (
-                                    <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-blue-50 text-blue-700 border border-blue-200 font-semibold">
-                                      Skill: {item.normalized_skill}
-                                    </span>
-                                  )}
-
-                                  {/* Experience Years */}
-                                  {item.experience_years != null && (
-                                    <span className="text-[10px] font-semibold px-2 py-0.5 rounded bg-purple-50 text-purple-700 border border-purple-200">
-                                      {item.experience_years}+ Years
-                                    </span>
-                                  )}
-
-                                  {/* Provenance Origin Badge */}
-                                  {item.source_origin === 'recruiter_added' ? (
-                                    <span className="text-[10px] px-2 py-0.5 rounded bg-purple-50 text-purple-700 font-medium border border-purple-200">
-                                      Recruiter Added
-                                    </span>
-                                  ) : item.source_origin === 'recruiter_edited' ? (
-                                    <span className="text-[10px] px-2 py-0.5 rounded bg-indigo-50 text-indigo-700 font-medium border border-indigo-200">
-                                      Recruiter Edited
-                                    </span>
-                                  ) : item.source_origin === 'heuristic_fallback' ? (
-                                    <span className="text-[10px] px-2 py-0.5 rounded bg-slate-100 text-slate-600 font-medium border border-slate-200 flex items-center gap-1">
-                                      <Sliders className="w-2.5 h-2.5 text-slate-500" />
-                                      Rule-Grounded
-                                    </span>
-                                  ) : (
-                                    <span className="text-[10px] px-2 py-0.5 rounded bg-cyan-50 text-cyan-800 font-medium border border-cyan-200 flex items-center gap-1">
-                                      <Sparkles className="w-2.5 h-2.5 text-cyan-600" />
-                                      AI Model ({Math.round((item.confidence || 0.95) * 100)}%)
-                                    </span>
-                                  )}
-
-                                  {/* Verification Toggle Status */}
-                                  <button
-                                    onClick={() => isLatestVersion && handleToggleVerification(item.id)}
-                                    disabled={!isLatestVersion}
-                                    title={isLatestVersion ? "Click to toggle Recruiter Verification" : "Historical revisions are read-only"}
-                                    className={`text-[10px] flex items-center gap-1 font-semibold ml-auto px-2 py-0.5 rounded border transition-colors ${
-                                      !isLatestVersion
-                                        ? 'opacity-70 cursor-not-allowed bg-slate-100 text-slate-500 border-slate-200'
-                                        : item.is_approved
-                                        ? 'bg-emerald-50 text-emerald-700 border-emerald-300 cursor-pointer'
-                                        : 'bg-slate-100 text-slate-500 border-slate-200 hover:bg-slate-200 cursor-pointer'
-                                    }`}
-                                  >
-                                    <Check className={`w-3 h-3 ${item.is_approved ? 'text-emerald-600' : 'text-slate-400'}`} />
-                                    {item.is_approved ? 'Verified' : 'Verify'}
-                                  </button>
-                                </div>
-
-                                <p className="font-medium text-slate-900 leading-snug">
-                                  {item.original_text}
-                                </p>
-                              </div>
-
-                              {/* Action Buttons: Edit, Delete (only available on latest version) */}
-                              {isLatestVersion && (
-                                <div className="flex items-center gap-1 shrink-0 pt-0.5">
-                                  <button
-                                    onClick={() => handleStartEdit(item)}
-                                    className="p-1 rounded text-slate-400 hover:text-slate-700 hover:bg-slate-100"
-                                    title="Edit requirement"
-                                  >
-                                    <Edit2 className="w-3.5 h-3.5" />
-                                  </button>
-                                  <button
-                                    onClick={() => setItemToDelete(item)}
-                                    className="p-1 rounded text-slate-400 hover:text-rose-600 hover:bg-rose-50"
-                                    title="Delete requirement"
-                                  >
-                                    <Trash2 className="w-3.5 h-3.5" />
-                                  </button>
-                                </div>
-                              )}
-                            </div>
-
-                            {/* Evidence Quote Excerpt Box with Verification Indicator */}
-                            {item.evidence && (
-                              <div className="p-2 bg-slate-50 border border-slate-200/80 rounded-lg flex items-start justify-between gap-2 text-[11px] text-slate-600">
-                                <div className="flex items-start gap-1.5 flex-1 min-w-0">
-                                  <Quote className="w-3.5 h-3.5 text-slate-400 shrink-0 mt-0.5" />
-                                  <span className="italic line-clamp-2">"{item.evidence}"</span>
-                                </div>
-
-                                <div className="flex items-center gap-2 shrink-0">
-                                  {/* Verification status pill */}
-                                  {isVerifiedInSource ? (
-                                    <span
-                                      className="text-[10px] font-semibold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200 flex items-center gap-1"
-                                      title="Verified quote exists in original source document text"
-                                    >
-                                      <CheckCircle className="w-2.5 h-2.5 text-emerald-600" />
-                                      In Source
-                                    </span>
-                                  ) : (
-                                    <span
-                                      className="text-[10px] font-semibold text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200 flex items-center gap-1"
-                                      title="Quote excerpt could not be directly matched to document text"
-                                    >
-                                      <AlertTriangle className="w-2.5 h-2.5 text-amber-600" />
-                                      Unverified
-                                    </span>
-                                  )}
-
-                                  {/* Click to locate button */}
-                                  <button
-                                    onClick={() => handleLocateEvidence(item.evidence)}
-                                    className="inline-flex items-center gap-1 text-[10px] font-semibold text-brand-600 hover:text-brand-800 bg-white px-1.5 py-0.5 rounded border border-slate-200"
-                                    title="Locate and highlight quote in source document"
-                                  >
-                                    <Eye className="w-2.5 h-2.5" />
-                                    Locate
-                                  </button>
-                                </div>
-                              </div>
-                            )}
-                          </>
-                        )}
+                        <div className="space-y-2.5">
+                          {group.items.map((item) => renderRequirementCard(item))}
+                        </div>
                       </div>
                     );
                   })
+                ) : (
+                  /* Single Selected Category View */
+                  <div className="space-y-2.5">
+                    {filteredRequirements.map((item) => renderRequirementCard(item))}
+                  </div>
                 )}
               </div>
             </div>
@@ -1349,4 +1341,213 @@ export const JDSegmentationWorkspace = ({
       </div>
     </div>
   );
+
+  // Helper to render an individual requirement card
+  function renderRequirementCard(item) {
+    const isInlineEditing = editingItemId === item.id;
+    const isVerifiedInSource = item.evidence_verification?.is_verified !== false;
+
+    return (
+      <div
+        key={item.id}
+        className={`p-3.5 rounded-2xl border transition-all text-xs space-y-2.5 ${
+          item.is_approved
+            ? 'bg-white dark:bg-surface-darkCard border-slate-200/90 dark:border-surface-darkBorder shadow-subtle ring-1 ring-emerald-500/15'
+            : 'bg-slate-50/70 dark:bg-surface-darkBg border-slate-200/80 dark:border-surface-darkBorder'
+        }`}
+      >
+        {isInlineEditing ? (
+          /* Inline Edit Mode */
+          <div className="space-y-2.5">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+              <div>
+                <label className="text-[10px] font-semibold text-slate-500">Domain Category</label>
+                <select
+                  value={inlineEditValues.category}
+                  onChange={(e) => setInlineEditValues({ ...inlineEditValues, category: e.target.value })}
+                  className="w-full p-1.5 border border-slate-300 rounded text-xs bg-white dark:bg-surface-darkCard text-navy-950 dark:text-slate-100"
+                >
+                  {requirementCategories.map((cat) => (
+                    <option key={cat.code} value={cat.code}>{cat.label}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="text-[10px] font-semibold text-slate-500">Classification</label>
+                <select
+                  value={inlineEditValues.classification}
+                  onChange={(e) => setInlineEditValues({ ...inlineEditValues, classification: e.target.value })}
+                  className="w-full p-1.5 border border-slate-300 rounded text-xs bg-white dark:bg-surface-darkCard font-semibold text-navy-950 dark:text-slate-100"
+                >
+                  <option value="Mandatory">Mandatory</option>
+                  <option value="Preferred">Preferred</option>
+                </select>
+              </div>
+              <div>
+                <label className="text-[10px] font-semibold text-slate-500">Standardized Skill</label>
+                <input
+                  type="text"
+                  value={inlineEditValues.normalized_skill}
+                  onChange={(e) => setInlineEditValues({ ...inlineEditValues, normalized_skill: e.target.value })}
+                  className="w-full p-1.5 border border-slate-300 rounded text-xs bg-white dark:bg-surface-darkCard text-navy-950 dark:text-slate-100"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="text-[10px] font-semibold text-slate-500">Requirement Text</label>
+              <textarea
+                rows={2}
+                value={inlineEditValues.original_text}
+                onChange={(e) => setInlineEditValues({ ...inlineEditValues, original_text: e.target.value })}
+                className="w-full p-2 border border-slate-300 rounded text-xs bg-white dark:bg-surface-darkCard text-navy-950 dark:text-slate-100"
+              />
+            </div>
+
+            <div className="flex justify-end gap-1.5">
+              <button
+                type="button"
+                onClick={() => setEditingItemId(null)}
+                className="px-2.5 py-1 border border-slate-300 rounded text-xs"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => handleSaveInlineEdit(item.id)}
+                className="px-3 py-1 bg-navy-900 text-white rounded text-xs font-semibold"
+              >
+                Save
+              </button>
+            </div>
+          </div>
+        ) : (
+          /* View Mode */
+          <div className="flex items-start justify-between gap-3">
+            <div className="space-y-1.5 flex-1 min-w-0">
+              <div className="flex items-center gap-1.5 flex-wrap">
+                {/* Mandatory vs Preferred toggle button */}
+                <button
+                  type="button"
+                  onClick={() => isLatestVersion && handleToggleClassification(item.id)}
+                  disabled={!isLatestVersion}
+                  className={`text-[10px] font-bold px-2 py-0.5 rounded-full border transition-all inline-flex items-center gap-1 ${
+                    !isLatestVersion
+                      ? 'opacity-70 cursor-not-allowed bg-slate-100 text-slate-600 border-slate-300'
+                      : item.classification === 'Mandatory'
+                      ? 'bg-rose-50 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 border-rose-300 dark:border-rose-800 hover:bg-rose-100 cursor-pointer'
+                      : 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border-emerald-300 dark:border-emerald-800 hover:bg-emerald-100 cursor-pointer'
+                  }`}
+                  title="Click to toggle Mandatory vs Preferred"
+                >
+                  <span className={`w-1.5 h-1.5 rounded-full ${item.classification === 'Mandatory' ? 'bg-rose-500' : 'bg-emerald-500'}`} />
+                  {item.classification}
+                </button>
+
+                {/* Category Label Badge */}
+                <span className="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200/80 dark:border-surface-darkBorder">
+                  {segmentation?.available_categories?.find((c) => c.code === item.category)?.label || item.category.replace('_', ' ')}
+                </span>
+
+                {/* Normalized Skill Tag */}
+                {item.normalized_skill && (
+                  <span className="text-[10px] font-mono px-2 py-0.5 rounded-md bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800 font-semibold">
+                    Skill: {item.normalized_skill}
+                  </span>
+                )}
+
+                {/* Experience Years */}
+                {item.experience_years != null && (
+                  <span className="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-purple-50 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800">
+                    {item.experience_years}+ Years
+                  </span>
+                )}
+
+                {/* Provenance Origin Badge */}
+                {item.source_origin === 'recruiter_added' ? (
+                  <span className="text-[10px] px-2 py-0.5 rounded-md bg-purple-50 text-purple-700 font-medium border border-purple-200">
+                    Recruiter Added
+                  </span>
+                ) : item.source_origin === 'recruiter_edited' ? (
+                  <span className="text-[10px] px-2 py-0.5 rounded-md bg-indigo-50 text-indigo-700 font-medium border border-indigo-200">
+                    Recruiter Edited
+                  </span>
+                ) : isVerifiedInSource ? (
+                  <span className="text-[10px] px-2 py-0.5 rounded-md bg-emerald-50 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 font-medium border border-emerald-200 dark:border-emerald-800 flex items-center gap-1" title="Verbatim quote verified in source document">
+                    <CheckCircle className="w-2.5 h-2.5 text-emerald-600" />
+                    Grounded • Verbatim
+                  </span>
+                ) : (
+                  <span className="text-[10px] px-2 py-0.5 rounded-md bg-cyan-50 dark:bg-cyan-950/60 text-cyan-800 dark:text-cyan-300 font-medium border border-cyan-200 dark:border-cyan-800 flex items-center gap-1" title="Inferred by Nemotron AI from context">
+                    <Sparkles className="w-2.5 h-2.5 text-cyan-600" />
+                    AI Inferred
+                  </span>
+                )}
+
+                {/* Recruiter Verification Toggle Button */}
+                <button
+                  type="button"
+                  onClick={() => isLatestVersion && handleToggleVerification(item.id)}
+                  disabled={!isLatestVersion}
+                  title={isLatestVersion ? (item.is_approved ? "Recruiter Verified — click to unverify" : "Click to mark as Recruiter Verified") : "Historical revisions are read-only"}
+                  className={`text-[10px] flex items-center gap-1 font-semibold ml-auto px-2.5 py-0.5 rounded-full border transition-all ${
+                    !isLatestVersion
+                      ? 'opacity-70 cursor-not-allowed bg-slate-100 text-slate-500 border-slate-200'
+                      : item.is_approved
+                      ? 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border-emerald-300 dark:border-emerald-800 hover:bg-emerald-100 shadow-xs'
+                      : 'bg-slate-100 dark:bg-slate-800 text-slate-500 border-slate-200 dark:border-slate-700 hover:bg-slate-200'
+                  }`}
+                >
+                  <Check className={`w-3 h-3 ${item.is_approved ? 'text-emerald-600 font-bold' : 'text-slate-400'}`} />
+                  <span>{item.is_approved ? 'Recruiter Verified' : 'Mark Verified'}</span>
+                </button>
+              </div>
+
+              {/* Requirement Description */}
+              <p className="font-semibold text-navy-950 dark:text-slate-100 leading-snug text-xs sm:text-[13px] pt-0.5">
+                {item.original_text}
+              </p>
+
+              {/* Evidence Quote Locator Shortcut */}
+              {item.evidence && (
+                <div className="pt-0.5 flex items-center gap-1.5 flex-wrap">
+                  <button
+                    type="button"
+                    onClick={() => handleLocateEvidence(item.evidence)}
+                    className="inline-flex items-center gap-1 text-[11px] text-brand-600 dark:text-brand-400 hover:underline font-mono"
+                    title="Click to highlight in source document"
+                  >
+                    <Quote className="w-2.5 h-2.5" />
+                    <span className="truncate max-w-sm">"{item.evidence.slice(0, 60)}..."</span>
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {/* Quick Action Icons: Edit & Delete */}
+            {isLatestVersion && (
+              <div className="flex items-center gap-1 shrink-0 pt-0.5">
+                <button
+                  type="button"
+                  onClick={() => handleStartEdit(item)}
+                  className="p-1 rounded text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                  title="Edit requirement"
+                >
+                  <Edit2 className="w-3.5 h-3.5" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setItemToDelete(item)}
+                  className="p-1 rounded text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors"
+                  title="Delete requirement"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    );
+  }
 };

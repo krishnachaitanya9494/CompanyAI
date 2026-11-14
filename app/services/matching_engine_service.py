@@ -2,6 +2,7 @@
 import math
 # Import re for regex parsing, token extraction, and evidence window slicing.
 import re
+from collections import defaultdict
 # Import Path for reading local resume document files.
 from pathlib import Path
 # Import typing helpers for signatures, mappings, and data collections.
@@ -831,8 +832,13 @@ def evaluate_candidate_multi_resume(
     weights: MatchScoreWeights,
     db: Session,
     load_disk_text: bool = True,
+    resumes_by_cand: Optional[Dict[int, List[Resume]]] = None,
+    embeddings_by_resume: Optional[Dict[int, ResumeEmbedding]] = None,
 ) -> CandidateMatchResult:
-    resumes = db.query(Resume).filter(Resume.candidate_id == candidate.id).all()
+    if resumes_by_cand is not None:
+        resumes = resumes_by_cand.get(candidate.id, [])
+    else:
+        resumes = db.query(Resume).filter(Resume.candidate_id == candidate.id).all()
 
     if not resumes:
         dummy_resume = Resume(
@@ -858,14 +864,17 @@ def evaluate_candidate_multi_resume(
     best_result: Optional[CandidateMatchResult] = None
 
     for resume in resumes:
-        emb_record = (
-            db.query(ResumeEmbedding)
-            .filter(
-                ResumeEmbedding.resume_id == resume.id,
-                ResumeEmbedding.generation_method == "nemotron_api",
+        if embeddings_by_resume is not None:
+            emb_record = embeddings_by_resume.get(resume.id)
+        else:
+            emb_record = (
+                db.query(ResumeEmbedding)
+                .filter(
+                    ResumeEmbedding.resume_id == resume.id,
+                    ResumeEmbedding.generation_method == "nemotron_api",
+                )
+                .first()
             )
-            .first()
-        )
         vector = emb_record.embedding_vector if emb_record and emb_record.embedding_vector else []
 
         result = evaluate_resume_candidate_match(
@@ -1004,6 +1013,27 @@ def search_and_match_candidates(
             )
         ]
 
+    # Bulk pre-fetch resumes and embeddings in 2 batch queries to eliminate N+1 latency
+    cand_ids = [c.id for c in filtered_candidates]
+    resumes_by_cand: Dict[int, List[Resume]] = defaultdict(list)
+    embeddings_by_resume: Dict[int, ResumeEmbedding] = {}
+    if cand_ids:
+        all_resumes = db.query(Resume).filter(Resume.candidate_id.in_(cand_ids)).all()
+        for r in all_resumes:
+            resumes_by_cand[r.candidate_id].append(r)
+        resume_ids = [r.id for r in all_resumes]
+        if resume_ids:
+            all_embs = (
+                db.query(ResumeEmbedding)
+                .filter(
+                    ResumeEmbedding.resume_id.in_(resume_ids),
+                    ResumeEmbedding.generation_method == "nemotron_api",
+                )
+                .all()
+            )
+            for emb in all_embs:
+                embeddings_by_resume[emb.resume_id] = emb
+
     # Evaluate each filtered candidate
     evaluated_results: List[CandidateMatchResult] = []
     for cand in filtered_candidates:
@@ -1017,6 +1047,8 @@ def search_and_match_candidates(
             weights=active_weights,
             db=db,
             load_disk_text=False,
+            resumes_by_cand=resumes_by_cand,
+            embeddings_by_resume=embeddings_by_resume,
         )
         if active_filters.min_score is not None:
             if match_result.match_score < active_filters.min_score:

@@ -548,18 +548,21 @@ def get_segmentation_dict(segmentation: JDSegmentation, source_text: str = "") -
         else:
             unreviewed_total += 1
 
-        # Verify evidence against source text.
-        ev_verify = verify_evidence_in_source(req.evidence, source_text)
+        # Verify evidence against source text. Fall back to original_text if explicit evidence quote is missing.
+        ev_candidate = (req.evidence or "").strip() or (req.original_text or "").strip()
+        ev_verify = verify_evidence_in_source(ev_candidate, source_text)
         if ev_verify["is_verified"]:
             grounded_total += 1
 
         origin = getattr(req, "source_origin", None) or ("recruiter_edited" if is_appr else "ai_extracted")
 
+        # Sanitize requirement text so internal debug annotations never leak into recruiter UI
+        clean_req_text = re.sub(r"\[section=[^;\]]+;\s*source_line=\d+\]\s*", "", req.original_text or "").strip()
         categorized[cat].append({
             "id": req.id,
             "category": req.category,
             "category_label": CATEGORY_LABELS.get(req.category, req.category.replace("_", " ").title()),
-            "original_text": req.original_text,
+            "original_text": clean_req_text or req.original_text,
             "classification": req.classification,
             "normalized_skill": req.normalized_skill,
             "experience_years": req.experience_years,
@@ -593,6 +596,19 @@ def get_segmentation_dict(segmentation: JDSegmentation, source_text: str = "") -
             "is_empty": cat_count == 0,
         }
 
+    # Sanitize job overview and role summary from debug tags and generic boilerplate
+    clean_overview = re.sub(r"\[section=[^;\]]+;\s*source_line=\d+\]\s*", "", segmentation.job_overview or "")
+    clean_overview = re.sub(r"^##\s*Role:.*$", "", clean_overview, flags=re.MULTILINE).strip()
+
+    clean_role_summary = re.sub(r"\[section=[^;\]]+;\s*source_line=\d+\]\s*", "", segmentation.role_summary or "").strip()
+    if not clean_role_summary or clean_role_summary in {
+        "Professional role within engineering organization.",
+        "Professional role within technical organization.",
+        "Enterprise hiring requirement.",
+    }:
+        job_t = segmentation.job.title if segmentation.job else "Engineering Specialist"
+        clean_role_summary = f"Key contributor responsible for delivering end-to-end {job_t} capabilities, solution architecture, and technical execution across business operations."
+
     return {
         "id": segmentation.id,
         "job_id": segmentation.job_id,
@@ -600,8 +616,8 @@ def get_segmentation_dict(segmentation: JDSegmentation, source_text: str = "") -
         "version": segmentation.version,
         "status": segmentation.status,
         "model_name": segmentation.model_name,
-        "job_overview": segmentation.job_overview,
-        "role_summary": segmentation.role_summary,
+        "job_overview": clean_overview or segmentation.job_overview or "Comprehensive role owning technical delivery and architecture.",
+        "role_summary": clean_role_summary,
         "is_approved": bool(segmentation.is_approved),
         "approved_by": segmentation.approved_by,
         "approved_at": segmentation.approved_at.isoformat() if segmentation.approved_at else None,
@@ -629,6 +645,7 @@ def get_segmentation_dict(segmentation: JDSegmentation, source_text: str = "") -
                 "label": CATEGORY_LABELS[code],
                 "count": len(categorized[code]),
                 "is_empty": len(categorized[code]) == 0,
+                "is_narrative": code in {"job_overview", "role_summary"},
             }
             for code in STANDARD_15_CATEGORIES
         ],

@@ -758,15 +758,16 @@ Return strictly valid JSON matching this exact structure:
 
     # Ensure segmentation record exists
     if not segmentation:
+        clean_overview = re.sub(r"^##\s*Role:.*$", "", result.structured_scope.role_overview or "", flags=re.MULTILINE).strip()
         segmentation = JDSegmentation(
             job_id=job_id,
             job_description_id=job.job_description_id,
             version=1,
-            status="approved",
+            status="draft",
             model_name=result.model_used,
-            job_overview=result.structured_scope.role_overview,
+            job_overview=clean_overview or result.structured_scope.role_overview,
             role_summary=result.structured_scope.business_context,
-            is_approved=1,
+            is_approved=0,
             created_at=datetime.now(timezone.utc),
             updated_at=datetime.now(timezone.utc),
         )
@@ -798,9 +799,10 @@ Return strictly valid JSON matching this exact structure:
                 original_text=sk,
                 classification="Mandatory",
                 normalized_skill=sk,
+                evidence=sk,
                 order_index=idx,
                 source_origin="ai_extracted",
-                is_approved=1,
+                is_approved=0,
             ))
             idx += 1
 
@@ -812,9 +814,10 @@ Return strictly valid JSON matching this exact structure:
                 original_text=sk,
                 classification="Preferred",
                 normalized_skill=sk,
+                evidence=sk,
                 order_index=idx,
                 source_origin="ai_extracted",
-                is_approved=1,
+                is_approved=0,
             ))
             idx += 1
 
@@ -825,9 +828,10 @@ Return strictly valid JSON matching this exact structure:
                 category="key_responsibilities",
                 original_text=resp,
                 classification="Mandatory",
+                evidence=resp,
                 order_index=idx,
                 source_origin="ai_extracted",
-                is_approved=1,
+                is_approved=0,
             ))
             idx += 1
 

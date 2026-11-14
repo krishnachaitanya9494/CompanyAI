@@ -96,13 +96,18 @@ export const JobsPage = ({
       return;
     }
 
+    const controller = new AbortController();
+
     // Reset error state on new job selection.
     setMatchError('');
     setIsLoadingMatches(true);
 
     // Fetch Phase 5C matches for the currently active job using clean numeric id when available.
     const jobIdParam = currentJob.numeric_id || currentJob.id;
-    apiRequest(`/jobs/${jobIdParam}/matches?limit=50`, { timeoutMs: 35000 })
+    apiRequest(`/jobs/${jobIdParam}/matches?limit=50`, {
+      timeoutMs: 45000,
+      signal: controller.signal,
+    })
       .then((data) => {
         setIsLoadingMatches(false);
         // Clear any previous error on success
@@ -146,16 +151,23 @@ export const JobsPage = ({
         }));
       })
       .catch((error) => {
+        if (controller.signal.aborted || error?.name === 'AbortError') {
+          return;
+        }
         setIsLoadingMatches(false);
         setMatchingCandidates([]);
         // Only set error if it's a real failure message and not an intentional abort or 404
-        if (error && error.name !== 'AbortError' && error.message && !error.message.includes('404')) {
+        if (error && error.message && !error.message.includes('404')) {
           setMatchError(String(error.message || '').trim());
         } else {
           setMatchError('');
         }
       });
-  }, [currentJob, candidates]);
+
+    return () => {
+      controller.abort();
+    };
+  }, [currentJob?.id, currentJob?.numeric_id, candidates]);
 
   // Sync real returned Nemotron analysis data into Job state when AnalyzeModal finishes.
   const handleAnalysisComplete = (jobId, analysisPayload = null) => {
