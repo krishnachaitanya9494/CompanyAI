@@ -14,12 +14,14 @@ import { Users, FileUp, Sparkles, Plus } from 'lucide-react';
 // Export CandidatesPage component handling candidate inventory, search, and drill-downs.
 export const CandidatesPage = ({
   candidates = [],
+  jobs = [],
   onUpdateCandidate,
   onUploadResume,
   onCreateCandidate,
   resumeDiscovery = null,
   initialCandidateId = null,
   onClearInitialCandidate,
+  onNavigateToComparison,
 }) => {
   // Search query text state.
   const [searchQuery, setSearchQuery] = useState('');
@@ -221,6 +223,7 @@ export const CandidatesPage = ({
         }}
         onPreviewResume={(cand) => setPreviewCandidate(cand)}
         onUpdateCandidate={onUpdateCandidate}
+        onCompareWithJD={onNavigateToComparison}
       />
 
       {/* Resume Document Preview Modal */}

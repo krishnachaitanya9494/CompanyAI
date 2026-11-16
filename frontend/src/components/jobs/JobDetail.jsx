@@ -5,11 +5,14 @@ import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { Badge } from '../common/Badge';
 import { CustomSelect } from '../common/CustomSelect';
 
+// Import AI Intelligence panel for hiring difficulty, supply/demand & sourcing recommendations.
+import { AIIntelligencePanel } from './AIIntelligencePanel';
+
 // Import MatchingCandidates subcomponent.
 import { MatchingCandidates } from './MatchingCandidates';
 
-// Import approvalApi for JD approval submission.
-import { approvalApi } from '../../api/client';
+// Import approvalApi & intelligence APIs for JD approval & AI insights.
+import { approvalApi, intelligenceApi, aiApi } from '../../api/client';
 
 // Import icons from lucide-react.
 import {
@@ -42,6 +45,7 @@ import {
   SlidersHorizontal,
   ShieldAlert,
   GitMerge,
+  GitCompare,
   Layers,
   Tag,
   ArrowUpRight,
@@ -296,6 +300,9 @@ export const JobDetail = ({
   onUpdateJob,
   onOpenSegmentation,
   onOpenMatrix,
+  onNavigateToJob,
+  onCompareWithCandidate,
+  onOpenComparison,
   onRefreshApprovals,
   isFullPageView = false,
   onToggleFullPageView,
@@ -340,6 +347,7 @@ export const JobDetail = ({
     companies: true, // open in Talent Sourcing
     boolean: true, // open in Talent Sourcing
     matches: true, // open in Candidate Matching
+    aiIntelligence: true, // open in AI Intelligence
   });
 
   // Scope Tab: 'structured' | 'original'
@@ -365,6 +373,9 @@ export const JobDetail = ({
     if (activeViewFilter === 'candidates') {
       return Boolean(openSections.matches);
     }
+    if (activeViewFilter === 'aiIntelligence') {
+      return Boolean(openSections.aiIntelligence);
+    }
     return Object.values(openSections).every(Boolean);
   }, [openSections, activeViewFilter]);
 
@@ -388,6 +399,11 @@ export const JobDetail = ({
         ...prev,
         matches: nextState,
       }));
+    } else if (activeViewFilter === 'aiIntelligence') {
+      setOpenSections((prev) => ({
+        ...prev,
+        aiIntelligence: nextState,
+      }));
     }
   };
 
@@ -404,6 +420,11 @@ export const JobDetail = ({
         companies: true,
         boolean: true,
       }));
+    } else if (filterId === 'aiIntelligence') {
+      setOpenSections((prev) => ({
+        ...prev,
+        aiIntelligence: true,
+      }));
     } else if (filterId === 'specifications') {
       setOpenSections((prev) => ({
         ...prev,
@@ -418,6 +439,7 @@ export const JobDetail = ({
     if (activeViewFilter === 'specifications') return key === 'summary' || key === 'competencies' || key === 'screeningKit';
     if (activeViewFilter === 'sourcing') return key === 'boolean' || key === 'companies';
     if (activeViewFilter === 'candidates') return key === 'matches';
+    if (activeViewFilter === 'aiIntelligence') return key === 'aiIntelligence';
     return false;
   };
 
@@ -1312,6 +1334,17 @@ export const JobDetail = ({
             <span>Requirements Workspace</span>
           </button>
 
+          {onOpenComparison && (
+            <button
+              onClick={() => onOpenComparison?.()}
+              className="flex items-center justify-center gap-2 px-3.5 py-2 bg-indigo-50 dark:bg-indigo-950/40 hover:bg-indigo-100 text-indigo-700 dark:text-indigo-300 border border-indigo-200/90 dark:border-indigo-800 rounded-xl text-xs font-semibold shadow-subtle transition-all"
+              title="Open deep side-by-side JD and Resume Comparison"
+            >
+              <GitCompare className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+              <span>Compare with Resume</span>
+            </button>
+          )}
+
           <button
             onClick={() => onAnalyzeJob(job)}
             className="flex items-center justify-center gap-2 px-3.5 py-2 bg-brand-50 dark:bg-brand-950/40 hover:bg-brand-100 text-brand-700 dark:text-brand-300 border border-brand-200/90 dark:border-brand-800 rounded-xl text-xs font-semibold shadow-subtle transition-all"
@@ -1347,6 +1380,7 @@ export const JobDetail = ({
             { id: 'specifications', label: '1. JD Specifications', badge: 'Detailed Scope & Kit' },
             { id: 'sourcing', label: '2. Talent Sourcing', badge: 'Multi-Platform Boolean' },
             { id: 'candidates', label: '3. Candidates & Matching', badge: `${matchingCandidates.length} Evaluated` },
+            { id: 'aiIntelligence', label: '4. AI Intelligence', badge: 'Hiring Difficulty & Supply' },
           ].map((tab) => {
             const isActive = activeViewFilter === tab.id;
             return (
@@ -3052,6 +3086,62 @@ export const JobDetail = ({
         </div>
       )}
 
+      {/* 5.5. AI Talent Intelligence Section */}
+      {shouldShowSection('aiIntelligence') && (
+        <div className="rounded-2xl border border-slate-200/90 dark:border-surface-darkBorder bg-white dark:bg-surface-darkCard shadow-subtle overflow-hidden transition-all">
+          <div className="w-full flex items-center justify-between p-4 hover:bg-slate-50/70 dark:hover:bg-slate-800/50 transition-colors flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={() => toggleSection('aiIntelligence')}
+              className="flex-1 flex items-center gap-3 text-left min-w-[200px]"
+            >
+              <div className="w-8 h-8 rounded-xl bg-indigo-50 dark:bg-indigo-950/60 border border-indigo-200/80 dark:border-indigo-800 flex items-center justify-center text-indigo-600 dark:text-indigo-400 shadow-subtle flex-shrink-0">
+                <Database className="w-4 h-4" />
+              </div>
+              <div className="flex items-center gap-2.5 flex-wrap">
+                <h4 className="text-sm font-bold uppercase tracking-wider text-navy-900 dark:text-slate-100">
+                  AI Talent Intelligence
+                </h4>
+                <span className="text-xs font-semibold text-indigo-700 dark:text-indigo-300 bg-indigo-50 dark:bg-indigo-950/60 px-2.5 py-0.5 rounded-full border border-indigo-200/70 dark:border-indigo-800">
+                  Live Nemotron Insights
+                </span>
+              </div>
+            </button>
+            {/* Quick Header Actions */}
+            <div className="flex items-center gap-2 flex-wrap">
+              <button
+                type="button"
+                onClick={() => toggleSection('aiIntelligence')}
+                className="p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+                aria-label="Toggle AI intelligence section"
+              >
+                <ChevronDown
+                  className={`w-4 h-4 text-slate-400 transition-transform duration-200 ${
+                    openSections.aiIntelligence ? 'rotate-180' : ''
+                  }`}
+                />
+              </button>
+            </div>
+          </div>
+
+          {openSections.aiIntelligence && (
+            <div className="p-0 animate-fadeIn">
+              <AIIntelligencePanel
+                jobId={job.numeric_id || job.id}
+                job={job}
+                onOpenSourcingTab={() => {
+                  setActiveViewFilter('sourcing');
+                  setOpenSections((prev) => ({ ...prev, companies: true, boolean: true }));
+                }}
+                onNavigateToJob={(targetJobId) => {
+                  if (onNavigateToJob) onNavigateToJob(targetJobId);
+                }}
+              />
+            </div>
+          )}
+        </div>
+      )}
+
       {/* 6. Matching Candidates Section */}
       {shouldShowSection('matches') && (
         <div className="rounded-2xl border border-slate-200/90 dark:border-surface-darkBorder bg-white dark:bg-surface-darkCard shadow-subtle overflow-hidden transition-all">
@@ -3195,9 +3285,11 @@ export const JobDetail = ({
               </div>
 
               <MatchingCandidates
+                job={job}
                 candidates={filteredMatchingCandidates}
                 onSelectCandidate={onSelectCandidate}
                 onOpenWorkspace={() => onOpenMatrix?.(job)}
+                onCompareCandidate={onCompareWithCandidate}
               />
             </div>
           )}

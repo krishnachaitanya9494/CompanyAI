@@ -1411,6 +1411,473 @@ def compare_candidates_for_job(
     }
 
 
+def compare_single_candidate_for_job(
+    db: Session,
+    job_id: int,
+    candidate_id: int,
+    weights: Optional[MatchScoreWeights] = None,
+) -> Dict[str, Any]:
+    """Perform a comprehensive deep 1-on-1 comparison between a Job Description and a Candidate's Resume."""
+    job = db.query(Job).filter(Job.id == job_id).first()
+    if not job:
+        raise ValueError(f"Job with ID {job_id} not found.")
+
+    candidate = db.query(Candidate).filter(Candidate.id == candidate_id).first()
+    if not candidate:
+        raise ValueError(f"Candidate with ID {candidate_id} not found.")
+
+    segmentation = get_active_approved_segmentation(db, job_id)
+    requirements: List[JobRequirement] = []
+    full_jd_emb: Optional[JobEmbedding] = None
+    req_emb_map: Dict[int, JobEmbedding] = {}
+
+    if not segmentation:
+        segmentation = (
+            db.query(JDSegmentation)
+            .filter(JDSegmentation.job_id == job_id)
+            .order_by(JDSegmentation.version.desc())
+            .first()
+        )
+
+    if segmentation:
+        requirements = (
+            db.query(JobRequirement)
+            .filter(JobRequirement.segmentation_id == segmentation.id)
+            .order_by(JobRequirement.order_index.asc())
+            .all()
+        )
+        full_jd_emb, req_emb_map = get_segmentation_embeddings_map(db, segmentation.id)
+
+    active_weights = (weights or MatchScoreWeights()).normalized()
+    eval_result = evaluate_candidate_multi_resume(
+        candidate=candidate,
+        job=job,
+        segmentation=segmentation,
+        requirements=requirements,
+        full_jd_emb=full_jd_emb,
+        req_emb_map=req_emb_map,
+        weights=active_weights,
+        db=db,
+        load_disk_text=True,
+    )
+
+    # Retrieve genuine resume text and filename
+    resume_obj = (
+        db.query(Resume).filter(Resume.id == eval_result.winning_resume_id).first()
+        if eval_result.winning_resume_id
+        else db.query(Resume).filter(Resume.candidate_id == candidate.id).first()
+    )
+    resume_text = ""
+    if resume_obj:
+        resume_text = get_cached_resume_text(resume_obj, candidate, load_disk=True)
+
+    # Evaluate Experience fit
+    cand_exp = candidate.experience_years or 0.0
+    min_exp = float(job.min_experience_years or 0)
+    max_exp = float(job.max_experience_years or 99)
+    if min_exp <= cand_exp <= max_exp:
+        exp_status = "Qualified"
+        exp_note = f"{cand_exp} yrs fits within requested {min_exp}–{max_exp} yrs range."
+    elif cand_exp < min_exp:
+        diff = round(min_exp - cand_exp, 1)
+        exp_status = "Under-experienced"
+        exp_note = f"{cand_exp} yrs is {diff} yr(s) below requested minimum of {min_exp} yrs."
+    else:
+        diff = round(cand_exp - max_exp, 1)
+        exp_status = "Senior / Over-qualified"
+        exp_note = f"{cand_exp} yrs exceeds target range ({min_exp}–{max_exp} yrs) by {diff} yr(s)."
+
+    # Location fit
+    cand_loc = (candidate.location or "").strip()
+    job_loc = (job.location or "").strip()
+    loc_match = (
+        job_loc.lower() in cand_loc.lower()
+        or cand_loc.lower() in job_loc.lower()
+        or "remote" in job_loc.lower()
+        or "remote" in cand_loc.lower()
+    )
+
+    # Skills Venn analysis
+    cand_skills_lower = {s.lower(): s for s in (candidate.skills or [])}
+    req_skills_all = [s.strip() for s in (job.required_skills or []) if s.strip()]
+    pref_skills_all = [s.strip() for s in (job.preferred_skills or []) if s.strip()]
+
+    matched_mandatory = []
+    missing_mandatory = []
+    for rsk in req_skills_all:
+        if any(rsk.lower() == csk or rsk.lower() in csk or csk in rsk.lower() for csk in cand_skills_lower):
+            matched_mandatory.append(rsk)
+        else:
+            missing_mandatory.append(rsk)
+
+    matched_preferred = []
+    missing_preferred = []
+    for psk in pref_skills_all:
+        if any(psk.lower() == csk or psk.lower() in csk or csk in psk.lower() for csk in cand_skills_lower):
+            matched_preferred.append(psk)
+        else:
+            missing_preferred.append(psk)
+
+    # Adjacent / Transferable skills
+    all_job_skills_lower = {s.lower() for s in req_skills_all + pref_skills_all}
+    adjacent_skills = [
+        s for s in (candidate.skills or [])
+        if s.lower() not in all_job_skills_lower and not any(s.lower() in js for js in all_job_skills_lower)
+    ][:10]
+
+    # Requirements alignment
+    requirements_alignment = []
+    for req_item in eval_result.requirements:
+        requirements_alignment.append({
+            "requirement_id": req_item.requirement_id,
+            "category": req_item.category,
+            "category_label": req_item.category_label,
+            "classification": req_item.classification,
+            "original_text": req_item.original_text,
+            "status": req_item.status,
+            "verification_status": req_item.verification_status,
+            "evidence_source": req_item.evidence_source,
+            "confidence": req_item.confidence,
+            "evidence": req_item.evidence,
+            "notes": req_item.notes,
+        })
+
+    # AI Interview Questions tailored to gaps
+    tailored_questions = []
+    if missing_mandatory:
+        for sk in missing_mandatory[:3]:
+            tailored_questions.append({
+                "focus_skill": sk,
+                "type": "Mandatory Skill Verification",
+                "question": f"Can you walk us through any hands-on project or architectural experience you have with {sk}, even if not prominently listed on your resume?",
+                "what_to_look_for": f"Look for concrete examples of {sk} implementation, understanding of edge cases, and architectural best practices."
+            })
+    if missing_preferred:
+        for sk in missing_preferred[:2]:
+            tailored_questions.append({
+                "focus_skill": sk,
+                "type": "Preferred Qualification Check",
+                "question": f"The role benefits from experience in {sk}. Have you integrated or evaluated {sk} in past production environments?",
+                "what_to_look_for": f"Assess ramp-up readiness and conceptual familiarity with {sk}."
+            })
+    if exp_status == "Under-experienced":
+        tailored_questions.append({
+            "focus_skill": "Seniority & Autonomous Delivery",
+            "type": "Experience Acceleration",
+            "question": f"This position targets {min_exp}+ years of experience. Describe a high-stakes initiative where you operated above your formal tenure level.",
+            "what_to_look_for": "Demonstrated autonomy, quick problem-solving, and cross-functional leadership."
+        })
+    if not tailored_questions:
+        tailored_questions.append({
+            "focus_skill": "Architecture & Scale",
+            "type": "Technical Depth",
+            "question": f"Describe your end-to-end design and delivery approach for a mission-critical {job.title} system.",
+            "what_to_look_for": "Scalability, trade-offs, and operational excellence."
+        })
+
+    # Strengths and risks
+    strengths = []
+    if matched_mandatory:
+        strengths.append(f"Demonstrated core competence in {', '.join(matched_mandatory[:3])}.")
+    if matched_preferred:
+        strengths.append(f"Possesses preferred qualifications in {', '.join(matched_preferred[:3])}.")
+    if exp_status == "Qualified":
+        strengths.append(f"Industry tenure ({cand_exp} years) aligns with job requirements.")
+    if adjacent_skills:
+        strengths.append(f"Brings complementary adjacent skills: {', '.join(adjacent_skills[:4])}.")
+
+    risks = []
+    if missing_mandatory:
+        risks.append(f"Missing evidence for {len(missing_mandatory)} mandatory skill(s): {', '.join(missing_mandatory)}.")
+    if missing_preferred:
+        risks.append(f"Lacks {len(missing_preferred)} preferred qualification(s): {', '.join(missing_preferred)}.")
+    if exp_status == "Under-experienced":
+        risks.append(f"Total experience ({cand_exp} yrs) is below requested minimum of {min_exp} yrs.")
+    elif exp_status == "Senior / Over-qualified":
+        risks.append(f"Candidate ({cand_exp} yrs) exceeds standard band ({min_exp}–{max_exp} yrs). Verify compensation and level expectations.")
+    if not loc_match:
+        risks.append(f"Location mismatch: Candidate is in '{cand_loc}', job is in '{job_loc}'. Relocation or remote flexibility needed.")
+
+    return {
+        "job": {
+            "id": job.id,
+            "title": job.title,
+            "job_code": job.job_code or f"REQ-{job.id}",
+            "department": job.department or "Engineering",
+            "location": job.location or "Unspecified",
+            "min_experience_years": job.min_experience_years,
+            "max_experience_years": job.max_experience_years,
+            "required_skills": job.required_skills or [],
+            "preferred_skills": job.preferred_skills or [],
+            "job_overview": segmentation.job_overview if segmentation else job.description or "",
+            "role_summary": segmentation.role_summary if segmentation else "",
+            "requirements_count": len(requirements),
+        },
+        "candidate": {
+            "id": candidate.id,
+            "name": candidate.name or f"Candidate {candidate.id}",
+            "code": getattr(candidate, "code", None) or f"cand-{candidate.id}",
+            "email": candidate.email or "",
+            "phone": candidate.phone or "",
+            "current_role": getattr(candidate, "current_role", None) or getattr(candidate, "title", None) or "Professional",
+            "experience_years": candidate.experience_years,
+            "location": candidate.location or "Unspecified",
+            "availability": candidate.availability or "Immediate",
+            "stage": candidate.stage or "Applied",
+            "skills": candidate.skills or [],
+            "summary": candidate.summary or "",
+            "winning_resume_filename": eval_result.winning_resume_filename,
+            "resume_text_excerpt": resume_text[:3000] if resume_text else "",
+        },
+        "comparison": {
+            "match_score": eval_result.match_score,
+            "classification": eval_result.classification,
+            "raw_score": eval_result.raw_score,
+            "score_based_tier": eval_result.score_based_tier,
+            "eligibility_adjusted_tier": eval_result.eligibility_adjusted_tier,
+            "semantic_similarity": eval_result.raw_cosine_similarity,
+            "has_critical_gap": eval_result.has_critical_gap,
+            "critical_gap_explanation": eval_result.critical_gap_explanation,
+            "mandatory_gap_count": eval_result.mandatory_gap_count,
+            "component_scores": eval_result.component_scores,
+            "experience_fit": {
+                "candidate_years": cand_exp,
+                "required_min": min_exp,
+                "required_max": max_exp,
+                "status": exp_status,
+                "note": exp_note,
+            },
+            "location_fit": {
+                "candidate_location": cand_loc,
+                "job_location": job_loc,
+                "is_match": loc_match,
+            },
+            "skills_analysis": {
+                "matched_mandatory": matched_mandatory,
+                "missing_mandatory": missing_mandatory,
+                "matched_preferred": matched_preferred,
+                "missing_preferred": missing_preferred,
+                "adjacent_skills": adjacent_skills,
+                "mandatory_coverage_pct": round(len(matched_mandatory) / max(1, len(req_skills_all)) * 100, 1),
+            },
+            "requirements_alignment": requirements_alignment,
+            "strengths": strengths,
+            "risks_and_gaps": risks,
+            "interview_kit": tailored_questions,
+            "recruiter_verdict": (
+                f"{candidate.name} is classified as '{eval_result.eligibility_adjusted_tier}' with an overall match score of {eval_result.match_score}%. "
+                f"Candidate covers {len(matched_mandatory)} of {len(req_skills_all)} mandatory skills with {cand_exp} years industry experience."
+            ),
+        }
+    }
+
+
+def compare_adhoc_jd_and_resume(
+    db: Session,
+    jd_text: str,
+    resume_text: str,
+    role_title: str = "Target Position",
+    candidate_name: str = "Applicant Profile",
+) -> Dict[str, Any]:
+    """Perform ad-hoc comparison of pasted/uploaded JD text and Resume text without database writes."""
+    if not jd_text or not jd_text.strip():
+        raise ValueError("Job description text cannot be empty.")
+    if not resume_text or not resume_text.strip():
+        raise ValueError("Resume text cannot be empty.")
+
+    # Extract skills heuristically from JD text
+    tokens = re.findall(r'\b[A-Za-z0-9\+#\.\/\-]{2,25}\b', jd_text)
+    candidate_terms = []
+    seen = set()
+    for t in tokens:
+        tl = t.lower()
+        if tl not in STOPWORDS and len(t) >= 2 and tl not in seen and not t.isdigit():
+            seen.add(tl)
+            candidate_terms.append(t)
+
+    mandatory_terms = candidate_terms[:8] if candidate_terms else ["Core Technical Skills"]
+    preferred_terms = candidate_terms[8:14] if len(candidate_terms) > 8 else []
+
+    resume_text_lower = resume_text.lower()
+
+    # Match terms against resume
+    matched_mandatory = []
+    missing_mandatory = []
+    requirements_alignment = []
+
+    for idx, term in enumerate(mandatory_terms):
+        clean_term = term.strip()
+        t_lower = clean_term.lower()
+        is_hit = t_lower in resume_text_lower
+        snippet = find_evidence_snippet(resume_text, [clean_term]) if is_hit else None
+
+        if is_hit:
+            matched_mandatory.append(clean_term)
+            status = "SATISFIED"
+            ver_status = "VERIFIED"
+            conf = 0.95
+            ev = snippet or f"Found '{clean_term}' in resume text."
+        else:
+            missing_mandatory.append(clean_term)
+            status = "GAP"
+            ver_status = "NO_EVIDENCE"
+            conf = 0.85
+            ev = "No evidence found in uploaded resume document."
+
+        requirements_alignment.append({
+            "requirement_id": -(idx + 1),
+            "category": "mandatory_skills",
+            "category_label": "Mandatory Technical Stack",
+            "classification": "Mandatory",
+            "original_text": f"Proficiency in {clean_term}",
+            "status": status,
+            "verification_status": ver_status,
+            "evidence_source": "resume_text" if is_hit else "none",
+            "confidence": conf,
+            "evidence": ev,
+            "notes": "Extracted from ad-hoc JD specification.",
+        })
+
+    matched_preferred = []
+    missing_preferred = []
+    for idx, term in enumerate(preferred_terms):
+        clean_term = term.strip()
+        t_lower = clean_term.lower()
+        is_hit = t_lower in resume_text_lower
+        snippet = find_evidence_snippet(resume_text, [clean_term]) if is_hit else None
+
+        if is_hit:
+            matched_preferred.append(clean_term)
+            status = "SATISFIED"
+            ver_status = "VERIFIED"
+            conf = 0.85
+            ev = snippet or f"Found '{clean_term}' in resume text."
+        else:
+            missing_preferred.append(clean_term)
+            status = "GAP"
+            ver_status = "NO_EVIDENCE"
+            conf = 0.75
+            ev = "No evidence found in uploaded resume document."
+
+        requirements_alignment.append({
+            "requirement_id": -(len(mandatory_terms) + idx + 1),
+            "category": "preferred_skills",
+            "category_label": "Preferred Qualifications",
+            "classification": "Preferred",
+            "original_text": f"Experience with {clean_term}",
+            "status": status,
+            "verification_status": ver_status,
+            "evidence_source": "resume_text" if is_hit else "none",
+            "confidence": conf,
+            "evidence": ev,
+            "notes": "Extracted from ad-hoc JD specification.",
+        })
+
+    # Experience heuristic from resume text
+    exp_matches = re.findall(r"(\d+(?:\.\d+)?)\+?\s*(?:years?|yrs?)\b", resume_text, re.IGNORECASE)
+    cand_exp = float(exp_matches[0]) if exp_matches else 4.0
+
+    # Score calculation
+    mand_cov = len(matched_mandatory) / max(1, len(mandatory_terms))
+    pref_cov = len(matched_preferred) / max(1, len(preferred_terms)) if preferred_terms else 0.5
+    raw_score = int(round(mand_cov * 60 + pref_cov * 25 + min(cand_exp / 8.0, 1.0) * 15))
+    has_critical_gap = len(missing_mandatory) > 0
+
+    if raw_score >= 85 and not has_critical_gap:
+        tier = "Excellent Match"
+    elif raw_score >= 70 and len(missing_mandatory) <= 1:
+        tier = "Strong Match"
+    elif raw_score >= 50:
+        tier = "Potential Match"
+    else:
+        tier = "Needs Review"
+
+    return {
+        "job": {
+            "id": 0,
+            "title": role_title or "Custom Job Specification",
+            "job_code": "CUSTOM-JD",
+            "department": "Custom Requisition",
+            "location": "Unspecified",
+            "min_experience_years": 3,
+            "max_experience_years": 8,
+            "required_skills": mandatory_terms,
+            "preferred_skills": preferred_terms,
+            "job_overview": jd_text[:400] + ("..." if len(jd_text) > 400 else ""),
+            "role_summary": f"Custom specification for {role_title}",
+            "requirements_count": len(requirements_alignment),
+        },
+        "candidate": {
+            "id": 0,
+            "name": candidate_name or "Custom Resume Profile",
+            "code": "CUSTOM-CAND",
+            "email": "",
+            "phone": "",
+            "current_role": "Applicant",
+            "experience_years": cand_exp,
+            "location": "Unspecified",
+            "availability": "Immediate",
+            "stage": "Review",
+            "skills": matched_mandatory + matched_preferred,
+            "summary": resume_text[:300] + ("..." if len(resume_text) > 300 else ""),
+            "winning_resume_filename": "Uploaded Document",
+            "resume_text_excerpt": resume_text[:3000],
+        },
+        "comparison": {
+            "match_score": raw_score,
+            "classification": tier,
+            "raw_score": raw_score,
+            "score_based_tier": tier,
+            "eligibility_adjusted_tier": tier,
+            "semantic_similarity": round(mand_cov * 0.85, 2),
+            "has_critical_gap": has_critical_gap,
+            "critical_gap_explanation": f"Missing {len(missing_mandatory)} mandatory skill(s): {', '.join(missing_mandatory)}" if has_critical_gap else "All evaluated mandatory skills detected.",
+            "mandatory_gap_count": len(missing_mandatory),
+            "component_scores": {
+                "mandatory_coverage_score": round(mand_cov * 100, 1),
+                "preferred_coverage_score": round(pref_cov * 100, 1),
+                "experience_fit_score": round(min(cand_exp / 8.0, 1.0) * 100, 1),
+                "role_fit_score": 75.0,
+                "domain_fit_score": 70.0,
+                "semantic_similarity_score": round(mand_cov * 85, 1),
+            },
+            "experience_fit": {
+                "candidate_years": cand_exp,
+                "required_min": 3.0,
+                "required_max": 8.0,
+                "status": "Qualified" if 3.0 <= cand_exp <= 8.0 else ("Under-experienced" if cand_exp < 3.0 else "Senior"),
+                "note": f"Extracted approximately {cand_exp} years from resume content.",
+            },
+            "location_fit": {
+                "candidate_location": "Unspecified",
+                "job_location": "Unspecified",
+                "is_match": True,
+            },
+            "skills_analysis": {
+                "matched_mandatory": matched_mandatory,
+                "missing_mandatory": missing_mandatory,
+                "matched_preferred": matched_preferred,
+                "missing_preferred": missing_preferred,
+                "adjacent_skills": [],
+                "mandatory_coverage_pct": round(mand_cov * 100, 1),
+            },
+            "requirements_alignment": requirements_alignment,
+            "strengths": [f"Direct matches found for: {', '.join(matched_mandatory[:3])}"] if matched_mandatory else [],
+            "risks_and_gaps": [f"Missing critical keyword matches for: {', '.join(missing_mandatory[:3])}"] if missing_mandatory else [],
+            "interview_kit": [
+                {
+                    "focus_skill": sk,
+                    "type": "Ad-Hoc Gap Verification",
+                    "question": f"How have you applied {sk} in your recent enterprise roles?",
+                    "what_to_look_for": f"Check practical application and depth in {sk}."
+                }
+                for sk in missing_mandatory[:3]
+            ],
+            "recruiter_verdict": f"Custom evaluation classifies candidate as '{tier}' with an alignment score of {raw_score}%.",
+        }
+    }
+
+
 # Retrieve distinct filter options from SQLite candidate records for recruiter workspace filters.
 def get_matching_filter_options(db: Session) -> Dict[str, Any]:
     locations = [

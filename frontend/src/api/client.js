@@ -156,6 +156,17 @@ export const jobApi = {
       body: JSON.stringify({ candidate_ids: candidateIds }),
     }),
 
+  // Deep 1-on-1 comparison between a specific Job and Candidate Resume.
+  compareWithCandidate: (jobId, candidateId) =>
+    apiRequest(`/jobs/${jobId}/compare/${candidateId}`),
+
+  // Ad-hoc comparison between custom pasted/uploaded JD text and Resume text.
+  compareAdhoc: (payload) =>
+    apiRequest(`/jobs/compare-adhoc`, {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
+
   // Retrieve candidate pool filter options (locations, stages, experience range).
   getMatchFilters: (id) => apiRequest(`/jobs/${id}/match-filters`),
 

@@ -30,6 +30,7 @@ import {
   Scale,
   Compass,
   Gauge,
+  GitCompare,
 } from 'lucide-react';
 
 // Export Sidebar component receiving navigation state, counts, and layout controls.
@@ -89,6 +90,14 @@ export const Sidebar = ({
           label: 'Matching Workspace',
           icon: Layers,
           badge: 'AI Match',
+          isAi: true,
+          isFunctional: true,
+        },
+        {
+          id: 'comparison',
+          label: 'JD & Resume Comparison',
+          icon: GitCompare,
+          badge: 'Dual AI',
           isAi: true,
           isFunctional: true,
         },

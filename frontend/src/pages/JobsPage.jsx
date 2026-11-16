@@ -36,6 +36,7 @@ export const JobsPage = ({
   onSelectCandidateDirect,
   onCreateJob,
   onNavigateToMatrix,
+  onNavigateToComparison,
 }) => {
   // Selected job id for master-detail layout (default to initial or first job).
   const [selectedJobId, setSelectedJobId] = useState(initialJobId || jobs[0]?.id);
@@ -392,6 +393,9 @@ export const JobsPage = ({
               onSelectCandidate={handleSelectCandidate}
               onUpdateJob={onUpdateJob}
               onOpenMatrix={onNavigateToMatrix}
+              onNavigateToJob={(targetJobId) => setSelectedJobId(targetJobId)}
+              onCompareWithCandidate={(candId) => onNavigateToComparison && onNavigateToComparison(currentJob?.id, candId)}
+              onOpenComparison={() => onNavigateToComparison && onNavigateToComparison(currentJob?.id, null)}
               onRefreshApprovals={onRefreshApprovals}
               isFullPageView={isFullPageView}
               onToggleFullPageView={() => setIsFullPageView((prev) => !prev)}

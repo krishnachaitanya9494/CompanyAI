@@ -28,6 +28,7 @@ import {
   ShieldAlert,
   Briefcase,
   GraduationCap,
+  GitCompare,
   FileText,
   Building,
   Calendar,
@@ -50,6 +51,7 @@ export const CandidateDetail = ({
   onPreviewResume,
   onUpdateCandidate,
   onRefreshApprovals,
+  onCompareWithJD,
 }) => {
   // Available candidate stages aligned with backend SQLite stage definitions.
   const stageOptions = [
@@ -333,6 +335,20 @@ export const CandidateDetail = ({
                   <Download className="w-3.5 h-3.5" />
                   <span>Download</span>
                 </a>
+              )}
+              {onCompareWithJD && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    onClose();
+                    onCompareWithJD(null, activeCandidate.id);
+                  }}
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-50 dark:bg-indigo-950/50 hover:bg-indigo-100 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 rounded-xl text-xs font-semibold shadow-subtle transition-all"
+                  title="Open JD & Resume Intelligence Comparison"
+                >
+                  <GitCompare className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
+                  <span>Compare with JD</span>
+                </button>
               )}
               {activeCandidate.matchScore != null ? (
                 <Badge variant="brand" size="md">

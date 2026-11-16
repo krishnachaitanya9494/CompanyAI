@@ -58,6 +58,8 @@ from app.services.jd_embedding_service import (
 from app.services.matching_engine_service import (
     search_and_match_candidates,
     compare_candidates_for_job,
+    compare_single_candidate_for_job,
+    compare_adhoc_jd_and_resume,
     get_matching_filter_options,
     CandidateMatchingFilters,
     MatchScoreWeights,
@@ -556,6 +558,55 @@ def compare_job_candidates(
     except Exception:
         # Return sanitized 500 error without leaking internal exception messages.
         raise HTTPException(status_code=500, detail="Candidate comparison failed.")
+
+
+# Schema for ad-hoc JD and Resume text comparison.
+class CompareAdhocSchema(BaseModel):
+    jd_text: str = Field(..., description="Job description text")
+    resume_text: str = Field(..., description="Resume text")
+    role_title: Optional[str] = Field(default="Target Position", description="Optional role title")
+    candidate_name: Optional[str] = Field(default="Applicant Profile", description="Optional applicant name")
+
+
+@router.post("/compare-adhoc")
+def compare_adhoc_texts(
+    payload: CompareAdhocSchema,
+    db: Session = Depends(get_db),
+) -> dict[str, Any]:
+    """Perform on-the-fly deep comparison between pasted/uploaded JD text and Resume text."""
+    try:
+        return compare_adhoc_jd_and_resume(
+            db=db,
+            jd_text=payload.jd_text,
+            resume_text=payload.resume_text,
+            role_title=payload.role_title or "Target Position",
+            candidate_name=payload.candidate_name or "Applicant Profile",
+        )
+    except ValueError as ve:
+        raise HTTPException(status_code=400, detail=str(ve))
+    except Exception:
+        raise HTTPException(status_code=500, detail="Ad-hoc comparison failed.")
+
+
+@router.get("/{job_id}/compare/{candidate_id}")
+def compare_single_candidate(
+    job_id: str,
+    candidate_id: int,
+    db: Session = Depends(get_db),
+) -> dict[str, Any]:
+    """Perform a deep 1-on-1 comparison between a specific Job and Candidate Resume."""
+    raw_id = job_id.replace("job-", "").lstrip("0") or "0"
+    try:
+        j_id = int(raw_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid job ID format.")
+
+    try:
+        return compare_single_candidate_for_job(db=db, job_id=j_id, candidate_id=candidate_id)
+    except ValueError as ve:
+        raise HTTPException(status_code=400, detail=str(ve))
+    except Exception:
+        raise HTTPException(status_code=500, detail="Single candidate comparison failed.")
 
 
 @router.get("/{job_id}/match-filters")

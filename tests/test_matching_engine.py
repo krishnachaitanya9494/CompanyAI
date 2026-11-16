@@ -573,3 +573,44 @@ def test_evidence_classification_semantics():
         db.close()
 
 
+# Test single candidate 1-on-1 JD & Resume comparison endpoint.
+def test_api_compare_single_candidate():
+    from app.routers.jobs import compare_single_candidate
+    db = SessionLocal()
+    try:
+        data = compare_single_candidate(job_id="1", candidate_id=1, db=db)
+        assert "job" in data
+        assert "candidate" in data
+        assert "comparison" in data
+        comp = data["comparison"]
+        assert "match_score" in comp
+        assert "skills_analysis" in comp
+        assert "requirements_alignment" in comp
+        assert "interview_kit" in comp
+        assert isinstance(comp["requirements_alignment"], list)
+    finally:
+        db.close()
+
+
+# Test ad-hoc JD & Resume text comparison endpoint.
+def test_api_compare_adhoc_texts():
+    from app.routers.jobs import compare_adhoc_texts, CompareAdhocSchema
+    db = SessionLocal()
+    try:
+        data = compare_adhoc_texts(
+            payload=CompareAdhocSchema(
+                jd_text="Senior React Engineer proficient in TypeScript, Redux, and Tailwind.",
+                resume_text="Senior frontend developer with 6 years experience in React, TypeScript, and state management.",
+                role_title="Senior React Engineer",
+                candidate_name="Alex River",
+            ),
+            db=db,
+        )
+        assert data["job"]["title"] == "Senior React Engineer"
+        assert data["candidate"]["name"] == "Alex River"
+        assert "match_score" in data["comparison"]
+        assert len(data["comparison"]["requirements_alignment"]) > 0
+    finally:
+        db.close()
+
+

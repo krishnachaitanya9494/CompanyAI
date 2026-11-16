@@ -21,15 +21,18 @@ import {
   Briefcase,
   MapPin,
   Clock,
+  GitCompare,
 } from 'lucide-react';
 
 // Export MatchingCandidates component presenting qualified candidates with AI evidence and component score breakdowns.
 export const MatchingCandidates = ({
   candidates = [],
+  job,
   onSelectCandidate,
   selectedForCompare = [],
   onToggleCompare,
   onOpenWorkspace,
+  onCompareCandidate,
 }) => {
   // Track expanded evidence cards by candidate ID.
   const [expandedEvidenceIds, setExpandedEvidenceIds] = useState(new Set());
@@ -87,12 +90,58 @@ export const MatchingCandidates = ({
         return <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-amber-100 dark:bg-amber-900/40 text-amber-800 dark:text-amber-300 border border-amber-300 dark:border-amber-700/60">▲ Potential</span>;
       case 'Partial Match':
         return <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-300 dark:border-surface-darkBorder">○ Partial</span>;
-      default:
-        return <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-rose-100 dark:bg-rose-900/40 text-rose-800 dark:text-rose-300 border border-rose-300 dark:border-rose-700/60">! Review</span>;
+    default:
+      return <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-rose-100 dark:bg-rose-900/40 text-rose-800 dark:text-rose-300 border border-rose-300 dark:border-rose-700/60">! Review</span>;
     }
   };
 
-  // If no candidates matched criteria, show informative empty state.
+  // Digital Twin Persona: infer candidate archetype from component scores & match profile.
+  const getDigitalTwinPersona = (candidate) => {
+    const cs = candidate.componentScores || {};
+    const ms = candidate.matchScore != null ? candidate.matchScore : null;
+    const mandatory = cs.mandatory_skills != null ? cs.mandatory_skills : 0;
+    const experience = cs.relevant_experience != null ? cs.relevant_experience : 0;
+    const domain = cs.domain_fit != null ? cs.domain_fit : 0;
+    const semantic = cs.semantic_relevance != null ? cs.semantic_relevance : 0;
+
+    if (ms != null && ms >= 85 && mandatory >= 80) {
+      return { label: 'Strong Technical Fit', color: 'text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/40 border-emerald-200 dark:border-emerald-700/60' };
+    }
+    if (domain >= 80 && experience >= 70) {
+      return { label: 'Domain Expert', color: 'text-indigo-700 dark:text-indigo-300 bg-indigo-50 dark:bg-indigo-950/40 border-indigo-200 dark:border-indigo-700/60' };
+    }
+    if (semantic >= 75 && mandatory >= 60) {
+      return { label: 'Semantic Match', color: 'text-brand-700 dark:text-brand-300 bg-brand-50 dark:bg-brand-950/40 border-brand-200 dark:border-brand-700/60' };
+    }
+    if (ms != null && ms >= 60) {
+      return { label: 'Potential Match', color: 'text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/40 border-amber-200 dark:border-amber-700/60' };
+    }
+    return { label: 'Emerging Talent', color: 'text-slate-600 dark:text-slate-300 bg-slate-50 dark:bg-surface-darkBg border-slate-200 dark:border-surface-darkBorder' };
+  };
+
+  // Adjacent / transferable skills the candidate holds beyond their listed primary & secondary skills.
+  const getAdjacentSkills = (candidate) => {
+    if (!job) return [];
+    const jobSkills = new Set([
+      ...(job.requiredSkills || []).map((s) => s.toLowerCase()),
+      ...(job.preferredSkills || []).map((s) => s.toLowerCase()),
+    ]);
+    const candidateSkills = new Set([
+      ...(candidate.primarySkills || []).map((s) => s.toLowerCase()),
+      ...(candidate.secondarySkills || []).map((s) => s.toLowerCase()),
+      ...(candidate.skills || []).map((s) => s.toLowerCase()),
+    ]);
+    const allSkills = [
+      ...(candidate.primarySkills || []),
+      ...(candidate.secondarySkills || []),
+      ...(candidate.skills || []),
+    ];
+    return allSkills.filter((s) => {
+      const low = s.toLowerCase();
+      return !jobSkills.has(low) && !candidateSkills.has(low) && s.length > 2;
+    }).slice(0, 4);
+  };
+
   if (candidates.length === 0) {
     return (
       <div className="p-8 bg-slate-50 dark:bg-surface-darkCard border border-dashed border-slate-200 dark:border-surface-darkBorder rounded-2xl text-center space-y-2">
@@ -136,6 +185,9 @@ export const MatchingCandidates = ({
                     {cand.code || `cand-${cand.id}`}
                   </span>
                   {getTierBadge(cand)}
+                  <span className="font-mono text-xs font-semibold text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded border border-slate-200 dark:border-surface-darkBorder">
+                    {getDigitalTwinPersona(cand).label}
+                  </span>
                 </div>
                 <p className="text-sm text-slate-700 dark:text-slate-300 font-medium">{cand.currentRole}</p>
               </div>
@@ -206,24 +258,47 @@ export const MatchingCandidates = ({
               </div>
             )}
 
-            {/* Component Score Breakdown Mini-Bars if available */}
+            {/* Component Score Breakdown Visual Bars if available */}
             {cand.componentScores && (
-              <div className="p-3 bg-slate-50/80 dark:bg-surface-darkBg/60 rounded-xl border border-slate-100 dark:border-surface-darkBorder mb-3 grid grid-cols-2 sm:grid-cols-4 gap-2.5 text-xs sm:text-sm">
-                <div>
-                  <span className="text-slate-500 dark:text-slate-400 block text-xs">Mandatory Skills</span>
-                  <span className="font-bold text-navy-900 dark:text-slate-100">{cand.componentScores.mandatory_skills}%</span>
+              <div className="p-3.5 bg-slate-50/80 dark:bg-surface-darkBg/60 rounded-xl border border-slate-100 dark:border-surface-darkBorder mb-3 space-y-2 text-xs sm:text-sm">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 mb-1.5">
+                  <div>
+                    <span className="text-slate-500 dark:text-slate-400 block text-[10px]">Mandatory Skills</span>
+                    <span className="font-bold text-navy-900 dark:text-slate-100">{cand.componentScores.mandatory_skills}%</span>
+                  </div>
+                  <div>
+                    <span className="text-slate-500 dark:text-slate-400 block text-[10px]">Experience Fit</span>
+                    <span className="font-bold text-navy-900 dark:text-slate-100">{cand.componentScores.relevant_experience}%</span>
+                  </div>
+                  <div>
+                    <span className="text-slate-500 dark:text-slate-400 block text-[10px]">Domain &amp; Role</span>
+                    <span className="font-bold text-navy-900 dark:text-slate-100">{cand.componentScores.domain_fit}%</span>
+                  </div>
+                  <div>
+                    <span className="text-slate-500 dark:text-slate-400 block text-[10px]">Semantic Relevance</span>
+                    <span className="font-bold text-brand-700 dark:text-brand-400">{cand.componentScores.semantic_relevance}%</span>
+                  </div>
                 </div>
-                <div>
-                  <span className="text-slate-500 dark:text-slate-400 block text-xs">Experience Fit</span>
-                  <span className="font-bold text-navy-900 dark:text-slate-100">{cand.componentScores.relevant_experience}%</span>
-                </div>
-                <div>
-                  <span className="text-slate-500 dark:text-slate-400 block text-xs">Domain &amp; Role</span>
-                  <span className="font-bold text-navy-900 dark:text-slate-100">{cand.componentScores.domain_fit}%</span>
-                </div>
-                <div>
-                  <span className="text-slate-500 dark:text-slate-400 block text-xs">Semantic Relevance</span>
-                  <span className="font-bold text-brand-700 dark:text-brand-400">{cand.componentScores.semantic_relevance}%</span>
+                <div className="space-y-1.5">
+                  {[
+                    { label: 'Mandatory Skills', value: cand.componentScores.mandatory_skills, color: 'bg-navy-500' },
+                    { label: 'Experience Fit', value: cand.componentScores.relevant_experience, color: 'bg-indigo-500' },
+                    { label: 'Domain & Role', value: cand.componentScores.domain_fit, color: 'bg-teal-500' },
+                    { label: 'Semantic Relevance', value: cand.componentScores.semantic_relevance, color: 'bg-brand-500' },
+                  ].map((bar) => (
+                    <div key={bar.label} className="space-y-1">
+                      <div className="flex items-center justify-between text-[10px]">
+                        <span className="text-slate-600 dark:text-slate-300">{bar.label}</span>
+                        <span className="font-semibold text-navy-900 dark:text-slate-100">{bar.value}%</span>
+                      </div>
+                      <div className="w-full bg-slate-200 dark:bg-surface-darkBg rounded-full h-2 overflow-hidden border border-slate-200/50 dark:border-surface-darkBorder/40">
+                        <div
+                          className={`${bar.color} h-full rounded-full transition-all duration-700`}
+                          style={{ width: `${Math.max(0, Math.min(100, bar.value))}%` }}
+                        />
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </div>
             )}
@@ -241,6 +316,25 @@ export const MatchingCandidates = ({
                 </span>
               ))}
             </div>
+
+            {/* Adjacent / Transferable Skills Insight */}
+            {job && getAdjacentSkills(cand).length > 0 && (
+              <div className="flex items-start gap-2 mb-3">
+                <span className="text-[10px] font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/40 px-2 py-0.5 rounded border border-indigo-200/60 dark:border-indigo-700/60 flex-shrink-0">
+                  Adjacent Skills
+                </span>
+                <div className="flex flex-wrap gap-1.5 min-w-0">
+                  {getAdjacentSkills(cand).map((sk) => (
+                    <span
+                      key={sk}
+                      className="inline-flex items-center px-2 py-1 rounded-lg text-[11px] font-medium bg-indigo-50 dark:bg-indigo-950/30 text-indigo-700 dark:text-indigo-300 border border-indigo-200/60 dark:border-indigo-800/60"
+                    >
+                      {sk}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {/* Expandable Evidence Highlights & Recruiter Rationale */}
             {isEvidenceOpen && (
@@ -302,6 +396,19 @@ export const MatchingCandidates = ({
                 >
                   <Scale className="w-3.5 h-3.5" />
                   <span>{isSelected ? 'Selected' : 'Compare'}</span>
+                </button>
+              )}
+
+              {/* Deep 1-on-1 JD & Resume Compare Action */}
+              {onCompareCandidate && (
+                <button
+                  type="button"
+                  onClick={() => onCompareCandidate(cand.id)}
+                  className="flex items-center gap-1.5 py-1.5 px-2.5 rounded-xl text-xs font-semibold bg-indigo-50 dark:bg-indigo-950/50 hover:bg-indigo-100 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 transition-colors shadow-xs"
+                  title="Open deep 1-on-1 JD and Resume Comparison"
+                >
+                  <GitCompare className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
+                  <span>Compare</span>
                 </button>
               )}
 

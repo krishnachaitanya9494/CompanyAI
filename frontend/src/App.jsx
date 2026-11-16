@@ -18,6 +18,7 @@ const RequestsPage = lazy(() => import('./pages/RequestsPage').then((m) => ({ de
 const InterviewsPage = lazy(() => import('./pages/InterviewsPage').then((m) => ({ default: m.InterviewsPage })));
 const PipelineKanbanPage = lazy(() => import('./pages/PipelineKanbanPage').then((m) => ({ default: m.PipelineKanbanPage })));
 const MatchingMatrixPage = lazy(() => import('./pages/MatchingMatrixPage').then((m) => ({ default: m.MatchingMatrixPage })));
+const JDResumeComparisonPage = lazy(() => import('./pages/JDResumeComparisonPage').then((m) => ({ default: m.JDResumeComparisonPage })));
 const TalentPoolPage = lazy(() => import('./pages/TalentPoolPage').then((m) => ({ default: m.TalentPoolPage })));
 const ClientsPage = lazy(() => import('./pages/ClientsPage').then((m) => ({ default: m.ClientsPage })));
 const PlacementsPage = lazy(() => import('./pages/PlacementsPage').then((m) => ({ default: m.PlacementsPage })));
@@ -52,7 +53,7 @@ const ENABLE_TALENT_INTELLIGENCE = false;
 // Valid workspace tab keys shared with URL ?tab= synchronization and browser history.
 const VALID_TABS = new Set([
   'dashboard', 'assistant', 'candidates', 'jobs', 'requests',
-  'interviews', 'pipeline', 'matching', 'talent_pool', 'clients',
+  'interviews', 'pipeline', 'matching', 'comparison', 'jd_resume_compare', 'talent_pool', 'clients',
   'placements', 'analytics', 'approvals', 'agent_activity', 'notifications', 'settings',
   ...(ENABLE_TALENT_INTELLIGENCE
     ? ['intelligence_graph', 'market_intelligence', 'supply_demand', 'strategic_sourcing', 'hiring_difficulty']
@@ -448,6 +449,13 @@ export default function App() {
     setActiveTab('jobs');
   };
 
+  // Handler to navigate directly to JD & Resume Comparison with pre-selected job and/or candidate.
+  const handleNavigateToComparison = (jobId = null, candidateId = null) => {
+    if (jobId) setFocusedJobId(parseNumericId(jobId));
+    if (candidateId) setFocusedCandidateId(parseNumericId(candidateId));
+    setActiveTab('comparison');
+  };
+
   // Derive topbar title and subtitle dynamically based on active tab.
   const getHeaderMeta = () => {
     switch (activeTab) {
@@ -506,6 +514,12 @@ export default function App() {
         return {
           title: 'Semantic Candidate-to-JD Matching Matrix',
           subtitle: 'Grounded semantic alignment, skills coverage, and verifiable resume citations',
+        };
+      case 'comparison':
+      case 'jd_resume_compare':
+        return {
+          title: 'JD & Resume Intelligence Comparison',
+          subtitle: 'Side-by-side semantic alignment, requirement verification, gap analysis, and tailored interview kit',
         };
       case 'intelligence_graph':
         return {
@@ -728,11 +742,13 @@ export default function App() {
           {activeTab === 'candidates' && (
             <CandidatesPage
               candidates={candidates}
+              jobs={jobs}
               onUpdateCandidate={handleUpdateCandidate}
               onUploadResume={handleUploadResume}
               initialCandidateId={focusedCandidateId}
               onClearInitialCandidate={() => setFocusedCandidateId(null)}
               resumeDiscovery={apiState.discovery}
+              onNavigateToComparison={handleNavigateToComparison}
             />
           )}
 
@@ -747,6 +763,7 @@ export default function App() {
               onRefreshApprovals={refreshApprovals}
               initialJobId={focusedJobId}
               onSelectCandidateDirect={handleOpenCandidateModal}
+              onNavigateToComparison={handleNavigateToComparison}
               onNavigateToMatrix={(job) => {
                 // Set focused job ID for matrix workspace.
                 setFocusedJobId(job?.id || null);
@@ -796,6 +813,20 @@ export default function App() {
               onUpdateCandidateStage={handleUpdateCandidate}
               onRefreshApprovals={refreshApprovals}
               onScheduleInterview={(item) => handleOpenCandidateModal(item.candidate_id)}
+              onNavigateToComparison={handleNavigateToComparison}
+            />
+          )}
+
+          {/* JD & Resume Intelligence Comparison Tab */}
+          {(activeTab === 'comparison' || activeTab === 'jd_resume_compare') && (
+            <JDResumeComparisonPage
+              jobs={jobs}
+              candidates={candidates}
+              initialJobId={focusedJobId}
+              initialCandidateId={focusedCandidateId}
+              onSelectCandidate={handleOpenCandidateModal}
+              onSelectJob={handleJumpToJob}
+              onUpdateCandidateStage={handleUpdateCandidate}
             />
           )}
 
