@@ -52,7 +52,8 @@ import { CustomSelect } from '../common/CustomSelect';
 const sanitizeStructuredText = (raw) => {
   if (!raw || typeof raw !== 'string') return '';
   return raw
-    .replace(/\[section=[^;\]]+;\s*source_line=\d+\]\s*/g, '')
+    .replace(/\[section=[^;\]]+(?:;\s*source_line=\d+)?\]\s*/gi, '')
+    .replace(/\[(?:section|source_line)=[^\]]+\]\s*/gi, '')
     .replace(/^##\s*Role:.*$/gim, '')
     .replace(/^##\s*Requisition ID:.*$/gim, '')
     .replace(/^##\s*Experience:.*$/gim, '')
@@ -193,8 +194,17 @@ export const JDSegmentationWorkspace = ({
       const seg = segRes.segmentation;
       setSegmentation(seg);
       setSelectedVersion(seg.version);
-      setOverviewText(sanitizeStructuredText(seg.job_overview || ''));
-      setRoleSummaryText(sanitizeStructuredText(seg.role_summary || ''));
+      const cleanOverview = sanitizeStructuredText(seg.job_overview || '');
+      const rawSummary = sanitizeStructuredText(seg.role_summary || '');
+      const jobRoleName = job.title || 'Technical Specialist';
+      setOverviewText(cleanOverview || `Comprehensive role owning technical delivery and system architecture for ${jobRoleName}.`);
+      setRoleSummaryText(
+        rawSummary &&
+        rawSummary !== 'Professional role within engineering organization.' &&
+        rawSummary !== 'Professional role within technical organization.'
+          ? rawSummary
+          : `Key contributor driving platform architecture, engineering excellence, and mission-critical solution delivery for ${jobRoleName}.`
+      );
       setEditableReqs(flattenSegmentationCategories(seg));
       setDeletedIds([]);
     } catch (err) {

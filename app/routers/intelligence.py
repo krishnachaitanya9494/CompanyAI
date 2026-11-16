@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from typing import Any, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
@@ -278,26 +279,37 @@ def supply_demand_job_detail_endpoint(
 # ---------------------------------------------------------------------------
 
 
+def _parse_job_id(job_id: Any) -> int:
+    """Parse numeric job ID safely from string or integer."""
+    digits = re.sub(r"[^0-9]", "", str(job_id))
+    try:
+        return int(digits) if digits else int(str(job_id))
+    except (ValueError, TypeError):
+        raise HTTPException(status_code=400, detail="Invalid job ID format.")
+
+
 @router.get("/sourcing/jobs/{job_id}/recommendations")
 def sourcing_job_recommendations_endpoint(
-    job_id: int,
+    job_id: str,
     db: Session = Depends(get_db),
 ) -> dict[str, Any]:
     """Return advisory strategic sourcing recommendations for a specific job."""
+    j_id = _parse_job_id(job_id)
     try:
-        return get_job_sourcing_recommendations(db, job_id)
+        return get_job_sourcing_recommendations(db, j_id)
     except ValueError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
 
 
 @router.get("/sourcing/jobs/{job_id}/alternatives")
 def sourcing_job_alternatives_endpoint(
-    job_id: int,
+    job_id: str,
     db: Session = Depends(get_db),
 ) -> dict[str, Any]:
     """Return exact vs adjacent-skill internal candidate alternatives for a job."""
+    j_id = _parse_job_id(job_id)
     try:
-        return get_job_sourcing_alternatives(db, job_id)
+        return get_job_sourcing_alternatives(db, j_id)
     except ValueError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
 
@@ -328,11 +340,12 @@ def hiring_difficulty_overview_endpoint(
 
 @router.get("/hiring-difficulty/jobs/{job_id}")
 def hiring_difficulty_job_endpoint(
-    job_id: int,
+    job_id: str,
     db: Session = Depends(get_db),
 ) -> dict[str, Any]:
     """Return detailed heuristic hiring difficulty assessment for a specific job."""
+    j_id = _parse_job_id(job_id)
     try:
-        return assess_job_hiring_difficulty(db, job_id)
+        return assess_job_hiring_difficulty(db, j_id)
     except ValueError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc

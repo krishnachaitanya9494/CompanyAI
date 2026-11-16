@@ -53,6 +53,7 @@ import {
   HelpCircle,
   Maximize2,
   Minimize2,
+  Database,
 } from 'lucide-react';
 
 // Sourcing Company Categories with visual styles and icons
@@ -62,6 +63,15 @@ export const COMPANY_CATEGORIES = [
   { id: 'big4', label: 'Big 4 & Advisory', icon: Building, color: 'text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-950/60 border-blue-200/80 dark:border-blue-800' },
   { id: 'gsi', label: 'Global System Integrators', icon: Globe, color: 'text-purple-700 dark:text-purple-300 bg-purple-50 dark:bg-purple-950/60 border-purple-200/80 dark:border-purple-800' },
   { id: 'gcc', label: 'Enterprise GCCs & Hubs', icon: Target, color: 'text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/60 border-amber-200/80 dark:border-amber-800' },
+];
+
+// Talent Sourcing Strategies with descriptive positioning for recruiter dropdown
+export const SOURCING_STRATEGIES = [
+  { id: 'tier1', label: 'Tier-1 Competitors & Parallel Ecosystems', desc: 'Product OEMs, Big 4 Advisory, GSIs & Tech GCCs', catFilter: 'all' },
+  { id: 'oem', label: 'Product OEMs & Platform Specialists', desc: 'Direct software vendors and platform engineering centers', catFilter: 'oem' },
+  { id: 'big4', label: 'Big 4 & Strategic Advisory Firms', desc: 'Consulting practices with enterprise implementation arms', catFilter: 'big4' },
+  { id: 'gsi', label: 'Global System Integrators (GSIs)', desc: 'Tier-1 technology delivery partners and systems integrators', catFilter: 'gsi' },
+  { id: 'gcc', label: 'Enterprise GCCs & Tech Hubs', desc: 'Internal engineering centers and captive business services', catFilter: 'gcc' },
 ];
 
 // Rich, structured ecosystem intelligence for recruiter talent sourcing across all core domains.
@@ -330,6 +340,10 @@ export const JobDetail = ({
   const [copiedBoolean, setCopiedBoolean] = useState(false);
   const [copiedTargetClause, setCopiedTargetClause] = useState(false);
   const [copiedExcludedClause, setCopiedExcludedClause] = useState(false);
+  // View mode for talent sourcing companies: 'cards' (rich cards) or 'tags' (compact chips)
+  const [companyViewMode, setCompanyViewMode] = useState('cards');
+  // Talent Sourcing Strategy selector state
+  const [sourcingStrategy, setSourcingStrategy] = useState('tier1');
 
   // Custom Query Editor state
   const [isCustomMode, setIsCustomMode] = useState(false);
@@ -1998,13 +2012,32 @@ export const JobDetail = ({
                       {job.client || job.client_name}
                     </span>
                   ) : (
-                    <span className="text-xs sm:text-sm font-semibold text-navy-900 dark:text-slate-100">
-                      Tier-1 Competitors &amp; Parallel Ecosystems
-                    </span>
+                    <div className="inline-flex items-center gap-1.5">
+                      <select
+                        value={sourcingStrategy}
+                        onChange={(e) => {
+                          const stratId = e.target.value;
+                          setSourcingStrategy(stratId);
+                          const matched = SOURCING_STRATEGIES.find((s) => s.id === stratId);
+                          if (matched && matched.catFilter) {
+                            setCompanyCategoryFilter(matched.catFilter);
+                          }
+                        }}
+                        className="text-xs sm:text-sm font-bold text-navy-950 dark:text-slate-100 bg-white dark:bg-surface-darkCard border border-slate-300 dark:border-surface-darkBorder rounded-xl px-2.5 py-1 focus:outline-none focus:ring-2 focus:ring-indigo-500/30 cursor-pointer shadow-2xs"
+                        aria-label="Talent Sourcing Strategy selector"
+                      >
+                        {SOURCING_STRATEGIES.map((strat) => (
+                          <option key={strat.id} value={strat.id}>
+                            {strat.label}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
                   )}
                   <span className="text-xs text-slate-400 dark:text-slate-500 hidden sm:inline">•</span>
                   <span className="text-xs text-slate-500 dark:text-slate-400">
-                    Categorized by Product OEMs, Big 4 Advisory, GSIs &amp; Tech GCCs
+                    {SOURCING_STRATEGIES.find((s) => s.id === sourcingStrategy)?.desc ||
+                      'Categorized by Product OEMs, Big 4 Advisory, GSIs & Tech GCCs'}
                   </span>
                 </div>
                 <div className="text-xs text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
@@ -2109,6 +2142,34 @@ export const JobDetail = ({
                     <Plus className="w-3.5 h-3.5" />
                     <span>{showAddCompanyInput ? 'Close Form' : 'Add Custom Company'}</span>
                   </button>
+
+                  {/* View Mode Toggle: Cards vs Tags */}
+                  <div className="inline-flex rounded-xl p-0.5 bg-slate-100 dark:bg-slate-800 border border-slate-200/80 dark:border-surface-darkBorder">
+                    <button
+                      type="button"
+                      onClick={() => setCompanyViewMode('cards')}
+                      className={`px-2.5 py-1 text-xs font-semibold rounded-lg transition-all ${
+                        companyViewMode === 'cards'
+                          ? 'bg-white dark:bg-surface-darkCard text-navy-950 dark:text-slate-100 shadow-2xs font-bold'
+                          : 'text-slate-500 hover:text-navy-900 dark:text-slate-400'
+                      }`}
+                      title="Rich cards view with company metadata and actions"
+                    >
+                      Cards View
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setCompanyViewMode('tags')}
+                      className={`px-2.5 py-1 text-xs font-semibold rounded-lg transition-all ${
+                        companyViewMode === 'tags'
+                          ? 'bg-white dark:bg-surface-darkCard text-navy-950 dark:text-slate-100 shadow-2xs font-bold'
+                          : 'text-slate-500 hover:text-navy-900 dark:text-slate-400'
+                      }`}
+                      title="Compact clickable tag pills view"
+                    >
+                      Tags View
+                    </button>
+                  </div>
                 </div>
 
                 {/* Responsive Non-Scrolling Category Quick Filter Chips */}
@@ -2225,158 +2286,200 @@ export const JobDetail = ({
                 </form>
               )}
 
-              {/* Rich Company Cards Grid */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3.5 pt-1">
-                {filteredCompanyObjects.map((company) => {
-                  const isTargeted = selectedCompanies.includes(company.name);
-                  const isExcluded = excludedCompanies.includes(company.name);
-                  const isCustom = customCompanies.some(
-                    (c) => c.name.toLowerCase() === company.name.toLowerCase()
-                  );
+              {/* Conditional View: Compact Tags View vs Rich Cards Grid */}
+              {companyViewMode === 'tags' ? (
+                /* Compact Interactive Tags View matching Screenshot 3 */
+                <div className="p-4 rounded-2xl bg-white dark:bg-surface-darkCard border border-slate-200/80 dark:border-surface-darkBorder space-y-3 shadow-subtle animate-fadeIn">
+                  <div className="flex items-center justify-between flex-wrap gap-2">
+                    <div className="flex items-center gap-2">
+                      <Building2 className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+                      <span className="text-xs font-bold text-navy-950 dark:text-slate-100">
+                        Suggested Target Sourcing Companies ({filteredCompanyObjects.length}):
+                      </span>
+                    </div>
+                    <span className="text-[11px] text-slate-400 dark:text-slate-500">
+                      Click to include in Boolean query
+                    </span>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-2 pt-1">
+                    {filteredCompanyObjects.map((company) => {
+                      const isTargeted = selectedCompanies.includes(company.name);
+                      const isExcluded = excludedCompanies.includes(company.name);
 
-                  const catMeta =
-                    COMPANY_CATEGORIES.find((c) => c.id === company.category) ||
-                    COMPANY_CATEGORIES[3];
-                  const CatIcon = catMeta.icon;
-
-                  const searchUrl = `https://www.linkedin.com/search/results/people/?keywords=${encodeURIComponent(
-                    `"${job.title || 'Engineer'}" "${company.name}"`
-                  )}`;
-
-                  return (
-                    <div
-                      key={company.name}
-                      className={`relative flex flex-col justify-between p-3.5 rounded-2xl border overflow-hidden transition-all duration-150 ${
-                        isTargeted
-                          ? 'border-indigo-500 dark:border-indigo-400 bg-indigo-50/30 dark:bg-indigo-950/20 shadow-sm ring-1 ring-indigo-500/20'
-                          : isExcluded
-                          ? 'border-rose-400 dark:border-rose-600 bg-rose-50/30 dark:bg-rose-950/20 shadow-sm ring-1 ring-rose-500/20'
-                          : 'border-slate-200/90 dark:border-surface-darkBorder bg-white dark:bg-surface-darkBg hover:border-slate-300 dark:hover:border-slate-700 hover:shadow-subtle'
-                      }`}
+                      return (
+                        <button
+                          key={company.name}
+                          type="button"
+                          onClick={() => handleToggleCompany(company.name)}
+                          className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold border transition-all ${
+                            isTargeted
+                              ? 'bg-indigo-600 text-white border-indigo-600 shadow-xs font-bold'
+                              : isExcluded
+                              ? 'bg-rose-100 text-rose-700 border-rose-300 dark:bg-rose-950/60 dark:text-rose-300 dark:border-rose-800'
+                              : 'bg-slate-50 dark:bg-surface-darkBg text-slate-700 dark:text-slate-200 border-slate-200/90 dark:border-surface-darkBorder hover:border-indigo-400 hover:bg-indigo-50/40 dark:hover:bg-slate-800'
+                          }`}
+                          title={isTargeted ? 'Targeted (click to remove)' : 'Click to target company in Boolean query'}
+                        >
+                          <span className="text-[11px] font-bold">{isTargeted ? '✓' : isExcluded ? '⊘' : '+'}</span>
+                          <span>{company.name}</span>
+                        </button>
+                      );
+                    })}
+                    <button
+                      type="button"
+                      onClick={() => setShowAddCompanyInput(true)}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold border border-dashed border-slate-300 dark:border-slate-600 text-slate-600 dark:text-slate-300 hover:border-indigo-400 hover:text-indigo-600 transition-all"
                     >
-                      {/* Card Top: Category Badge & External LinkedIn Search */}
-                      <div>
-                        <div className="flex items-center justify-between gap-1 mb-2">
-                          <span
-                            className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[10px] font-bold border uppercase tracking-wider ${
-                              catMeta.color ||
-                              'text-slate-600 bg-slate-50 border-slate-200'
-                            }`}
-                          >
-                            <CatIcon className="w-3 h-3" />
-                            <span>{catMeta.label.split(' ')[0]}</span>
-                          </span>
+                      <Plus className="w-3.5 h-3.5" />
+                      <span>Add Company</span>
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                /* Rich Company Cards Grid with Properly Fitted Target & Exclude Controls */
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 gap-3.5 pt-1 animate-fadeIn">
+                  {filteredCompanyObjects.map((company) => {
+                    const isTargeted = selectedCompanies.includes(company.name);
+                    const isExcluded = excludedCompanies.includes(company.name);
+                    const isCustom = customCompanies.some(
+                      (c) => c.name.toLowerCase() === company.name.toLowerCase()
+                    );
 
-                          <div className="flex items-center gap-1">
-                            {/* LinkedIn Candidate Search Shortcut */}
-                            <a
-                              href={searchUrl}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="p-1 text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
-                              title={`Search ${job.title} candidates at ${company.name} on LinkedIn`}
+                    const catMeta =
+                      COMPANY_CATEGORIES.find((c) => c.id === company.category) ||
+                      COMPANY_CATEGORIES[3];
+                    const CatIcon = catMeta.icon;
+
+                    const searchUrl = `https://www.linkedin.com/search/results/people/?keywords=${encodeURIComponent(
+                      `"${job.title || 'Engineer'}" "${company.name}"`
+                    )}`;
+
+                    return (
+                      <div
+                        key={company.name}
+                        className={`relative flex flex-col justify-between p-3.5 rounded-2xl border min-w-0 transition-all duration-150 ${
+                          isTargeted
+                            ? 'border-indigo-500 dark:border-indigo-400 bg-indigo-50/30 dark:bg-indigo-950/20 shadow-sm ring-1 ring-indigo-500/20'
+                            : isExcluded
+                            ? 'border-rose-400 dark:border-rose-600 bg-rose-50/30 dark:bg-rose-950/20 shadow-sm ring-1 ring-rose-500/20'
+                            : 'border-slate-200/90 dark:border-surface-darkBorder bg-white dark:bg-surface-darkBg hover:border-slate-300 dark:hover:border-slate-700 hover:shadow-subtle'
+                        }`}
+                      >
+                        {/* Card Top: Category Badge & External LinkedIn Search */}
+                        <div>
+                          <div className="flex items-center justify-between gap-1 mb-2">
+                            <span
+                              className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[10px] font-bold border uppercase tracking-wider ${
+                                catMeta.color ||
+                                'text-slate-600 bg-slate-50 border-slate-200'
+                              }`}
                             >
-                              <ExternalLink className="w-3.5 h-3.5" />
-                            </a>
+                              <CatIcon className="w-3 h-3" />
+                              <span>{catMeta.label.split(' ')[0]}</span>
+                            </span>
 
-                            {/* Remove Custom Company */}
-                            {isCustom && (
-                              <button
-                                type="button"
-                                onClick={(e) => handleRemoveCustomCompany(company.name, e)}
-                                className="p-1 text-slate-400 hover:text-rose-500 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
-                                title="Remove custom company"
+                            <div className="flex items-center gap-1">
+                              {/* LinkedIn Candidate Search Shortcut */}
+                              <a
+                                href={searchUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="p-1 text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                                title={`Search ${job.title} candidates at ${company.name} on LinkedIn`}
                               >
-                                <X className="w-3.5 h-3.5" />
-                              </button>
+                                <ExternalLink className="w-3.5 h-3.5" />
+                              </a>
+
+                              {/* Remove Custom Company */}
+                              {isCustom && (
+                                <button
+                                  type="button"
+                                  onClick={(e) => handleRemoveCustomCompany(company.name, e)}
+                                  className="p-1 text-slate-400 hover:text-rose-500 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                                  title="Remove custom company"
+                                >
+                                  <X className="w-3.5 h-3.5" />
+                                </button>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* Company Name & Tier */}
+                          <div className="mb-1">
+                            <h5 className="text-sm font-bold text-navy-950 dark:text-slate-100 leading-snug truncate">
+                              {company.name}
+                            </h5>
+                            {company.tier && (
+                              <span className="text-[11px] font-semibold text-indigo-600 dark:text-indigo-400 truncate block">
+                                {company.tier}
+                              </span>
                             )}
                           </div>
-                        </div>
 
-                        {/* Company Name & Tier */}
-                        <div className="mb-1">
-                          <h5 className="text-sm font-bold text-navy-950 dark:text-slate-100 leading-snug">
-                            {company.name}
-                          </h5>
-                          {company.tier && (
-                            <span className="text-[11px] font-semibold text-indigo-600 dark:text-indigo-400">
-                              {company.tier}
-                            </span>
+                          {/* Location */}
+                          {company.location && (
+                            <div className="flex items-center gap-1 text-[11px] text-slate-500 dark:text-slate-400 mb-1.5">
+                              <MapPin className="w-3 h-3 flex-shrink-0 text-slate-400" />
+                              <span className="truncate">{company.location}</span>
+                            </div>
+                          )}
+
+                          {/* Description / Practice Notes */}
+                          {company.description && (
+                            <p className="text-[11px] text-slate-600 dark:text-slate-300 leading-relaxed line-clamp-2 mb-2">
+                              {company.description}
+                            </p>
                           )}
                         </div>
 
-                        {/* Location */}
-                        {company.location && (
-                          <div className="flex items-center gap-1 text-[11px] text-slate-500 dark:text-slate-400 mb-1.5">
-                            <MapPin className="w-3 h-3 flex-shrink-0 text-slate-400" />
-                            <span className="truncate">{company.location}</span>
+                        {/* Card Bottom: Segmented Target vs Exclude Control with Spacious Fit */}
+                        <div className="mt-3 pt-2.5 border-t border-slate-100 dark:border-surface-darkBorder/60">
+                          <div className="flex items-center gap-1.5 p-1 rounded-xl bg-slate-100/90 dark:bg-slate-800/80 border border-slate-200/60 dark:border-surface-darkBorder/40">
+                            {/* Target Button */}
+                            <button
+                              type="button"
+                              onClick={() => handleToggleCompany(company.name)}
+                              className={`flex-1 h-7.5 px-2 rounded-lg text-[11px] font-bold transition-all duration-150 inline-flex items-center justify-center gap-1 min-w-0 ${
+                                isTargeted
+                                  ? 'bg-indigo-600 text-white shadow-xs'
+                                  : 'text-slate-600 dark:text-slate-300 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-white dark:hover:bg-slate-700/60'
+                              }`}
+                              title={isTargeted ? 'Targeted in Boolean pool (click to untarget)' : 'Click to add to target sourcing pool'}
+                            >
+                              {isTargeted ? (
+                                <>
+                                  <Check className="w-3.5 h-3.5 flex-shrink-0 text-white" />
+                                  <span className="truncate">Targeted</span>
+                                </>
+                              ) : (
+                                <>
+                                  <Target className="w-3.5 h-3.5 flex-shrink-0 text-slate-400" />
+                                  <span className="truncate">Target</span>
+                                </>
+                              )}
+                            </button>
+
+                            {/* Off-Limits Exclude Button */}
+                            <button
+                              type="button"
+                              onClick={() => handleToggleExcludeCompany(company.name)}
+                              className={`flex-1 h-7.5 px-2 rounded-lg text-[11px] font-bold transition-all duration-150 inline-flex items-center justify-center gap-1 min-w-0 ${
+                                isExcluded
+                                  ? 'bg-rose-600 text-white shadow-xs'
+                                  : 'text-slate-600 dark:text-slate-300 hover:text-rose-600 dark:hover:text-rose-400 hover:bg-white dark:hover:bg-slate-700/60'
+                              }`}
+                              title={isExcluded ? 'Marked as off-limits (click to unmark)' : 'Click to mark as off-limits (NOT clause)'}
+                            >
+                              <Ban className={`w-3.5 h-3.5 flex-shrink-0 ${isExcluded ? 'text-white' : 'text-rose-500'}`} />
+                              <span className="truncate">{isExcluded ? 'Excluded' : 'Exclude'}</span>
+                            </button>
                           </div>
-                        )}
-
-                        {/* Description / Practice Notes */}
-                        {company.description && (
-                          <p className="text-[11px] text-slate-600 dark:text-slate-300 leading-relaxed line-clamp-2 mb-2">
-                            {company.description}
-                          </p>
-                        )}
-                      </div>
-
-                      {/* Card Bottom: Segmented Target vs Off-Limits Control */}
-                      <div className="mt-3 pt-2.5 border-t border-slate-100 dark:border-surface-darkBorder/60">
-                        <div className="grid grid-cols-2 gap-1 p-0.5 rounded-xl bg-slate-100/90 dark:bg-slate-800/80 border border-slate-200/60 dark:border-surface-darkBorder/40">
-                          {/* Target Button */}
-                          <button
-                            type="button"
-                            onClick={() => handleToggleCompany(company.name)}
-                            className={`h-7 px-1.5 rounded-lg text-[11px] font-bold transition-all duration-150 inline-flex items-center justify-center gap-1 min-w-0 w-full overflow-hidden ${
-                              isTargeted
-                                ? 'bg-indigo-600 text-white shadow-xs'
-                                : 'text-slate-600 dark:text-slate-300 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-white dark:hover:bg-slate-700/60'
-                            }`}
-                            title={isTargeted ? 'Targeted in Boolean pool (click to untarget)' : 'Click to add to target sourcing pool'}
-                          >
-                            {isTargeted ? (
-                              <>
-                                <Check className="w-3 h-3 flex-shrink-0" />
-                                <span className="truncate">Targeted</span>
-                              </>
-                            ) : (
-                              <>
-                                <Target className="w-3 h-3 flex-shrink-0 text-slate-400" />
-                                <span className="truncate">Target</span>
-                              </>
-                            )}
-                          </button>
-
-                          {/* Off-Limits / Non-Poach Exclude Button */}
-                          <button
-                            type="button"
-                            onClick={() => handleToggleExcludeCompany(company.name)}
-                            className={`h-7 px-1.5 rounded-lg text-[11px] font-bold transition-all duration-150 inline-flex items-center justify-center gap-1 min-w-0 w-full overflow-hidden ${
-                              isExcluded
-                                ? 'bg-rose-600 text-white shadow-xs'
-                                : 'text-slate-600 dark:text-slate-300 hover:text-rose-600 dark:hover:text-rose-400 hover:bg-white dark:hover:bg-slate-700/60'
-                            }`}
-                            title={isExcluded ? 'Marked as off-limits / non-poach protected (click to unmark)' : 'Click to mark as off-limits (NOT clause)'}
-                          >
-                            {isExcluded ? (
-                              <>
-                                <Ban className="w-3 h-3 flex-shrink-0" />
-                                <span className="truncate">Off-Limits</span>
-                              </>
-                            ) : (
-                              <>
-                                <Ban className="w-3 h-3 flex-shrink-0 text-slate-400" />
-                                <span className="truncate">Exclude</span>
-                              </>
-                            )}
-                          </button>
                         </div>
                       </div>
-                    </div>
-                  );
-                })}
-              </div>
+                    );
+                  })}
+                </div>
+              )}
 
               {filteredCompanyObjects.length === 0 && (
                 <div className="text-center py-8 text-slate-400 dark:text-slate-500 text-xs sm:text-sm">

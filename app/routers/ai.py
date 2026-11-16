@@ -1,5 +1,6 @@
 """FastAPI router for centralized AI intelligence, health, RAG, and vector discovery endpoints."""
 
+import re
 from typing import Any, Dict, List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
@@ -81,12 +82,17 @@ def get_similar_candidates(
 
 @router.get("/similar-jobs/{job_id}")
 def get_similar_jobs(
-    job_id: int,
+    job_id: str,
     limit: int = Query(default=5, ge=1, le=20),
     db: Session = Depends(get_db),
 ) -> List[Dict[str, Any]]:
     """Discover related open job requisitions based on full JD semantic embeddings."""
-    return semantic_search_service.find_similar_jobs(db=db, job_id=job_id, limit=limit)
+    digits = re.sub(r"[^0-9]", "", str(job_id))
+    try:
+        j_id = int(digits) if digits else int(str(job_id))
+    except (ValueError, TypeError):
+        raise HTTPException(status_code=400, detail="Invalid job ID format.")
+    return semantic_search_service.find_similar_jobs(db=db, job_id=j_id, limit=limit)
 
 
 @router.post("/reindex")

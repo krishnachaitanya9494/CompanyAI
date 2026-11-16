@@ -66,36 +66,44 @@ export const AIIntelligencePanel = ({
   const [alternatives, setAlternatives] = useState(null);
   const [similarJobs, setSimilarJobs] = useState([]);
 
+  // Extract clean numeric job ID safely
+  const cleanJobId = useMemo(() => {
+    if (job?.numeric_id) return job.numeric_id;
+    const raw = String(jobId || job?.id || '');
+    const digits = raw.replace(/\D/g, '');
+    return digits ? parseInt(digits, 10) : (jobId || job?.id);
+  }, [jobId, job]);
+
   useEffect(() => {
-    if (!jobId) return;
+    if (!cleanJobId) return;
     setIsLoading(true);
     setError(null);
 
     const controller = new AbortController();
 
     const loadDifficulty = intelligenceApi
-      .getJobHiringDifficulty(jobId)
+      .getJobHiringDifficulty(cleanJobId)
       .then(setDifficulty)
       .catch((err) => {
         if (!controller.signal.aborted) console.warn('hiring difficulty failed:', err.message);
       });
 
     const loadRecommendations = intelligenceApi
-      .getJobSourcingRecommendations(jobId)
+      .getJobSourcingRecommendations(cleanJobId)
       .then(setRecommendations)
       .catch((err) => {
         if (!controller.signal.aborted) console.warn('sourcing recommendations failed:', err.message);
       });
 
     const loadAlternatives = intelligenceApi
-      .getJobSourcingAlternatives(jobId)
+      .getJobSourcingAlternatives(cleanJobId)
       .then(setAlternatives)
       .catch((err) => {
         if (!controller.signal.aborted) console.warn('sourcing alternatives failed:', err.message);
       });
 
     const loadSimilarJobs = aiApi
-      .getSimilarJobs(jobId, 5)
+      .getSimilarJobs(cleanJobId, 5)
       .then(setSimilarJobs)
       .catch((err) => {
         if (!controller.signal.aborted) console.warn('similar jobs failed:', err.message);
@@ -106,7 +114,7 @@ export const AIIntelligencePanel = ({
       .catch(() => setIsLoading(false));
 
     return () => controller.abort();
-  }, [jobId]);
+  }, [cleanJobId]);
 
   const difficultyScore = difficulty?.difficulty_score ?? null;
   const difficultyClass = difficulty?.difficulty_classification ?? 'Insufficient Data';
