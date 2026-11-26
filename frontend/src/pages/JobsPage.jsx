@@ -22,6 +22,7 @@ const JDSegmentationWorkspace = lazy(() =>
 );
 // Query the existing Phase 3 job-to-candidate semantic matching endpoint.
 import { apiRequest } from '../api';
+import { jobApi } from '../api/client';
 // Import icons for the real job creation action and full page view toggle.
 import { Plus, Upload, AlertCircle, X, Maximize2, Minimize2, ChevronLeft, ChevronRight } from 'lucide-react';
 
@@ -37,6 +38,7 @@ export const JobsPage = ({
   onCreateJob,
   onNavigateToMatrix,
   onNavigateToComparison,
+  onDeleteJob,
 }) => {
   // Selected job id for master-detail layout (default to initial or first job).
   const [selectedJobId, setSelectedJobId] = useState(initialJobId || jobs[0]?.id);
@@ -301,6 +303,7 @@ export const JobsPage = ({
                 onSelectJob={setSelectedJobId}
                 onAnalyzeJob={(job) => setAnalyzingJob(job)}
                 onUpdateJob={onUpdateJob}
+                onDeleteJob={onDeleteJob}
               />
             </div>
           </div>

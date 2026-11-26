@@ -42,6 +42,7 @@ from app.services.strategic_sourcing_service import (
 from app.services.hiring_difficulty_service import (
     assess_job_hiring_difficulty,
     get_hiring_difficulty_overview,
+    generate_explainable_hiring_difficulty_insights,
 )
 
 router = APIRouter(prefix="/api/intelligence", tags=["Phase 1 Talent Intelligence"])
@@ -343,9 +344,9 @@ def hiring_difficulty_job_endpoint(
     job_id: str,
     db: Session = Depends(get_db),
 ) -> dict[str, Any]:
-    """Return detailed heuristic hiring difficulty assessment for a specific job."""
+    """Return detailed heuristic and explainable AI hiring difficulty assessment for a specific job."""
     j_id = _parse_job_id(job_id)
     try:
-        return assess_job_hiring_difficulty(db, j_id)
+        return generate_explainable_hiring_difficulty_insights(db, j_id)
     except ValueError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc

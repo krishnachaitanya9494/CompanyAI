@@ -18,6 +18,8 @@ from app.routers import (
     ingestion,
     intelligence,
     ai,
+    job_postings,
+    interview_kits,
 )
 # Import fallback SQLite resources router for file downloads and legacy upload endpoints.
 from app.api_routes import router as sqlite_resources_router
@@ -62,6 +64,8 @@ app.include_router(agent.router)
 app.include_router(ingestion.router)
 app.include_router(intelligence.router)
 app.include_router(ai.router)
+app.include_router(job_postings.router)
+app.include_router(interview_kits.router)
 
 # Mount fallback SQLite resource endpoints for file downloads and legacy operations.
 app.include_router(sqlite_resources_router)
@@ -78,6 +82,7 @@ def read_root() -> dict[str, str]:
 
 
 @app.get("/health")
+@app.get("/api/health")
 def health_check() -> dict[str, str]:
     """Report that the API process and database connectivity are healthy."""
     return {"status": "ok", "platform": "CompanyAI 2.0"}

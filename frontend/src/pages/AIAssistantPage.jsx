@@ -1,4 +1,4 @@
-// Import React, hooks, and icons for the dedicated Nemotron AI recruitment workspace.
+// Import React, hooks, and icons for the dedicated CompanyAI recruitment workspace.
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 
 // Import icons from lucide-react for modern enterprise hybrid aesthetics.
@@ -26,7 +26,7 @@ import {
   X,
 } from 'lucide-react';
 
-// Import Badge component and official React Bits suite for Nemotron AI feedback and attractive interactions.
+// Import Badge component and official React Bits suite for CompanyAI feedback and attractive interactions.
 import { Badge } from '../components/common/Badge';
 import { LatticeLoader } from '../components/reactbits/LatticeLoader';
 import { ShinyText } from '../components/reactbits/ShinyText';
@@ -94,7 +94,7 @@ const PROMPT_CATEGORIES = [
   },
 ];
 
-// Export AIAssistantPage presenting the dedicated Nemotron AI Workspace.
+// Export AIAssistantPage presenting the dedicated CompanyAI Workspace.
 export const AIAssistantPage = ({
   jobs = [],
   candidates = [],
@@ -120,7 +120,7 @@ export const AIAssistantPage = ({
   // Text input box state.
   const [inputText, setInputText] = useState('');
 
-  // Loading state while Nemotron AI processes tool calling and synthesizes answers.
+  // Loading state while CompanyAI processes tool calling and synthesizes answers.
   const [isLoading, setIsLoading] = useState(false);
 
   // Real execution lifecycle tracker ('idle' -> 'waiting' -> 'running' -> 'completed' | 'failed') with no fake progress.
@@ -206,7 +206,7 @@ export const AIAssistantPage = ({
       // Mark active execution once request leaves client towards FastAPI + Nemotron tools.
       setToolPhase('running');
 
-      // Execute query via Nemotron AI agent endpoint with grounded workspace context and tool traces.
+      // Execute query via CompanyAI agent endpoint with grounded workspace context and tool traces.
       const result = await agentApi.chat(query, activeSessionId, contextPayload);
 
       // Construct AI response record with tools called and candidate cards.
@@ -286,11 +286,11 @@ export const AIAssistantPage = ({
         {/* Model telemetry pill */}
         <div className="pt-3 border-t border-slate-100 dark:border-surface-darkBorder">
           <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-surface-darkHover/60 border border-slate-200/70 dark:border-surface-darkBorder text-[11px] text-slate-600 dark:text-slate-300">
-            <span className="font-bold text-navy-900 dark:text-white block">Nemotron AI</span>
-            <span className="text-[10px] text-slate-400 font-mono block">nvidia/nemotron-4-340b</span>
+            <span className="font-bold text-navy-900 dark:text-white block">CompanyAI</span>
+            <span className="text-[10px] text-slate-400 font-mono block">ollama/llama3.2:3b</span>
             <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-medium flex items-center gap-1 mt-1">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-              Connected • 2,048-dim Grounded
+              Connected • 768-dim Grounded
             </span>
           </div>
         </div>
@@ -307,7 +307,7 @@ export const AIAssistantPage = ({
             <div>
               <h2 className="text-sm font-bold text-navy-900 dark:text-white tracking-tight flex items-center gap-2">
                 <ShinyText
-                  text="Nemotron AI Recruitment Assistant"
+                  text="CompanyAI Recruitment Assistant"
                   color="currentColor"
                   shineColor="#10B981"
                   trigger={isLoading ? 'loop' : 'hover'}
@@ -351,12 +351,12 @@ export const AIAssistantPage = ({
               <div className="space-y-1.5">
                 <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-accent-50/90 dark:bg-accent-950/60 border border-accent-200/80 dark:border-accent-700/60">
                   <GradientText colors={['#4F46E5', '#059669', '#6366F1', '#4F46E5']}>
-                    2,048-dim Semantic Intelligence
+                    768-dim Semantic Intelligence
                   </GradientText>
                 </span>
                 <h3 className="text-base font-bold text-navy-900 dark:text-white">
                   <BlurText
-                    text="Ask Nemotron AI"
+                    text="Ask CompanyAI"
                     animateBy="words"
                     delay={65}
                     stepDuration={0.28}
@@ -484,7 +484,7 @@ export const AIAssistantPage = ({
           {isLoading && (
             <div className="flex flex-col sm:flex-row sm:items-center gap-3 text-xs text-slate-600 dark:text-slate-300 px-4 py-3 bg-white dark:bg-surface-darkCard border border-brand-200/80 dark:border-brand-800/70 rounded-2xl w-fit shadow-subtle animate-fadeIn">
               <LatticeLoader
-                label={toolPhase === 'waiting' ? 'Dispatching query to Nemotron AI' : 'Nemotron AI is querying SQLite & executing tools'}
+                label={toolPhase === 'waiting' ? 'Dispatching query to CompanyAI' : 'CompanyAI is querying SQLite & executing tools'}
                 pattern="orbit"
                 grid={3}
                 color="#059669"
@@ -527,7 +527,7 @@ export const AIAssistantPage = ({
               type="text"
               value={inputText}
               onChange={(e) => setInputText(e.target.value)}
-              placeholder="Ask Nemotron to find candidates, evaluate a job, or explain match evidence..."
+              placeholder="Ask CompanyAI to find candidates, evaluate a job, or explain match evidence..."
               disabled={isLoading}
               className="flex-1 px-4 py-2.5 text-xs bg-slate-50 dark:bg-surface-darkHover border border-slate-200 dark:border-surface-darkBorder rounded-xl text-navy-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:border-brand-500 transition-colors"
             />

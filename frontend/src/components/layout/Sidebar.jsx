@@ -31,6 +31,7 @@ import {
   Compass,
   Gauge,
   GitCompare,
+  Lock,
 } from 'lucide-react';
 
 // Export Sidebar component receiving navigation state, counts, and layout controls.
@@ -42,6 +43,7 @@ export const Sidebar = ({
   onToggleCollapse,
   theme = 'light',
   onToggleTheme,
+  isGovernanceBlocked = true,
 }) => {
   // Temporary tooltip or toast state for planned modules.
   const [plannedNotice, setPlannedNotice] = useState(null);
@@ -60,20 +62,20 @@ export const Sidebar = ({
         },
         {
           id: 'assistant',
-          label: 'Nemotron AI',
+          label: 'AI Recruiter Assistant',
           icon: Sparkles,
-          badge: 'Nemotron',
+          badge: 'AI',
           isAi: true,
           isFunctional: true,
         },
       ],
     },
     {
-      title: 'Recruitment Operations',
+      title: 'Recruiting Hub',
       items: [
         {
           id: 'jobs',
-          label: 'Jobs',
+          label: 'Jobs & Requisitions',
           icon: Briefcase,
           badge: counts.jobs || 34,
           isFunctional: true,
@@ -87,58 +89,58 @@ export const Sidebar = ({
         },
         {
           id: 'matching',
-          label: 'Matching Workspace',
+          label: 'Candidate Matches',
           icon: Layers,
-          badge: 'AI Match',
+          badge: 'Smart Fit',
           isAi: true,
           isFunctional: true,
         },
         {
           id: 'comparison',
-          label: 'JD & Resume Comparison',
+          label: 'Compare Resume to Job',
           icon: GitCompare,
-          badge: 'Dual AI',
+          badge: '1-on-1 Fit',
           isAi: true,
           isFunctional: true,
         },
         {
           id: 'requests',
-          label: 'Recruitment Requests',
+          label: 'Hiring Requisitions',
           icon: GitPullRequest,
           badge: counts.requests || 5,
           isFunctional: true,
         },
         {
           id: 'talent_pool',
-          label: 'Talent Pool',
+          label: 'Resume Database',
           icon: UserCheck,
           badge: counts.resumes ? `${counts.resumes} Resumes` : '240 Resumes',
           isFunctional: true,
         },
         {
           id: 'clients',
-          label: 'Clients',
+          label: 'Clients & Accounts',
           icon: Building,
           badge: null,
           isFunctional: true,
         },
         {
           id: 'placements',
-          label: 'Placements',
+          label: 'Placements & Offers',
           icon: Award,
           badge: null,
           isFunctional: true,
         },
         {
           id: 'interviews',
-          label: 'Interviews',
+          label: 'Scheduled Interviews',
           icon: Calendar,
           badge: counts.interviews || null,
           isFunctional: true,
         },
         {
           id: 'pipeline',
-          label: 'Pipeline Kanban',
+          label: 'Hiring Pipeline',
           icon: Columns,
           badge: null,
           isFunctional: true,
@@ -146,28 +148,32 @@ export const Sidebar = ({
       ],
     },
     {
-      title: 'Governance & Analytics',
+      title: 'Reports & Insights',
+      isBlocked: isGovernanceBlocked,
       items: [
         {
           id: 'analytics',
-          label: 'Analytics',
+          label: 'Recruitment Analytics',
           icon: BarChart3,
-          badge: 'Live',
+          badge: isGovernanceBlocked ? 'Blocked' : 'Live',
           isFunctional: true,
+          isBlocked: isGovernanceBlocked,
         },
         {
           id: 'approvals',
-          label: 'Approvals',
+          label: 'Recruiter Approvals',
           icon: ShieldAlert,
-          badge: counts.pendingApprovals > 0 ? counts.pendingApprovals : null,
+          badge: isGovernanceBlocked ? null : (counts.pendingApprovals > 0 ? counts.pendingApprovals : null),
           isFunctional: true,
+          isBlocked: isGovernanceBlocked,
         },
         {
           id: 'agent_activity',
-          label: 'Agent Activity',
+          label: 'AI Automation Activity',
           icon: Cpu,
           badge: null,
           isFunctional: true,
+          isBlocked: isGovernanceBlocked,
         },
         {
           id: 'notifications',
@@ -175,7 +181,13 @@ export const Sidebar = ({
           icon: Bell,
           badge: null,
           isFunctional: true,
+          isBlocked: isGovernanceBlocked,
         },
+      ],
+    },
+    {
+      title: 'Administration',
+      items: [
         {
           id: 'settings',
           label: 'Settings',
@@ -189,6 +201,15 @@ export const Sidebar = ({
 
   // Handle item click, routing to functional tabs and auto-collapsing mobile drawer when open.
   const handleItemClick = (item) => {
+    if (item.isBlocked) {
+      setPlannedNotice('Governance & Analytics is currently blocked. You can unblock this section in Settings.');
+      onSelectTab(item.id);
+      if (typeof window !== 'undefined' && window.innerWidth < 768 && !isCollapsed && onToggleCollapse) {
+        onToggleCollapse();
+      }
+      return;
+    }
+
     if (item.isFunctional) {
       setPlannedNotice(null);
       onSelectTab(item.id);
@@ -266,8 +287,16 @@ export const Sidebar = ({
           <div key={sIdx} className="space-y-1">
             {/* Section Header Title visible only when expanded */}
             {!isCollapsed && (
-              <div className="px-2 pb-1 text-xs font-bold tracking-wider uppercase text-slate-500 dark:text-slate-400">
-                {section.title}
+              <div className="flex items-center justify-between px-2 pb-1">
+                <span className="text-xs font-bold tracking-wider uppercase text-slate-500 dark:text-slate-400">
+                  {section.title}
+                </span>
+                {section.isBlocked && (
+                  <span className="inline-flex items-center gap-1 text-[10px] font-bold text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/60 border border-amber-200 dark:border-amber-800/80 px-1.5 py-0.2 rounded">
+                    <Lock className="w-2.5 h-2.5 text-amber-600 dark:text-amber-400" />
+                    <span>Blocked</span>
+                  </span>
+                )}
               </div>
             )}
 
@@ -281,12 +310,18 @@ export const Sidebar = ({
                   key={item.id}
                   onClick={() => handleItemClick(item)}
                   aria-current={isActive ? 'page' : undefined}
-                  title={isCollapsed ? `${item.label}${item.isPlanned ? ' (Planned)' : ''}` : undefined}
+                  title={
+                    isCollapsed
+                      ? `${item.label}${item.isBlocked ? ' (Blocked)' : item.isPlanned ? ' (Planned)' : ''}`
+                      : undefined
+                  }
                   className={`relative w-full flex items-center ${
                     isCollapsed ? 'justify-center p-2.5' : 'justify-between px-3 py-2.5'
                   } rounded-xl text-[15px] font-medium transition-all duration-150 ${
                     isActive
                       ? 'bg-slate-100/95 dark:bg-surface-darkHover text-navy-950 dark:text-white shadow-subtle font-semibold'
+                      : item.isBlocked
+                      ? 'text-slate-500 dark:text-slate-400 hover:text-amber-700 dark:hover:text-amber-300 hover:bg-amber-50/40 dark:hover:bg-amber-950/20'
                       : item.isPlanned
                       ? 'text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-50/60 dark:hover:bg-surface-darkHover/40 opacity-75'
                       : 'text-slate-600 dark:text-slate-400 hover:text-navy-900 dark:hover:text-white hover:bg-slate-50/90 dark:hover:bg-surface-darkHover hover:translate-x-0.5'
@@ -306,6 +341,8 @@ export const Sidebar = ({
                           ? item.isAi
                             ? 'text-brand-600 dark:text-brand-400'
                             : 'text-navy-950 dark:text-white'
+                          : item.isBlocked
+                          ? 'text-amber-600 dark:text-amber-400'
                           : item.isPlanned
                           ? 'text-slate-400 dark:text-slate-600'
                           : 'text-slate-400 dark:text-slate-500 group-hover:text-slate-600 dark:group-hover:text-slate-300'
@@ -315,20 +352,29 @@ export const Sidebar = ({
                   </div>
 
                   {/* Right badge counter or indicator */}
-                  {!isCollapsed && item.badge !== null && (
-                    <span
-                      className={`text-[10px] px-2 py-0.5 rounded-full font-medium flex-shrink-0 ${
-                        item.isPlanned
-                          ? 'bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500 border border-slate-200/50 dark:border-slate-700/50'
-                          : item.isAi
-                          ? 'bg-brand-50 dark:bg-brand-900/40 text-brand-700 dark:text-brand-300 border border-brand-200/80 dark:border-brand-700/60'
-                          : isActive
-                          ? 'bg-white dark:bg-slate-800 text-navy-900 dark:text-white border border-slate-200 dark:border-slate-700'
-                          : 'bg-slate-100 dark:bg-slate-800/80 text-slate-500 dark:text-slate-400'
-                      }`}
-                    >
-                      {item.badge}
-                    </span>
+                  {!isCollapsed && (
+                    item.isBlocked ? (
+                      <span className="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded font-mono font-semibold text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/60 border border-amber-200/80 dark:border-amber-800/60 flex-shrink-0">
+                        <Lock className="w-2.5 h-2.5" />
+                        <span>Blocked</span>
+                      </span>
+                    ) : (
+                      item.badge !== null && (
+                        <span
+                          className={`text-[10px] px-2 py-0.5 rounded-full font-medium flex-shrink-0 ${
+                            item.isPlanned
+                              ? 'bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500 border border-slate-200/50 dark:border-slate-700/50'
+                              : item.isAi
+                              ? 'bg-brand-50 dark:bg-brand-900/40 text-brand-700 dark:text-brand-300 border border-brand-200/80 dark:border-brand-700/60'
+                              : isActive
+                              ? 'bg-white dark:bg-slate-800 text-navy-900 dark:text-white border border-slate-200 dark:border-slate-700'
+                              : 'bg-slate-100 dark:bg-slate-800/80 text-slate-500 dark:text-slate-400'
+                          }`}
+                        >
+                          {item.badge}
+                        </span>
+                      )
+                    )
                   )}
                 </button>
               );
@@ -354,7 +400,7 @@ export const Sidebar = ({
 
             <div className="flex items-center gap-2 text-xs text-navy-900 dark:text-white font-medium">
               <Database className="w-3.5 h-3.5 text-slate-400 dark:text-slate-500" />
-              <span>SQLite & Nemotron AI</span>
+              <span>SQLite & CompanyAI</span>
             </div>
 
             <p className="text-[10px] text-slate-400 dark:text-slate-500 mt-0.5 leading-normal truncate">

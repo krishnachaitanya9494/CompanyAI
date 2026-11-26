@@ -1,7 +1,9 @@
 # Import dataclass to return a small immutable summary of locally parsed profile fields.
 from dataclasses import dataclass
 # Import re to locate email addresses, labeled names, and curated skill terms in text.
+import json
 import re
+from pathlib import Path
 
 
 # Describe the candidate fields extracted locally for deduplication and search metadata.
@@ -61,7 +63,15 @@ _SKILL_ALIASES = {
     "TestNG": ("testng",),
     "TypeScript": ("typescript",),
     "UVM": ("uvm", "universal verification methodology"),
+    "Excel": ("excel", "microsoft excel", "ms excel"),
+    "Outlook": ("outlook", "microsoft outlook", "ms outlook"),
+    "Item Setup": ("item setup", "item set up", "product setup"),
+    "Data Quality": ("data quality", "data validation", "data remediation"),
+    "Vendor Coordination": ("vendor coordination", "vendor management", "supplier coordination"),
+    "Retail Operations": ("retail operations", "merchandising operations", "retail merchandising"),
 }
+_MATCH_ALIASES = json.loads((Path(__file__).resolve().parent / "data" / "skill_aliases.json").read_text(encoding="utf-8"))
+_SKILL_ALIASES.update({name: tuple(values) for name, values in _MATCH_ALIASES.items()})
 
 
 # Build a boundary-aware matcher so short skill terms do not match inside larger words.
@@ -76,7 +86,7 @@ def _skill_pattern(alias: str) -> re.Pattern[str]:
 _SKILL_PATTERNS = tuple(
     (canonical, _skill_pattern(alias))
     for canonical, aliases in _SKILL_ALIASES.items()
-    for alias in aliases
+    for alias in set(aliases + (canonical,))
 )
 
 
@@ -126,3 +136,34 @@ def parse_resume_profile(text: str) -> ParsedResumeProfile:
         experience_years=experience_years,
         location=location,
     )
+
+
+def extract_resume_skill_evidence(text: str) -> list[dict[str, str]]:
+    """Return only skills literally present in the resume, with their complete source line."""
+    evidence = []
+    seen = set()
+    for canonical, pattern in _SKILL_PATTERNS:
+        if canonical in seen:
+            continue
+        for line in text.splitlines():
+            if len(line.strip()) <= 260 and pattern.search(line):
+                evidence.append({"skill": canonical, "evidence": line.strip()})
+                seen.add(canonical)
+                break
+    return sorted(evidence, key=lambda item: item["skill"].casefold())
+
+
+def extract_portfolio_links(text: str) -> list[str]:
+    """Extract verifiable creative portfolio URLs (Behance, Dribbble, ArtStation, custom portfolio domains)."""
+    if not text:
+        return []
+    url_pattern = re.compile(
+        r"(?:https?://)?(?:www\.)?(?:behance\.net/[A-Za-z0-9_.-]+|dribbble\.com/[A-Za-z0-9_.-]+|artstation\.com/[A-Za-z0-9_.-]+|[A-Za-z0-9_.-]+\.myportfolio\.com|(?:portfolio|website)\s*[:：-]\s*https?://[^\s,]+)",
+        re.IGNORECASE,
+    )
+    links = []
+    for match in url_pattern.findall(text):
+        cleaned = match.strip().rstrip(".,;)")
+        if cleaned and cleaned not in links:
+            links.append(cleaned)
+    return links

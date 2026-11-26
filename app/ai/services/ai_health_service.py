@@ -26,11 +26,11 @@ class AIHealthService:
         total_candidates = db.scalar(select(func.count(Candidate.id))) or 0
         total_resumes = db.scalar(select(func.count(Resume.id))) or 0
 
-        # Audit resume embeddings by verified generation method and 2048 dimensions
+        # Audit resume embeddings by verified generation method and valid dimensions
         genuine_resumes = (
             db.scalar(
                 select(func.count(func.distinct(ResumeEmbedding.resume_id))).where(
-                    ResumeEmbedding.generation_method == "nemotron_api",
+                    ResumeEmbedding.generation_method.in_(("ollama", "nemotron_api")),
                     ResumeEmbedding.dimensions == self.config.embedding_dimensions,
                     ResumeEmbedding.embedding_vector.is_not(None),
                 )
@@ -60,7 +60,7 @@ class AIHealthService:
             db.scalar(
                 select(func.count(func.distinct(JobEmbedding.job_id))).where(
                     JobEmbedding.embedding_type == "full_jd",
-                    JobEmbedding.generation_method == "nemotron_api",
+                    JobEmbedding.generation_method.in_(("ollama", "nemotron_api")),
                     JobEmbedding.dimensions == self.config.embedding_dimensions,
                     JobEmbedding.embedding_vector.is_not(None),
                 )
@@ -94,14 +94,14 @@ class AIHealthService:
 
         return {
             "status": "healthy",
-            "provider": "OpenRouter",
+            "provider": "Ollama (Local)",
             "embedding_model": self.config.embedding_model,
             "embedding_dimensions": self.config.embedding_dimensions,
             "chat_model": self.config.chat_model,
-            "chat_model_is_free": self.config.chat_model.endswith(":free"),
+            "chat_model_is_free": True,
             "semantic_search_availability": "available",
             "chat_model_availability": "available",
-            "rate_limit_state": "openrouter_free_tier",
+            "rate_limit_state": "local_unlimited",
             "models": {
                 "embedding": {
                     "name": self.config.embedding_model,

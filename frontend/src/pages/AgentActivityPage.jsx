@@ -77,7 +77,7 @@ export const AgentActivityPage = () => {
       <div>
         {visibleTraces.length === 0 ? (
           <div className="p-12 bg-white dark:bg-surface-darkCard border border-dashed border-slate-200 dark:border-surface-darkBorder rounded-2xl text-center text-xs text-slate-400 dark:text-slate-500">
-            No agent traces recorded yet. Ask a question in Nemotron AI to generate execution traces.
+            No agent traces recorded yet. Ask a question in CompanyAI to generate execution traces.
           </div>
         ) : (
           <AnimatedList

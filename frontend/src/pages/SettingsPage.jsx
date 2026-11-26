@@ -19,6 +19,8 @@ import {
   RefreshCw,
   Server,
   Lock,
+  Unlock,
+  ShieldAlert,
   User,
   SlidersHorizontal,
   Sparkles,
@@ -36,11 +38,14 @@ export const SettingsPage = ({
   density = 'comfortable',
   onChangeDensity,
   resumeDiscovery = null,
+  isGovernanceBlocked = true,
+  onToggleGovernanceBlocked,
 }) => {
   // Real backend health and model configuration status fetched from /api/analytics/stats and /api/ai/health.
   const [telemetry, setTelemetry] = useState(null);
   const [aiReport, setAiReport] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [governanceFeedback, setGovernanceFeedback] = useState('');
 
   // Diagnostic states
   const [testEmbeddingLoading, setTestEmbeddingLoading] = useState(false);
@@ -49,6 +54,18 @@ export const SettingsPage = ({
   const [testChatResult, setTestChatResult] = useState(null);
   const [reindexLoading, setReindexLoading] = useState(false);
   const [reindexResult, setReindexResult] = useState(null);
+
+  const handleToggleGovernance = (nextBlockedState) => {
+    if (onToggleGovernanceBlocked) {
+      onToggleGovernanceBlocked(nextBlockedState);
+      setGovernanceFeedback(
+        nextBlockedState
+          ? 'Governance & Analytics workspace is now BLOCKED across the workspace.'
+          : 'Governance & Analytics workspace has been UNBLOCKED and is now fully accessible.'
+      );
+      setTimeout(() => setGovernanceFeedback(''), 4000);
+    }
+  };
 
   // Fetch real telemetry metrics from backend.
   const fetchHealth = async () => {
@@ -143,6 +160,143 @@ export const SettingsPage = ({
           <RefreshCw className={`w-3.5 h-3.5 ${isLoading ? 'animate-spin' : ''}`} />
           <span>Refresh Telemetry</span>
         </button>
+      </div>
+
+      {/* Dynamic Feedback Banner for Governance & Analytics toggling */}
+      {governanceFeedback && (
+        <div
+          className={`p-4 rounded-2xl border text-xs sm:text-sm font-medium flex items-center justify-between gap-3 animate-fadeIn ${
+            isGovernanceBlocked
+              ? 'bg-amber-50 dark:bg-amber-950/40 border-amber-200 dark:border-amber-800 text-amber-800 dark:text-amber-200'
+              : 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-200'
+          }`}
+        >
+          <div className="flex items-center gap-2.5">
+            {isGovernanceBlocked ? (
+              <Lock className="w-4 h-4 text-amber-600 flex-shrink-0" />
+            ) : (
+              <CheckCircle className="w-4 h-4 text-emerald-600 flex-shrink-0" />
+            )}
+            <span>{governanceFeedback}</span>
+          </div>
+          <button
+            type="button"
+            onClick={() => setGovernanceFeedback('')}
+            className="text-xs opacity-70 hover:opacity-100 font-bold px-1"
+          >
+            ✕
+          </button>
+        </div>
+      )}
+
+      {/* 0. Governance & Analytics Access Policy (Administrative Module Security) */}
+      <div className="bg-white dark:bg-surface-darkCard border border-slate-200/80 dark:border-surface-darkBorder rounded-2xl p-5 shadow-card space-y-4">
+        <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-surface-darkBorder flex-wrap gap-3">
+          <div className="flex items-center gap-3">
+            <div
+              className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 ${
+                isGovernanceBlocked
+                  ? 'bg-amber-50 dark:bg-amber-950/60 border border-amber-200 dark:border-amber-800 text-amber-600 dark:text-amber-400'
+                  : 'bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 text-emerald-600 dark:text-emerald-400'
+              }`}
+            >
+              {isGovernanceBlocked ? <Lock className="w-4 h-4" /> : <ShieldCheck className="w-4 h-4" />}
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h3 className="text-sm font-bold text-navy-900 dark:text-white">
+                  Governance &amp; Analytics Access Control
+                </h3>
+                <span
+                  className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full border ${
+                    isGovernanceBlocked
+                      ? 'bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800'
+                      : 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800'
+                  }`}
+                >
+                  {isGovernanceBlocked ? 'Blocked' : 'Active / Unblocked'}
+                </span>
+              </div>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                Block or unblock recruiter access to Analytics, Approvals, Agent Activity, and Notifications.
+              </p>
+            </div>
+          </div>
+
+          {/* Quick Action Button */}
+          <button
+            type="button"
+            onClick={() => handleToggleGovernance(!isGovernanceBlocked)}
+            className={`px-4 py-2 rounded-xl text-xs font-semibold flex items-center gap-2 shadow-subtle transition-all ${
+              isGovernanceBlocked
+                ? 'bg-brand-600 hover:bg-brand-700 text-white'
+                : 'bg-slate-100 hover:bg-rose-50 text-slate-700 hover:text-rose-700 border border-slate-200 hover:border-rose-300 dark:bg-surface-darkHover dark:text-slate-200 dark:hover:bg-rose-950/40 dark:hover:text-rose-300'
+            }`}
+          >
+            {isGovernanceBlocked ? (
+              <>
+                <Unlock className="w-3.5 h-3.5" />
+                <span>Unblock Governance &amp; Analytics</span>
+              </>
+            ) : (
+              <>
+                <Lock className="w-3.5 h-3.5 text-rose-500" />
+                <span>Block Governance &amp; Analytics</span>
+              </>
+            )}
+          </button>
+        </div>
+
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 text-xs">
+          <div className="space-y-1.5 max-w-xl">
+            <p className="font-semibold text-navy-900 dark:text-white">
+              {isGovernanceBlocked
+                ? 'Governance & Analytics is currently BLOCKED in the workspace.'
+                : 'Governance & Analytics is currently UNBLOCKED and accessible to recruiters.'}
+            </p>
+            <p className="text-slate-500 dark:text-slate-400 leading-relaxed">
+              When blocked, the section remains visible in the sidebar with a lock status tag, and navigating to its views shows an administrative restriction barrier until unblocked here.
+            </p>
+            <div className="flex flex-wrap gap-2 pt-1 text-[11px] text-slate-600 dark:text-slate-300">
+              <span className="px-2 py-0.5 rounded-md bg-slate-100 dark:bg-surface-darkHover border border-slate-200/80 dark:border-surface-darkBorder">
+                Analytics
+              </span>
+              <span className="px-2 py-0.5 rounded-md bg-slate-100 dark:bg-surface-darkHover border border-slate-200/80 dark:border-surface-darkBorder">
+                Approvals
+              </span>
+              <span className="px-2 py-0.5 rounded-md bg-slate-100 dark:bg-surface-darkHover border border-slate-200/80 dark:border-surface-darkBorder">
+                Agent Activity
+              </span>
+              <span className="px-2 py-0.5 rounded-md bg-slate-100 dark:bg-surface-darkHover border border-slate-200/80 dark:border-surface-darkBorder">
+                Notifications
+              </span>
+            </div>
+          </div>
+
+          {/* Toggle Switch */}
+          <div className="flex items-center gap-3 self-start sm:self-center flex-shrink-0 bg-slate-50 dark:bg-surface-darkHover/40 p-2.5 rounded-xl border border-slate-200/70 dark:border-surface-darkBorder">
+            <span className="text-xs font-semibold text-navy-900 dark:text-white">
+              {isGovernanceBlocked ? 'Blocked' : 'Unblocked'}
+            </span>
+            <button
+              type="button"
+              role="switch"
+              aria-checked={!isGovernanceBlocked}
+              aria-label="Toggle Governance & Analytics Access"
+              onClick={() => handleToggleGovernance(!isGovernanceBlocked)}
+              className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                !isGovernanceBlocked ? 'bg-emerald-600' : 'bg-slate-300 dark:bg-slate-700'
+              }`}
+            >
+              <span
+                aria-hidden="true"
+                className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                  !isGovernanceBlocked ? 'translate-x-5' : 'translate-x-0'
+                }`}
+              />
+            </button>
+          </div>
+        </div>
       </div>
 
       {/* 1. Appearance & Theme Settings */}
@@ -250,12 +404,12 @@ export const SettingsPage = ({
           <div className="flex items-center gap-2.5">
             <Cpu className="w-4 h-4 text-brand-600 dark:text-brand-400" />
             <h3 className="text-sm font-bold text-navy-900 dark:text-white">
-              Nemotron AI Model Administration & Vector Coverage
+              Local Ollama AI Model Administration & Vector Coverage
             </h3>
           </div>
           <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-700/60 self-start sm:self-auto">
             <Sparkles className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
-            AI Foundation Active
+            Local Ollama Active
           </span>
         </div>
 
@@ -269,11 +423,11 @@ export const SettingsPage = ({
                 Verified Free
               </span>
             </div>
-            <span className="font-bold text-navy-900 dark:text-white font-mono block text-xs truncate" title={models?.embedding?.name || 'nvidia/nemotron-3-embed-1b:free'}>
-              {models?.embedding?.name || 'nvidia/nemotron-3-embed-1b:free'}
+            <span className="font-bold text-navy-900 dark:text-white font-mono block text-xs truncate" title={models?.embedding?.name || 'nomic-embed-text'}>
+              {models?.embedding?.name || 'nomic-embed-text'}
             </span>
             <span className="text-[11px] text-emerald-600 dark:text-emerald-400 font-semibold flex items-center gap-1 pt-0.5">
-              <CheckCircle2 className="w-3.5 h-3.5" /> 2,048 Verified Dimensions (L2 Norm = 1.0)
+              <CheckCircle2 className="w-3.5 h-3.5" /> 768 Verified Dimensions (L2 Norm = 1.0)
             </span>
           </div>
 
@@ -285,11 +439,11 @@ export const SettingsPage = ({
                 Verified Free Tier
               </span>
             </div>
-            <span className="font-bold text-navy-900 dark:text-white font-mono block text-xs truncate" title={models?.chat?.name || 'nvidia/nemotron-3.5-super-vl:free'}>
-              {models?.chat?.name || 'nvidia/nemotron-3.5-super-vl:free'}
+            <span className="font-bold text-navy-900 dark:text-white font-mono block text-xs truncate" title={models?.chat?.name || 'llama3.2:3b'}>
+              {models?.chat?.name || 'llama3.2:3b'}
             </span>
             <span className="text-[11px] text-brand-600 dark:text-brand-400 font-semibold flex items-center gap-1 pt-0.5">
-              <CheckCircle2 className="w-3.5 h-3.5" /> 1M Context Window • Structured RAG
+              <CheckCircle2 className="w-3.5 h-3.5" /> Local 128K Context • Structured RAG
             </span>
           </div>
 
@@ -297,7 +451,7 @@ export const SettingsPage = ({
           <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-surface-darkHover/60 border border-slate-200/70 dark:border-surface-darkBorder space-y-1">
             <span className="text-slate-400 block text-[10px] uppercase font-bold tracking-wider">Resume Vector Provenance</span>
             <span className="font-bold text-navy-900 dark:text-white font-mono block text-xs">
-              Verified Nemotron: {dbAudit.genuine_resumes ?? 0} / {dbAudit.total_resumes ?? 241} ({dbAudit.resume_coverage_percent ?? 0}%)
+              Verified Ollama: {dbAudit.genuine_resumes ?? 0} / {dbAudit.total_resumes ?? 241} ({dbAudit.resume_coverage_percent ?? 0}%)
             </span>
             <div className="w-full bg-slate-200 dark:bg-slate-700 h-1.5 rounded-full overflow-hidden mt-1">
               <div
@@ -314,7 +468,7 @@ export const SettingsPage = ({
           <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-surface-darkHover/60 border border-slate-200/70 dark:border-surface-darkBorder space-y-1">
             <span className="text-slate-400 block text-[10px] uppercase font-bold tracking-wider">Job Vector Provenance</span>
             <span className="font-bold text-navy-900 dark:text-white font-mono block text-xs">
-              Verified Nemotron: {dbAudit.genuine_jobs ?? 0} / {dbAudit.total_jobs ?? 10} ({dbAudit.job_coverage_percent ?? 0}%)
+              Verified Ollama: {dbAudit.genuine_jobs ?? 0} / {dbAudit.total_jobs ?? 10} ({dbAudit.job_coverage_percent ?? 0}%)
             </span>
             <div className="w-full bg-slate-200 dark:bg-slate-700 h-1.5 rounded-full overflow-hidden mt-1">
               <div
@@ -343,12 +497,12 @@ export const SettingsPage = ({
             <div className="flex items-center justify-between">
               <span className="text-slate-400 block text-[10px] uppercase font-bold tracking-wider">Gateway & Rate Limits</span>
               <span className="px-1.5 py-0.5 rounded text-[9px] font-semibold bg-blue-100 dark:bg-blue-950 text-blue-800 dark:text-blue-300">
-                50 req/day Free Tier
+                Local Offline • Unlimited
               </span>
             </div>
-            <span className="font-bold text-navy-900 dark:text-white block text-xs">Zero-Fallback Semantic Index</span>
+            <span className="font-bold text-navy-900 dark:text-white block text-xs">100% Local Semantic Index</span>
             <span className="text-[11px] text-slate-500 dark:text-slate-400 flex items-center gap-1">
-              <Lock className="w-3.5 h-3.5 text-slate-400" /> Keys isolated • No pseudo-vector injection
+              <Lock className="w-3.5 h-3.5 text-slate-400" /> Fully offline • Zero external cloud calls
             </span>
           </div>
         </div>
@@ -371,7 +525,7 @@ export const SettingsPage = ({
               className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-50 dark:bg-emerald-950/40 hover:bg-emerald-100 dark:hover:bg-emerald-900/50 text-emerald-800 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-700/60 text-xs font-semibold shadow-sm transition-colors disabled:opacity-50"
             >
               {testEmbeddingLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Play className="w-3.5 h-3.5" />}
-              <span>Test Nemotron Embedding</span>
+              <span>Test Ollama Embedding</span>
             </button>
 
             <button
@@ -398,12 +552,12 @@ export const SettingsPage = ({
             <div className="p-3 rounded-lg bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-surface-darkBorder text-xs font-mono space-y-1.5 animate-fadeIn">
               <div className="flex items-center justify-between font-sans">
                 <span className="font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1">
-                  <CheckCircle className="w-3.5 h-3.5 text-emerald-500" /> Nemotron Embedding Test Completed
+                  <CheckCircle className="w-3.5 h-3.5 text-emerald-500" /> Ollama Embedding Test Completed
                 </span>
                 <span className="text-[11px] text-slate-500">Latency: {testEmbeddingResult.latency_ms} ms</span>
               </div>
               <p className="text-slate-600 dark:text-slate-400 text-[11px]">
-                Model: <strong>{testEmbeddingResult.model}</strong> • Dimensions: <strong>{testEmbeddingResult.dimensions}</strong> (Status: {testEmbeddingResult.is_valid ? 'Valid 2048-dim' : 'Mismatch'})
+                Model: <strong>{testEmbeddingResult.model}</strong> • Dimensions: <strong>{testEmbeddingResult.dimensions}</strong> (Status: {testEmbeddingResult.is_valid ? 'Valid 768-dim' : 'Mismatch'})
               </p>
               {testEmbeddingResult.sample_coordinates && (
                 <p className="text-[10px] text-slate-500 truncate">

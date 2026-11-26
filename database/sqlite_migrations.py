@@ -290,6 +290,17 @@ def migrate_job_requirement_columns(connection: Connection) -> tuple[str, ...]:
     return tuple(added_columns)
 
 
+def migrate_candidate_match_score_availability(connection: Connection) -> tuple[str, ...]:
+    """Additive flag distinguishes a genuinely unavailable score from historical numeric zeroes."""
+    table_info = connection.exec_driver_sql("PRAGMA table_info(candidate_job_match_result)").all()
+    if not table_info or any(row[1] == "score_available" for row in table_info):
+        return ()
+    connection.exec_driver_sql(
+        "ALTER TABLE candidate_job_match_result ADD COLUMN score_available BOOLEAN NOT NULL DEFAULT 1"
+    )
+    return ("score_available",)
+
+
 # Add 12-section scope and deep intelligence data columns to jd_segmentation.
 def migrate_jd_segmentation_columns(connection: Connection) -> tuple[str, ...]:
     table_info = connection.exec_driver_sql("PRAGMA table_info(jd_segmentation)").all()
@@ -476,6 +487,8 @@ def initialize_sqlite_schema(engine: Engine) -> tuple[str, ...]:
         req_columns = migrate_job_requirement_columns(connection)
         # Extend jd_segmentation table with 12-section scope and intelligence data.
         seg_columns = migrate_jd_segmentation_columns(connection)
+        # Preserve old numeric snapshots while marking new insufficient-evidence results explicitly.
+        match_result_columns = migrate_candidate_match_score_availability(connection)
         # Ensure job_embedding table and indexes exist idempotently.
         embedding_table = migrate_job_embedding_table(connection)
         # Enforce partial unique indexes on job_embedding scopes idempotently.
@@ -490,6 +503,7 @@ def initialize_sqlite_schema(engine: Engine) -> tuple[str, ...]:
         + tuple(f"job.{name}" for name in job_columns)
         + tuple(f"job_requirement.{name}" for name in req_columns)
         + tuple(f"jd_segmentation.{name}" for name in seg_columns)
+        + tuple(f"candidate_job_match_result.{name}" for name in match_result_columns)
         + tuple(f"table.{name}" for name in embedding_table)
         + tuple(f"index.{name}" for name in uniqueness_indexes)
     )

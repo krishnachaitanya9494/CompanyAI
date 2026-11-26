@@ -48,7 +48,7 @@ export const ChatMessage = ({ message, onSelectCandidate }) => {
         {isAssistant && message.candidates && message.candidates.length > 0 && (
           <div className="space-y-3 pt-1">
             <div className="text-[11px] font-semibold tracking-wider uppercase text-slate-400 dark:text-slate-400 px-1">
-              Top Matched Candidates ({message.candidates.length})
+              {message.candidates.some((candidate) => candidate.matchScore != null) ? 'Top Matched Candidates' : 'Retrieved Candidates'} ({message.candidates.length})
             </div>
 
             {message.candidates.map((cand) => (

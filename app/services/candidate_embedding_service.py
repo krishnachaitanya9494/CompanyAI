@@ -17,8 +17,9 @@ from sqlalchemy.orm import Session
 from database.models import Candidate, Resume, ResumeEmbedding
 # Import embedding storage and validation functions.
 from database.embedding_storage import store_resume_embedding, validate_embedding_vector
-# Import OpenRouter embedding service and constants.
-from app.embedding_service import OPENROUTER_EMBEDDING_MODEL, generate_embedding
+# Import OpenRouter/Ollama embedding service and constants.
+from app.ai.config import ai_config
+from app.embedding_service import generate_embedding
 # Import resume document parser.
 from app.resume_extractor import extract_resume_text
 # Import privacy redaction utilities from resume pipeline.
@@ -41,8 +42,9 @@ _LAST_BACKFILL_STATUS: Dict[str, Any] = {
 
 def compute_text_hash(text: str) -> str:
     """Compute standard SHA-256 hexadecimal digest for raw or redacted text."""
-    # Encode UTF-8 text and return 64-character lowercase hex digest.
-    return hashlib.sha256(text.encode("utf-8")).hexdigest()
+    # Encode UTF-8 text and return 64-character lowercase hex digest with surrogate safety.
+    safe_bytes = (text or "").encode("utf-8", "ignore")
+    return hashlib.sha256(safe_bytes).hexdigest()
 
 
 def get_candidate_embedding_coverage(db: Session) -> Dict[str, Any]:
@@ -67,8 +69,8 @@ def get_candidate_embedding_coverage(db: Session) -> Dict[str, Any]:
     # Detect incompatible models or dimensions in existing embeddings.
     incompatible_records = db.scalars(
         select(ResumeEmbedding).where(
-            (ResumeEmbedding.model_name != OPENROUTER_EMBEDDING_MODEL)
-            | (ResumeEmbedding.dimensions != 2048)
+            (ResumeEmbedding.model_name != ai_config.embedding_model)
+            | (ResumeEmbedding.dimensions != ai_config.embedding_dimensions)
         )
     ).all()
     incompatible_count = len(incompatible_records)
@@ -96,8 +98,8 @@ def get_candidate_embedding_coverage(db: Session) -> Dict[str, Any]:
         "missing_embeddings": missing_count,
         "incompatible_embeddings": incompatible_count,
         "coverage_percentage": coverage_pct,
-        "configured_model": OPENROUTER_EMBEDDING_MODEL,
-        "configured_dimensions": 2048,
+        "configured_model": ai_config.embedding_model,
+        "configured_dimensions": ai_config.embedding_dimensions,
         "last_generated_at": last_generated_at,
     }
 
@@ -164,12 +166,13 @@ def prepare_resume_embedding_text(resume: Resume, candidate: Optional[Candidate]
     cand = candidate or resume.candidate
     identifiers: List[str] = []
     if cand:
-        if cand.name:
-            identifiers.append(cand.name)
-        if cand.email:
-            identifiers.append(cand.email)
-        if getattr(cand, "phone", None):
-            identifiers.append(cand.phone)
+        if cand.name and len(cand.name.strip()) >= 2:
+            identifiers.append(cand.name.strip())
+        if cand.email and len(cand.email.strip()) >= 2:
+            identifiers.append(cand.email.strip())
+        phone_val = getattr(cand, "phone", None)
+        if phone_val and len(str(phone_val).strip()) >= 2:
+            identifiers.append(str(phone_val).strip())
 
     # Apply standard privacy redaction and sanitize outbound text.
     sanitized_text = validate_outbound_text(redact_pii(raw_text, tuple(identifiers)))
@@ -190,7 +193,7 @@ def backfill_candidate_embeddings(
     if isinstance(raw_model, str) and raw_model.strip():
         model_name = raw_model.strip()
     else:
-        model_name = OPENROUTER_EMBEDDING_MODEL
+        model_name = ai_config.embedding_model
 
     # Query candidate resumes lacking an embedding record.
     stmt = (
@@ -232,20 +235,21 @@ def backfill_candidate_embeddings(
                 select(ResumeEmbedding).where(
                     ResumeEmbedding.input_hash == input_hash,
                     ResumeEmbedding.model_name == model_name,
-                    ResumeEmbedding.dimensions == 2048,
+                    ResumeEmbedding.dimensions == ai_config.embedding_dimensions,
                 ).limit(1)
             ).first()
 
             if compatible and compatible.embedding_vector and not force:
-                # Reuse existing 2048-dim vector.
+                # Reuse existing vector.
                 store_resume_embedding(
                     session=db,
                     resume_id=resume.id,
                     vector=compatible.embedding_vector,
-                    dimensions=2048,
+                    dimensions=ai_config.embedding_dimensions,
                     input_hash=input_hash,
                     requested_model=model_name,
                     returned_model=model_name,
+                    generation_method="ollama",
                     preprocessing_version="resume-pii-redaction-v1",
                     metadata={"source": "backfill_reuse", "compatible_source_id": compatible.id},
                 )
@@ -253,15 +257,16 @@ def backfill_candidate_embeddings(
             else:
                 # Generate vector using provider.
                 raw_vector = provider(prepared_text)
-                validated_vector = validate_embedding_vector(raw_vector, dimensions=2048)
+                validated_vector = validate_embedding_vector(raw_vector, dimensions=ai_config.embedding_dimensions)
                 store_resume_embedding(
                     session=db,
                     resume_id=resume.id,
                     vector=validated_vector,
-                    dimensions=2048,
+                    dimensions=ai_config.embedding_dimensions,
                     input_hash=input_hash,
                     requested_model=model_name,
                     returned_model=model_name,
+                    generation_method="ollama",
                     preprocessing_version="resume-pii-redaction-v1",
                     metadata={"source": "backfill_generation", "privacy_redacted": True},
                 )

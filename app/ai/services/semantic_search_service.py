@@ -34,14 +34,13 @@ class SemanticSearchService:
         # Generate query vector with Nemotron embedding provider.
         query_vector = self.provider.embed_text(query.strip())
 
-        # Retrieve only genuine Nemotron candidate resumes that possess verified vectors.
+        # Retrieve candidate resumes that possess verified vectors.
         stmt = (
             select(ResumeEmbedding, Resume, Candidate)
             .join(Resume, Resume.id == ResumeEmbedding.resume_id)
             .join(Candidate, Candidate.id == Resume.candidate_id)
             .where(
                 ResumeEmbedding.embedding_vector.is_not(None),
-                ResumeEmbedding.generation_method == "nemotron_api",
             )
         )
         if location:
@@ -58,8 +57,15 @@ class SemanticSearchService:
             if cand.id in seen_candidate_ids:
                 continue
 
+            # Exclude offline or unknown-provenance vectors from production semantic retrieval.
+            if emb_rec.generation_method not in ("ollama", "nemotron_api"):
+                continue
+            stored_model = emb_rec.returned_model or emb_rec.requested_model or emb_rec.model_name
+            if stored_model != self.provider.model_name:
+                continue
+
             vector = emb_rec.embedding_vector
-            if not vector or len(vector) != self.provider.dimensions:
+            if not vector or len(vector) != self.provider.dimensions or len(vector) != len(query_vector):
                 continue
 
             try:
@@ -81,7 +87,8 @@ class SemanticSearchService:
                     "resume_id": resume.id,
                     "filename": resume.source_filename,
                     "similarity": round(float(sim), 4),
-                    "match_score": round(max(0.0, float(sim)) * 100, 1),
+                    # Vector similarity controls retrieval order only; it is not JD suitability.
+                    "retrieval_similarity": round(float(sim), 4),
                 })
 
         # Rank by descending similarity score.
@@ -97,7 +104,7 @@ class SemanticSearchService:
             .join(Resume, Resume.id == ResumeEmbedding.resume_id)
             .filter(
                 Resume.candidate_id == candidate_id,
-                ResumeEmbedding.generation_method == "nemotron_api",
+                ResumeEmbedding.embedding_vector.is_not(None),
             )
             .first()
         )
@@ -106,7 +113,7 @@ class SemanticSearchService:
 
         target_vector = target_resume.embedding_vector
 
-        # Compare against all other genuine candidate resumes in the talent pool.
+        # Compare against all other candidate resumes in the talent pool.
         rows = (
             db.execute(
                 select(ResumeEmbedding, Resume, Candidate)
@@ -115,7 +122,6 @@ class SemanticSearchService:
                 .where(
                     Resume.candidate_id != candidate_id,
                     ResumeEmbedding.embedding_vector.is_not(None),
-                    ResumeEmbedding.generation_method == "nemotron_api",
                 )
             )
             .all()
@@ -127,7 +133,7 @@ class SemanticSearchService:
         for emb_rec, resume, cand in rows:
             if cand.id in seen or not emb_rec.embedding_vector:
                 continue
-            if len(emb_rec.embedding_vector) != self.provider.dimensions:
+            if len(emb_rec.embedding_vector) != self.provider.dimensions or len(emb_rec.embedding_vector) != len(target_vector):
                 continue
 
             try:
@@ -158,7 +164,7 @@ class SemanticSearchService:
             .filter(
                 JobEmbedding.job_id == job_id,
                 JobEmbedding.embedding_type == "full_jd",
-                JobEmbedding.generation_method == "nemotron_api",
+                JobEmbedding.embedding_vector.is_not(None),
             )
             .first()
         )
@@ -173,7 +179,6 @@ class SemanticSearchService:
                     Job.id != job_id,
                     JobEmbedding.embedding_type == "full_jd",
                     JobEmbedding.embedding_vector.is_not(None),
-                    JobEmbedding.generation_method == "nemotron_api",
                 )
             )
             .all()
@@ -181,7 +186,7 @@ class SemanticSearchService:
 
         similar: List[Dict[str, Any]] = []
         for emb, job in other_embs:
-            if not emb.embedding_vector or len(emb.embedding_vector) != self.provider.dimensions:
+            if not emb.embedding_vector or len(emb.embedding_vector) != self.provider.dimensions or len(emb.embedding_vector) != len(target_emb.embedding_vector):
                 continue
             try:
                 sim = cosine_similarity(target_emb.embedding_vector, emb.embedding_vector)

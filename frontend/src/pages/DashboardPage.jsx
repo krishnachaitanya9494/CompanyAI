@@ -168,7 +168,7 @@ export const DashboardPage = ({
           <div className="flex flex-wrap items-center gap-2 mb-1">
             <h2 className="text-xl sm:text-2xl font-bold font-display text-navy-900 dark:text-white tracking-tight">
               <BlurText
-                text="Enterprise Recruitment Command Center"
+                text="Recruiter Command Center"
                 animateBy="words"
                 delay={55}
                 stepDuration={0.28}
@@ -176,14 +176,14 @@ export const DashboardPage = ({
               />
             </h2>
             <span className="px-2 py-0.5 text-[10px] font-semibold bg-white/90 dark:bg-accent-950/50 border border-accent-200/80 dark:border-accent-700/60 rounded-full flex items-center gap-1 shadow-subtle">
-              <span className="w-1.5 h-1.5 rounded-full bg-accent-500 animate-pulse" />
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
               <GradientText colors={['#059669', '#4F46E5', '#6366F1', '#10B981']}>
-                SQLite Snapshot • Loaded on View
+                Live Hiring Data • Ready
               </GradientText>
             </span>
           </div>
           <p className="text-xs text-slate-500 dark:text-slate-400">
-            Real-time candidate intelligence, 2,048-dim Nemotron embeddings, and evidence-backed matching.
+            Smart candidate matches, 1-click search strings, and 5-question phone screening guides.
           </p>
         </div>
 
@@ -224,7 +224,7 @@ export const DashboardPage = ({
               innerClassName="flex items-center gap-1.5 px-3 py-1.5 bg-navy-900 dark:bg-brand-600 hover:bg-navy-800 dark:hover:bg-brand-700 text-white text-xs font-semibold transition-colors"
             >
               <Sparkles className="w-3.5 h-3.5 text-brand-300 dark:text-white" />
-              <span>Ask Nemotron</span>
+              <span>AI Assistant</span>
             </StarBorder>
           </Magnet>
         </div>
@@ -237,18 +237,18 @@ export const DashboardPage = ({
           value={dashboard?.total_candidates ?? candidates.length}
           subvalue="Unique candidate profiles"
           icon={Users}
-          badgeText="SQLite"
+          badgeText="Verified"
           badgeVariant="brand"
           onClick={() => onNavigateTab && onNavigateTab('candidates')}
           isLoading={isLoading}
         />
 
         <MetricCard
-          title="Resume Documents"
+          title="Resume Library"
           value={totalResumesCount}
           subvalue="Stored resume records"
           icon={FileText}
-          badgeText="Storage"
+          badgeText="Active"
           badgeVariant="neutral"
           onClick={() => onNavigateTab && onNavigateTab('candidates')}
           isLoading={isLoading}
@@ -259,7 +259,7 @@ export const DashboardPage = ({
           value={activeJobsCount}
           subvalue={`${openJobsCount} open • ${jobs.length || dashboard?.total_jobs || 0} total`}
           icon={Briefcase}
-          badgeText="Active"
+          badgeText="Hiring"
           badgeVariant="emerald"
           onClick={() => onNavigateTab && onNavigateTab('jobs')}
           isLoading={isLoading}
@@ -277,22 +277,22 @@ export const DashboardPage = ({
         />
 
         <MetricCard
-          title="Vector Embeddings"
+          title="Search-Ready Resumes"
           value={totalEmbeddingsCount}
-          subvalue={`${embeddingCoveragePct}% of resumes covered`}
+          subvalue={`${embeddingCoveragePct}% profiles indexed`}
           icon={Database}
-          badgeText="2048-dim"
+          badgeText="AI-Indexed"
           badgeVariant="blue"
-          onClick={() => onNavigateTab && onNavigateTab('analytics')}
+          onClick={() => onNavigateTab && onNavigateTab('matching')}
           isLoading={isLoading}
         />
 
         <MetricCard
-          title="In Evaluation"
+          title="In Screening"
           value={candidatesInReviewCount}
           subvalue={`${overview.totalInterviews ?? 0} scheduled interviews`}
           icon={Clock}
-          badgeText="Active"
+          badgeText="Pipeline"
           badgeVariant="brand"
           onClick={() => onNavigateTab && onNavigateTab('pipeline')}
           isLoading={isLoading}

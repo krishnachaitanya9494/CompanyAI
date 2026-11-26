@@ -117,7 +117,25 @@ export const jobApi = {
       body: JSON.stringify(payload),
     }),
 
-  // Trigger Nemotron analysis on job description.
+  // Delete one JD and its derived posting records while preserving linked recruitment requests.
+  delete: (id) => apiRequest(`/jobs/${id}?unlink_requests=true`, { method: 'DELETE' }),
+
+  // Retrieve and persist job-specific Boolean search history.
+  getBooleanSearchHistory: (id) => apiRequest(`/jobs/${id}/boolean-search-history`),
+  saveBooleanSearch: (id, payload) =>
+    apiRequest(`/jobs/${id}/boolean-search-history`, {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
+
+  // Generate a fresh AI/deterministic Boolean response for the exact JD and depth.
+  generateBooleanQueries: (id, payload = {}) =>
+    apiRequest(`/jobs/${id}/boolean-queries`, {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
+
+  // Trigger AI analysis on job description.
   analyze: (id) =>
     apiRequest(`/jobs/${id}/analyze`, {
       method: 'POST',
@@ -149,6 +167,9 @@ export const jobApi = {
   // Retrieve aggregate match KPI metrics and tier distributions for job.
   getMatchSummary: (id) => apiRequest(`/jobs/${id}/matches/summary`),
 
+  // Retrieve immutable candidate/job score snapshots with source-current validation.
+  getMatchHistory: (jobId, candidateId) => apiRequest(`/jobs/${jobId}/match-history/${candidateId}`),
+
   // Compare multiple candidates side-by-side against job requirements.
   compareCandidates: (id, candidateIds) =>
     apiRequest(`/jobs/${id}/compare-candidates`, {
@@ -167,18 +188,46 @@ export const jobApi = {
       body: JSON.stringify(payload),
     }),
 
+  // Extract uploaded source text without creating a persisted job or candidate.
+  extractDocumentText: async (file) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    const response = await fetch(`${API_BASE_URL}/jobs/upload`, { method: 'POST', body: formData });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(data.detail || `Upload failed: ${response.statusText}`);
+    if (!data.raw_text?.trim()) throw new Error(data.ocr_message || 'No selectable text was found in this file.');
+    return data.raw_text;
+  },
+
   // Retrieve candidate pool filter options (locations, stages, experience range).
   getMatchFilters: (id) => apiRequest(`/jobs/${id}/match-filters`),
 
   // Retrieve JD segmentation details for a job.
   getSegmentation: (id) => apiRequest(`/jobs/${id}/segmentation`),
 
-  // Retrieve 2048-dim JD vector embedding readiness and status.
+  // Retrieve 768-dim JD vector embedding readiness and status.
   getEmbeddingStatus: (id) => apiRequest(`/jobs/${id}/embeddings/status`),
 
-  // Generate 2048-dim vectors for the active approved JD segmentation.
+  // Generate 768-dim vectors for the active approved JD segmentation.
   generateEmbeddings: (id, payload = {}) =>
     apiRequest(`/jobs/${id}/embeddings/generate`, {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
+
+  // Retrieve AI-powered target company recommendations for a job.
+  getTargetCompanies: (id) => apiRequest(`/jobs/${id}/target-companies`),
+
+  // Customize target companies with recruiter strategy, exclusions, and custom targets.
+  customizeTargetCompanies: (id, payload) =>
+    apiRequest(`/jobs/${id}/target-companies`, {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
+
+  // Conversationally customize Boolean search queries using recruiter instructions.
+  customizeBooleanQueries: (id, payload) =>
+    apiRequest(`/jobs/${id}/boolean-queries/customize`, {
       method: 'POST',
       body: JSON.stringify(payload),
     }),
@@ -263,7 +312,7 @@ export const searchApi = {
  * AI Agent & Observability API service.
  */
 export const agentApi = {
-  // Send message to Nemotron AI agent along with active UI page context.
+  // Send message to CompanyAI agent along with active UI page context.
   chat: (query, sessionId = 'web-session', context = null) =>
     apiRequest('/ai/chat', {
       method: 'POST',
@@ -388,10 +437,78 @@ export const intelligenceApi = {
 };
 
 /**
+ * Job Posting & Distribution API client.
+ */
+export const jobPostingApi = {
+  get: (jobId) => apiRequest(`/job-postings/jobs/${jobId}`),
+  generate: (jobId, platform) => apiRequest(`/job-postings/jobs/${jobId}/generate`, {
+    method: 'POST',
+    body: JSON.stringify({ platform }),
+  }),
+  strategy: (jobId) => apiRequest(`/job-postings/jobs/${jobId}/strategy`, { method: 'POST' }),
+  getReadiness: (jobId) => apiRequest(`/job-postings/jobs/${jobId}/readiness`),
+  rewrite: (versionId, mode, customInstruction = null) =>
+    apiRequest(`/job-postings/versions/${versionId}/rewrite`, {
+      method: 'POST',
+      body: JSON.stringify({ mode, custom_instruction: customInstruction }),
+    }),
+  compare: (jobId, platform1, platform2) =>
+    apiRequest(`/job-postings/jobs/${jobId}/compare?platform1=${platform1}&platform2=${platform2}`),
+  updateSupplementary: (jobId, payload) =>
+    apiRequest(`/job-postings/jobs/${jobId}/supplementary`, {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
+  bulkGenerate: (jobIds, platforms) =>
+    apiRequest(`/job-postings/bulk-generate`, {
+      method: 'POST',
+      body: JSON.stringify({ job_ids: jobIds, platforms }),
+    }),
+  updateVersion: (versionId, title, content, status = 'Recruiter Edited') =>
+    apiRequest(`/job-postings/versions/${versionId}`, {
+      method: 'PUT',
+      body: JSON.stringify({ title, content, status }),
+    }),
+  approve: (versionId) => apiRequest(`/job-postings/versions/${versionId}/approve`, { method: 'POST' }),
+  publish: (versionId, payload) => apiRequest(`/job-postings/versions/${versionId}/publish`, {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  }),
+  recordMetrics: (jobId, payload) => apiRequest(`/job-postings/jobs/${jobId}/metrics`, {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  }),
+  regenerateSection: (jobId, payload) =>
+    apiRequest(`/job-postings/jobs/${jobId}/regenerate-section`, {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
+  updateSkills: (jobId, payload) =>
+    apiRequest(`/job-postings/jobs/${jobId}/skills`, {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
+  exportDocument: async (payload) => {
+    const response = await fetch(`${API_BASE_URL}/job-postings/export`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(payload),
+    });
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({}));
+      throw new Error(err.detail || `Export failed with status ${response.status}`);
+    }
+    return await response.blob();
+  },
+};
+
+/**
  * AI Intelligence & Model Administration API client.
  */
 export const aiApi = {
-  // Retrieve AI models, 2048-dim verification, vector coverage, and cache status
+  // Retrieve AI models, 768-dim verification, vector coverage, and cache status
   getHealth: () => apiRequest('/ai/health'),
 
   // Execute live embedding generation test
@@ -429,4 +546,57 @@ export const aiApi = {
       method: 'POST',
       body: JSON.stringify({ batch_size: batchSize, force }),
     }),
+};
+
+/**
+ * AI Technical Screening & Dynamic Interview Kit API client.
+ */
+export const interviewKitApi = {
+  // Retrieve active interview kit for job (optionally candidate-tailored)
+  get: (jobId, candidateId = null) =>
+    apiRequest(`/interview-kits/jobs/${jobId}${candidateId ? `?candidate_id=${candidateId}` : ''}`),
+
+  // Generate fresh dynamic interview kit with Nemotron AI
+  generate: (jobId, payload = {}) =>
+    apiRequest(`/interview-kits/jobs/${jobId}/generate`, {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
+
+  // Update interview kit questions or overall scorecard
+  update: (kitId, payload) =>
+    apiRequest(`/interview-kits/${kitId}`, {
+      method: 'PUT',
+      body: JSON.stringify(payload),
+    }),
+
+  // Regenerate a single question by id, skill, or difficulty
+  regenerateQuestion: (kitId, payload) =>
+    apiRequest(`/interview-kits/${kitId}/regenerate-question`, {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
+
+  // Save 1-5 evaluation ratings, feedback notes, and recommendation
+  saveScorecard: (kitId, payload) =>
+    apiRequest(`/interview-kits/${kitId}/scorecard`, {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
+
+  // Export interview kit as clean PDF, Word, or TXT
+  export: async (kitId, format = 'pdf', candidateFacing = false) => {
+    const response = await fetch(`${API_BASE_URL}/interview-kits/${kitId}/export`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ format, candidate_facing: candidateFacing }),
+    });
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({}));
+      throw new Error(err.detail || `Export failed with status ${response.status}`);
+    }
+    return await response.blob();
+  },
 };

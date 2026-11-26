@@ -30,7 +30,7 @@ def search_candidates(
     keyword: Optional[str] = None,
 
     # Limit the number of results returned by the search.
-    limit: int = 20,
+    limit: int = 20, 
 
     # Specify the result page, starting with page 1.
     page: int = 1,

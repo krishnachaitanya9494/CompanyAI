@@ -52,12 +52,9 @@ import { CustomSelect } from '../common/CustomSelect';
 const sanitizeStructuredText = (raw) => {
   if (!raw || typeof raw !== 'string') return '';
   return raw
+    .replace(/\[(?:section|source_line|category)=[^\]]+\]\s*/gi, '')
     .replace(/\[section=[^;\]]+(?:;\s*source_line=\d+)?\]\s*/gi, '')
-    .replace(/\[(?:section|source_line)=[^\]]+\]\s*/gi, '')
-    .replace(/^##\s*Role:.*$/gim, '')
-    .replace(/^##\s*Requisition ID:.*$/gim, '')
-    .replace(/^##\s*Experience:.*$/gim, '')
-    .replace(/^##\s*Location:.*$/gim, '')
+    .replace(/^##\s*(?:Role|Requisition ID|Experience|Location|Overview|Summary):.*$/gim, '')
     .replace(/^#+\s+/gm, '')
     .replace(/^[-*•]\s+/gm, '')
     .replace(/\n{3,}/g, '\n\n')
@@ -197,11 +194,15 @@ export const JDSegmentationWorkspace = ({
       const cleanOverview = sanitizeStructuredText(seg.job_overview || '');
       const rawSummary = sanitizeStructuredText(seg.role_summary || '');
       const jobRoleName = job.title || 'Technical Specialist';
+      const isGenericSummary =
+        !rawSummary ||
+        rawSummary.toLowerCase().includes('professional role within') ||
+        rawSummary.toLowerCase().includes('enterprise hiring requirement') ||
+        rawSummary.toLowerCase().includes('updated executive overview');
+
       setOverviewText(cleanOverview || `Comprehensive role owning technical delivery and system architecture for ${jobRoleName}.`);
       setRoleSummaryText(
-        rawSummary &&
-        rawSummary !== 'Professional role within engineering organization.' &&
-        rawSummary !== 'Professional role within technical organization.'
+        !isGenericSummary
           ? rawSummary
           : `Key contributor driving platform architecture, engineering excellence, and mission-critical solution delivery for ${jobRoleName}.`
       );

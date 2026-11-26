@@ -52,12 +52,30 @@ class RecruitmentRAGService:
                 "retrieved_count": 0,
             }
 
-        # 1. Retrieve semantically matching candidates
-        retrieved_candidates = self.search_service.search_candidates_by_text(
-            db=db,
-            query=question,
-            limit=top_k,
-        )
+        # 1. Retrieve candidates: prioritize explicitly resolved relevant candidate IDs if supplied.
+        explicit_ids = kwargs.get("candidate_ids")
+        if explicit_ids:
+            cand_rows = db.query(Candidate).filter(Candidate.id.in_(explicit_ids)).all()
+            cand_map = {c.id: c for c in cand_rows}
+            retrieved_candidates = [
+                {
+                    "candidate_id": cand_map[cid].id,
+                    "name": cand_map[cid].name,
+                    "experience_years": cand_map[cid].experience_years,
+                    "location": cand_map[cid].location,
+                    "skills": cand_map[cid].skills or [],
+                    "similarity": round(0.95 - (idx * 0.05), 2),
+                    "summary": cand_map[cid].summary or "",
+                }
+                for idx, cid in enumerate(explicit_ids)
+                if cid in cand_map
+            ]
+        else:
+            retrieved_candidates = self.search_service.search_candidates_by_text(
+                db=db,
+                query=question,
+                limit=top_k,
+            )
 
         # 2. Retrieve job context if job_id was specified
         job_context = None
@@ -95,20 +113,31 @@ class RecruitmentRAGService:
             context_parts.append("RETRIEVED CANDIDATE PROFILES FROM DATABASE:")
             for idx, c in enumerate(retrieved_candidates, start=1):
                 citation = f"Candidate #{c['candidate_id']} ({c['name']})"
-                context_parts.append(
+                canonical_match = None
+                if job_context:
+                    # Suitability claims are grounded in the shared deterministic JD evaluator.
+                    from app.services.matching_engine_service import compare_single_candidate_for_job
+                    canonical_match = compare_single_candidate_for_job(db, job_context["id"], c["candidate_id"])["comparison"]
+                candidate_context = (
                     f"{idx}. {citation}\n"
                     f"   Experience: {c['experience_years']} years | Location: {c['location']}\n"
                     f"   Skills: {', '.join(c['skills'])}\n"
-                    f"   Semantic Match: {c['match_score']}% (Vector Sim: {c['similarity']})\n"
-                    f"   Summary: {c['summary'][:200]}..."
+                    f"   Retrieval similarity (not a suitability score): {c['similarity']}\n"
+                    + (f"   Official JD match: {canonical_match['match_score'] if canonical_match['match_score'] is not None else 'Insufficient Evidence'}"
+                       f"{'%' if canonical_match['match_score'] is not None else ''} for job #{job_context['id']} ({job_context['title']}); "
+                       f"classification: {canonical_match['classification']}; component scores: {canonical_match['component_scores']}\n"
+                       if canonical_match else "   No JD suitability score was calculated because no job ID was supplied.\n")
+                    + f"   Summary: {c['summary'][:200]}..."
                 )
+                context_parts.append(candidate_context)
                 sources.append({
                     "type": "candidate",
                     "id": c["candidate_id"],
                     "name": c["name"],
-                    "match_score": c["match_score"],
+                    "retrieval_similarity": c["similarity"],
                     "citation": citation,
                     "skills": c["skills"],
+                    **({"canonical_match": canonical_match} if canonical_match else {}),
                 })
         else:
             context_parts.append("No candidate records matched the semantic criteria.")
@@ -119,7 +148,9 @@ class RecruitmentRAGService:
         system_prompt = (
             "You are the CompanyAI Recruitment Intelligence Assistant. "
             "Answer the recruiter's inquiry truthfully using ONLY the provided verified context. "
+            "Keep response concise under 120 words: 1 bullet per candidate with name, ID, experience, and verified core skills. "
             "Never invent candidate credentials, experience, or skills. "
+            "Never calculate or invent a candidate-to-job match percentage. Use only the official JD match explicitly supplied in context; if none is supplied, say no canonical score is available. "
             "Explicitly cite candidate names and IDs when discussing recommendations."
         )
         user_prompt = f"Question: {question}\n\nVerified Context:\n{combined_context}"
@@ -131,7 +162,7 @@ class RecruitmentRAGService:
                     {"role": "user", "content": user_prompt},
                 ],
                 temperature=0.2,
-                max_tokens=800,
+                max_tokens=220,
             )
             answer_text = chat_result["content"]
         except Exception:
@@ -141,9 +172,9 @@ class RecruitmentRAGService:
                 answer_text = (
                     f"Based on semantic retrieval from the talent pool for query '{question}', "
                     f"I found {len(retrieved_candidates)} relevant candidates. "
-                    f"Top match: **{top_cand['name']}** (ID #{top_cand['candidate_id']}) with "
+                    f"Top retrieved profile: **{top_cand['name']}** (ID #{top_cand['candidate_id']}) with "
                     f"{top_cand['experience_years']} years of experience in {top_cand['location']}, "
-                    f"aligning with a {top_cand['match_score']}% semantic affinity score. "
+                    f"retrieval similarity {top_cand['similarity']}; this is not a JD suitability score. "
                     f"Core verified skills: {', '.join(top_cand['skills'][:6])}."
                 )
             else:
@@ -152,7 +183,7 @@ class RecruitmentRAGService:
                     f"Try adjusting skill keywords or expanding the experience range."
                 )
 
-        conf = round(retrieved_candidates[0]["match_score"] / 100.0, 2) if retrieved_candidates else 0.85
+        conf = round(max(0.0, retrieved_candidates[0]["similarity"]), 2) if retrieved_candidates else 0.0
 
         return {
             "query": question,

@@ -62,7 +62,6 @@ def search_candidates(
             .join(Candidate, Candidate.id == Resume.candidate_id)
             .where(
                 ResumeEmbedding.embedding_vector.is_not(None),
-                ResumeEmbedding.generation_method == "nemotron_api",
             )
             .order_by(Resume.id.asc())
         ).all()

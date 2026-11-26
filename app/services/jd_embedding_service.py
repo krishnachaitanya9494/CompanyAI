@@ -6,7 +6,8 @@ from typing import Any, Callable, Dict, List, Optional, Sequence
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 # Import embedding generation and configuration.
-from app.embedding_service import OPENROUTER_EMBEDDING_MODEL, generate_embedding
+from app.ai.config import ai_config
+from app.embedding_service import generate_embedding
 # Import vector validation and storage helpers.
 from database.embedding_storage import (
     find_compatible_job_embedding_by_hash,
@@ -113,7 +114,7 @@ def generate_segmentation_embeddings(
     if isinstance(raw_model, str) and raw_model.strip():
         model_name = raw_model.strip()
     else:
-        model_name = OPENROUTER_EMBEDDING_MODEL
+        model_name = ai_config.embedding_model
 
     # Track operational counters.
     generated_count = 0
@@ -155,8 +156,9 @@ def generate_segmentation_embeddings(
                 input_hash=full_hash,
                 vector=compatible.embedding_vector,
                 requirement_id=None,
-                dimensions=2048,
+                dimensions=ai_config.embedding_dimensions,
                 model_name=model_name,
+                generation_method="ollama",
             )
             reused_count += 1
             records_saved.append(stored_record)
@@ -172,8 +174,9 @@ def generate_segmentation_embeddings(
                     input_hash=full_hash,
                     vector=vector,
                     requirement_id=None,
-                    dimensions=2048,
+                    dimensions=ai_config.embedding_dimensions,
                     model_name=model_name,
+                    generation_method="ollama",
                 )
                 generated_count += 1
                 records_saved.append(stored_record)
@@ -217,8 +220,9 @@ def generate_segmentation_embeddings(
                 input_hash=req_hash,
                 vector=compatible_req.embedding_vector,
                 requirement_id=req.id,
-                dimensions=2048,
+                dimensions=ai_config.embedding_dimensions,
                 model_name=model_name,
+                generation_method="ollama",
             )
             reused_count += 1
             records_saved.append(stored_req)
@@ -235,8 +239,9 @@ def generate_segmentation_embeddings(
                     input_hash=req_hash,
                     vector=raw_vector,
                     requirement_id=req.id,
-                    dimensions=2048,
+                    dimensions=ai_config.embedding_dimensions,
                     model_name=model_name,
+                    generation_method="ollama",
                 )
                 generated_count += 1
                 records_saved.append(stored_req)
@@ -301,8 +306,8 @@ def get_job_embedding_status(db: Session, job_id: int) -> Dict[str, Any]:
             "stale_count": 0,
             "invalid_model_count": 0,
             "invalid_dimension_count": 0,
-            "model_name": OPENROUTER_EMBEDDING_MODEL,
-            "dimensions": 2048,
+            "model_name": ai_config.embedding_model,
+            "dimensions": ai_config.embedding_dimensions,
             "last_generated_at": None,
         }
 
@@ -326,8 +331,8 @@ def get_job_embedding_status(db: Session, job_id: int) -> Dict[str, Any]:
             "stale_count": 0,
             "invalid_model_count": 0,
             "invalid_dimension_count": 0,
-            "model_name": OPENROUTER_EMBEDDING_MODEL,
-            "dimensions": 2048,
+            "model_name": ai_config.embedding_model,
+            "dimensions": ai_config.embedding_dimensions,
             "last_generated_at": None,
         }
 
@@ -365,10 +370,10 @@ def get_job_embedding_status(db: Session, job_id: int) -> Dict[str, Any]:
 
     # Verify model and vector dimension compliance across all stored rows.
     invalid_model_count = sum(
-        1 for e in embeddings if e.model_name != OPENROUTER_EMBEDDING_MODEL
+        1 for e in embeddings if e.model_name != ai_config.embedding_model
     )
     invalid_dimension_count = sum(
-        1 for e in embeddings if e.dimensions != 2048 or not isinstance(e.embedding_vector, list) or len(e.embedding_vector) != 2048
+        1 for e in embeddings if e.dimensions != ai_config.embedding_dimensions or not isinstance(e.embedding_vector, list) or len(e.embedding_vector) != ai_config.embedding_dimensions
     )
 
     # Verify input hashes against current source content to detect stale vectors.
@@ -448,8 +453,8 @@ def get_job_embedding_status(db: Session, job_id: int) -> Dict[str, Any]:
         "invalid_model_count": invalid_model_count,
         "invalid_dimension_count": invalid_dimension_count,
         "incorrect_type_count": incorrect_type_count,
-        "model_name": embeddings[0].model_name if embeddings else OPENROUTER_EMBEDDING_MODEL,
-        "dimensions": embeddings[0].dimensions if embeddings else 2048,
+        "model_name": embeddings[0].model_name if embeddings else ai_config.embedding_model,
+        "dimensions": embeddings[0].dimensions if embeddings else ai_config.embedding_dimensions,
         "last_generated_at": max((e.created_at for e in embeddings), default=None).isoformat() if embeddings else None,
     }
 

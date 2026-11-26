@@ -402,3 +402,90 @@ def get_hiring_difficulty_overview(db: Session, include_closed: bool = False) ->
         ],
         "items": items,
     }
+
+
+_EXPLAINABLE_INSIGHTS_CACHE: Dict[str, Dict[str, Any]] = {}
+
+
+def generate_explainable_hiring_difficulty_insights(db: Session, job_id: int) -> Dict[str, Any]:
+    """Generate explainable, evidence-grounded AI hiring difficulty intelligence for recruiters."""
+    import copy
+    import hashlib
+    global _EXPLAINABLE_INSIGHTS_CACHE
+
+    job_row = db.query(Job).filter(Job.id == job_id).first()
+    title_str = (job_row.title or "").strip() if job_row else ""
+    desc_str = (job_row.description or "").strip() if job_row else ""
+    cache_key = f"{job_id}_{title_str}_{hashlib.md5(desc_str.encode('utf-8', errors='ignore')).hexdigest()}"
+
+    if cache_key in _EXPLAINABLE_INSIGHTS_CACHE:
+        return copy.deepcopy(_EXPLAINABLE_INSIGHTS_CACHE[cache_key])
+
+    from app.ai.providers.chat_provider import chat_provider
+
+    base = assess_job_hiring_difficulty(db, job_id)
+    job_info = base.get("job", {})
+    tier = base.get("difficulty_classification", "Moderate Difficulty")
+    score = base.get("difficulty_score", 50)
+    factors = base.get("contributing_factors", [])
+    supply = base.get("candidate_supply", {})
+    loc_info = base.get("location_constraints", {})
+    suggested = base.get("suggested_recruiter_actions", [])
+
+    # Sort factors by impact points to identify the primary bottleneck
+    sorted_factors = sorted(factors, key=lambda f: f.get("impact_points", 0), reverse=True)
+    top_factor = sorted_factors[0] if sorted_factors else {}
+    primary_bottleneck = top_factor.get("factor", "Internal Talent Scarcity")
+    bottleneck_evidence = top_factor.get("evidence", "Limited candidate supply matching mandatory criteria.")
+
+    # Rule-based default explanation
+    summary_parts = [
+        f"**Hiring Difficulty Assessment:** **{tier}** (Score: {score}/100).",
+        f"**Primary Bottleneck:** {primary_bottleneck} — {bottleneck_evidence}",
+        f"**Internal Talent Supply:** {supply.get('fully_qualified_candidates', 0)} fully qualified candidate(s) and {supply.get('skill_qualified_candidates', 0)} skill-qualified candidate(s) identified in local database.",
+    ]
+    if loc_info.get("location_restricted"):
+        summary_parts.append(
+            f"**Location Impact:** Filtering for '{loc_info.get('job_location')}' excludes {loc_info.get('non_local_skill_matched_candidates', 0)} candidate(s) who match the skill profile."
+        )
+
+    ai_executive_summary = "\n\n".join(summary_parts)
+
+    # If local Ollama is available, synthesize a refined executive briefing
+    if chat_provider.is_available() and tier != "Insufficient Data":
+        try:
+            prompt = (
+                f"You are CompanyAI's Recruitment Market Intelligence Assistant.\n"
+                f"Provide a concise, 2-paragraph recruiter briefing explaining why this role is rated {tier} ({score}/100).\n"
+                f"Job: {job_info.get('title')} in {job_info.get('location')}\n"
+                f"Primary Bottleneck: {primary_bottleneck} ({bottleneck_evidence})\n"
+                f"Internal Candidate Supply: {supply.get('fully_qualified_candidates')} fully qualified / {supply.get('total_database_candidates')} total profiles\n"
+                f"Do not invent external market numbers or salary figures. Ground strictly on the internal facts.\n"
+            )
+            ai_text = chat_provider.complete_text(
+                prompt=prompt,
+                system_prompt="You provide concise, factual recruitment hiring difficulty analysis. Never invent external salary or candidate statistics.",
+                max_tokens=180,
+            )
+            if ai_text and len(ai_text.strip()) > 40:
+                ai_executive_summary = ai_text.strip()
+        except Exception:
+            pass
+
+    result = {
+        **base,
+        "ai_interpretation": {
+            "tier": tier,
+            "score": score,
+            "executive_summary": ai_executive_summary,
+            "primary_bottleneck": primary_bottleneck,
+            "bottleneck_evidence": bottleneck_evidence,
+            "actionable_recommendations": suggested,
+            "external_market_notice": "External market data unavailable — assessment based on internal candidate records.",
+            "data_grounding_type": "Verified SQLite candidate records & Transparent Heuristics",
+        },
+    }
+    if len(_EXPLAINABLE_INSIGHTS_CACHE) >= 100:
+        _EXPLAINABLE_INSIGHTS_CACHE.pop(next(iter(_EXPLAINABLE_INSIGHTS_CACHE)))
+    _EXPLAINABLE_INSIGHTS_CACHE[cache_key] = copy.deepcopy(result)
+    return result

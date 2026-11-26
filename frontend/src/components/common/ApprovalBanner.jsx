@@ -26,7 +26,7 @@ export const ApprovalBanner = ({
         <div>
           <div className="flex items-center gap-2">
             <span className="text-xs font-bold text-navy-950 dark:text-amber-200 uppercase tracking-wider">
-              Human-in-the-Loop Confirmation Required
+              Recruiter Approval Needed
             </span>
             <span className="text-[10px] font-mono bg-white dark:bg-surface-darkCard px-2 py-0.5 rounded border border-amber-200 dark:border-amber-700/80 font-semibold text-amber-800 dark:text-amber-300">
               {pendingApprovals.length} Pending

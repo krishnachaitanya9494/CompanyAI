@@ -5,7 +5,7 @@ import React, { useState } from 'react';
 import { ArrowUp, Sparkles, CornerDownLeft } from 'lucide-react';
 
 // Export ChatInput component with multi-line auto-expand support and key shortcuts.
-export const ChatInput = ({ onSendMessage, isLoading, placeholder = 'Ask Nemotron anything about candidates, JDs, or pipeline...' }) => {
+export const ChatInput = ({ onSendMessage, isLoading, placeholder = 'Ask CompanyAI anything about candidates, JDs, or pipeline...' }) => {
   // Local state for typed input text.
   const [text, setText] = useState('');
 

@@ -186,6 +186,30 @@ export const AIIntelligencePanel = ({
         </span>
       </div>
 
+      {/* AI Executive Briefing & Grounded Assessment */}
+      {difficulty?.ai_interpretation?.executive_summary && (
+        <div className="mb-6 p-4 rounded-xl bg-gradient-to-r from-brand-50/70 via-white to-accent-50/50 dark:from-brand-950/40 dark:via-surface-darkCard dark:to-accent-950/30 border border-brand-200/80 dark:border-brand-800/60 shadow-xs space-y-2.5">
+          <div className="flex items-center justify-between flex-wrap gap-2">
+            <span className="text-xs font-bold text-navy-950 dark:text-slate-100 flex items-center gap-1.5 uppercase tracking-wider">
+              <Sparkles className="w-3.5 h-3.5 text-brand-500" />
+              Recruiter Executive Briefing
+            </span>
+            <span className="text-[10px] font-semibold text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 px-2 py-0.5 rounded-full">
+              {difficulty.ai_interpretation.data_grounding_type || 'Internal Database Grounded'}
+            </span>
+          </div>
+          <div className="text-xs text-slate-700 dark:text-slate-200 leading-relaxed whitespace-pre-line font-normal">
+            {difficulty.ai_interpretation.executive_summary}
+          </div>
+          {difficulty.ai_interpretation.external_market_notice && (
+            <div className="text-[11px] text-amber-700 dark:text-amber-400 font-medium flex items-center gap-1.5 pt-1 border-t border-slate-100 dark:border-surface-darkBorder">
+              <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
+              <span>{difficulty.ai_interpretation.external_market_notice}</span>
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Difficulty Score & Supply KPIs */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
         <MetricCard
@@ -408,7 +432,7 @@ export const AIIntelligencePanel = ({
               <Network className="w-3.5 h-3.5 text-indigo-500" />
               Similar Jobs (Vector Match)
             </h4>
-            <span className="text-[10px] text-slate-400 font-mono">nemotron-3-embed-1b</span>
+            <span className="text-[10px] text-slate-400 font-mono">nomic-embed-text</span>
           </div>
           <div className="space-y-2.5">
             {similarJobs.map((sj) => (
@@ -465,7 +489,7 @@ export const AIIntelligencePanel = ({
       {/* Quick Sourcing Action Bar */}
       <div className="mt-6 pt-4 border-t border-slate-100 dark:border-surface-darkBorder flex items-center justify-between gap-3">
         <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-          Powered by Nemotron Intelligence Engine
+          Powered by CompanyAI Intelligence Engine
         </span>
         {onOpenSourcingTab && (
           <button

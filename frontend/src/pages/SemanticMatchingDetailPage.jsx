@@ -101,46 +101,47 @@ export const SemanticMatchingDetailPage = ({
   const requirements = candidateMatch.requirements || [];
   const componentScores = candidateMatch.componentScores || candidateMatch.component_scores || {};
 
-  // Configured backend matching engine weights (read-only mirror of MatchScoreWeights).
+  // Read the same effective weights used by the backend after unavailable inputs are excluded.
+  const effectiveWeights = candidateMatch.match_provenance?.effective_weights_percent || {};
   const weightDefinitions = [
     {
       key: 'mandatory_skills',
       label: 'Mandatory Requirements',
-      weight: 35,
-      score: componentScores.mandatory_skills ?? overallScore,
+      weight: effectiveWeights.mandatory_skills ?? 0,
+      score: componentScores.mandatory_skills,
       desc: 'Deterministic coverage of mandatory skills and critical JD prerequisites.',
       barColor: 'bg-brand-600 dark:bg-brand-500',
     },
     {
       key: 'preferred_skills',
       label: 'Preferred Requirements',
-      weight: 15,
-      score: componentScores.preferred_skills ?? overallScore,
+      weight: effectiveWeights.preferred_skills ?? 0,
+      score: componentScores.preferred_skills,
       desc: 'Evaluation of desirable or nice-to-have technical competencies.',
       barColor: 'bg-blue-600 dark:bg-blue-500',
     },
     {
       key: 'relevant_experience',
       label: 'Experience Alignment',
-      weight: 20,
-      score: componentScores.relevant_experience ?? overallScore,
+      weight: effectiveWeights.relevant_experience ?? 0,
+      score: componentScores.relevant_experience,
       desc: 'Years of hands-on industry experience compared against JD bounds.',
       barColor: 'bg-emerald-600 dark:bg-emerald-500',
     },
     {
       key: 'domain_fit',
       label: 'Domain Knowledge',
-      weight: 15,
-      score: componentScores.domain_fit ?? overallScore,
+      weight: effectiveWeights.domain_fit ?? 0,
+      score: componentScores.domain_fit,
       desc: 'Contextual alignment across business domain and functional responsibilities.',
       barColor: 'bg-purple-600 dark:bg-purple-500',
     },
     {
       key: 'semantic_relevance',
       label: 'Semantic Retrieval Fit',
-      weight: 15,
-      score: componentScores.semantic_relevance ?? Math.round(semanticSim * 100),
-      desc: 'Normalized 2,048-dimensional NVIDIA Nemotron cosine similarity.',
+      weight: effectiveWeights.semantic_relevance ?? 0,
+      score: componentScores.semantic_relevance,
+      desc: 'Vector cosine similarity is included only when compatible vectors are available.',
       barColor: 'bg-amber-600 dark:bg-amber-500',
     },
   ];
@@ -314,7 +315,7 @@ export const SemanticMatchingDetailPage = ({
             <div className="flex flex-wrap items-center gap-x-5 gap-y-1.5 text-xs text-slate-600 dark:text-slate-400">
               <span className="flex items-center gap-1.5">
                 <Briefcase className="w-3.5 h-3.5 text-slate-400" />
-                {candidateMatch.experienceYears || 0} Years Experience
+                {candidateMatch.experienceYears != null ? `${candidateMatch.experienceYears} Years Experience` : 'Experience not stated'}
               </span>
               <span className="flex items-center gap-1.5">
                 <MapPin className="w-3.5 h-3.5 text-slate-400" />
@@ -326,7 +327,7 @@ export const SemanticMatchingDetailPage = ({
               </span>
               <span className="flex items-center gap-1.5">
                 <Clock className="w-3.5 h-3.5 text-slate-400" />
-                Evaluated: Live Engine Query
+                {candidateMatch.match_provenance ? `JD v${candidateMatch.match_provenance.jd_version_id} · Calculated ${new Date(candidateMatch.match_provenance.calculated_at).toLocaleString()}` : 'Current evaluation'}
               </span>
             </div>
           </div>
@@ -500,17 +501,17 @@ export const SemanticMatchingDetailPage = ({
               <div className="mb-4 p-3.5 rounded-xl bg-slate-50 dark:bg-surface-darkHover border border-slate-200 dark:border-slate-700 text-xs text-slate-600 dark:text-slate-300 space-y-1.5">
                 <p className="font-semibold text-navy-900 dark:text-white">Composite Scoring Methodology:</p>
                 <p>
-                  Composite Score = (0.35 × Mandatory Skills) + (0.15 × Preferred Skills) + (0.20 × Experience Fit) + (0.15 × Domain Fit) + (0.15 × Semantic Vector Fit).
+                  Composite score uses the configured weights for available components, renormalized to 100%; unavailable inputs are excluded.
                 </p>
                 <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                  Note: Semantic cosine similarity serves strictly as a retrieval signal and accounts for 15% of the composite score; mandatory gaps independently enforce tier caps.
+                  Note: Semantic similarity contributes only when compatible embeddings exist; mandatory gaps independently cap the classification.
                 </p>
               </div>
             )}
 
             <div className="space-y-3.5">
               {weightDefinitions.map((comp) => {
-                const numericScore = Math.min(100, Math.max(0, Math.round(Number(comp.score) || 0)));
+                const numericScore = comp.score == null ? null : Math.min(100, Math.max(0, Math.round(Number(comp.score) || 0)));
                 return (
                   <div key={comp.key} className="space-y-1">
                     <div className="flex items-center justify-between text-xs">
@@ -520,12 +521,12 @@ export const SemanticMatchingDetailPage = ({
                           Weight: {comp.weight}%
                         </span>
                       </div>
-                      <span className="font-bold font-mono text-navy-900 dark:text-white">{numericScore}%</span>
+                      <span className="font-bold font-mono text-navy-900 dark:text-white">{numericScore == null ? 'Unavailable' : `${numericScore}%`}</span>
                     </div>
                     <div className="w-full h-2 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
                       <div
                         className={`h-full rounded-full transition-all duration-500 ${comp.barColor}`}
-                        style={{ width: `${numericScore}%` }}
+                        style={{ width: `${numericScore ?? 0}%` }}
                       />
                     </div>
                     <p className="text-[11px] text-slate-400 dark:text-slate-500">{comp.desc}</p>
@@ -554,7 +555,7 @@ export const SemanticMatchingDetailPage = ({
 
             {candidateMatch.explanations?.summary_narrative && (
               <div className="mb-4 p-3.5 rounded-xl bg-brand-50/70 dark:bg-brand-950/30 border border-brand-200/80 dark:border-brand-800/60 text-xs text-brand-950 dark:text-brand-100 leading-relaxed">
-                <strong className="block mb-1">Nemotron AI Executive Narrative:</strong>
+                <strong className="block mb-1">CompanyAI Executive Narrative:</strong>
                 {candidateMatch.explanations.summary_narrative}
               </div>
             )}

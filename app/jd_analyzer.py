@@ -24,6 +24,10 @@ from pydantic import ValidationError
 # Import HTTPX for the OpenRouter chat-completions request.
 import httpx
 
+# Import centralized Ollama provider and config.
+from app.ai.config import ai_config
+from app.ai.providers.ollama_provider import ollama_provider
+
 # Import dotenv so this client can load the shared OpenRouter key and LLM model.
 from dotenv import load_dotenv
 
@@ -137,31 +141,25 @@ class JDAnalysisError(RuntimeError):
 EXPECTED_JD_IDS = tuple(f"JD-{index:03d}" for index in range(1, 8))
 
 
-# Load and validate OpenRouter LLM settings at call time for easy testing.
+# Load and validate LLM settings at call time for easy testing.
 def get_openrouter_llm_config() -> OpenRouterLLMConfig:
-    """Read the shared OpenRouter key and separate LLM model setting."""
-
-    # Reuse the existing OpenRouter API key without printing or modifying it.
+    """Read the configured LLM settings, defaulting to local Ollama."""
     api_key = os.getenv("OPENROUTER_API_KEY", "").strip()
+    model = (
+        os.getenv("OLLAMA_LLM_MODEL", "").strip()
+        or os.getenv("OPENROUTER_LLM_MODEL", "").strip()
+        or ai_config.llm_model
+    )
+    endpoint = (
+        OPENROUTER_CHAT_COMPLETIONS_URL
+        if (api_key and api_key != "YOUR_OPENROUTER_API_KEY")
+        else f"{ai_config.ollama_base_url}/api/chat"
+    )
 
-    # Read the LLM model independently from OPENROUTER_EMBEDDING_MODEL.
-    model = os.getenv("OPENROUTER_LLM_MODEL", "").strip()
-
-    # Require the shared OpenRouter key and separate LLM model before requesting.
-    if (
-        not api_key
-        or api_key == "YOUR_OPENROUTER_API_KEY"
-        or not model
-    ):
-        raise JDAnalysisError(
-            "Set OPENROUTER_API_KEY and OPENROUTER_LLM_MODEL before analysis."
-        )
-
-    # Return validated values while keeping the key hidden from repr output.
     return OpenRouterLLMConfig(
         api_key=api_key,
         model=model,
-        endpoint=OPENROUTER_CHAT_COMPLETIONS_URL,
+        endpoint=endpoint,
     )
 
 
@@ -469,95 +467,108 @@ def analyze_jd_text(
         "stream": False,
     }
 
-    # Prepare request headers without printing or logging credential values.
-    request_headers = {
-        "Authorization": f"Bearer {active_config.api_key}",
-        "Content-Type": "application/json",
-        "Accept": "application/json",
-    }
-
-    # Send the sanitized payload to OpenRouter's chat-completions endpoint.
-    try:
-        response = httpx.post(
-            active_config.endpoint,
-            headers=request_headers,
-            json=request_body,
-            timeout=timeout_seconds,
-        )
-
-        # Convert HTTP failures into generic messages without response-body details.
-        response.raise_for_status()
-    except httpx.HTTPStatusError as error:
-        # Hide server response bodies that could echo sensitive source text.
-        if error.response.status_code == 401:
-            raise JDAnalysisError("OpenRouter rejected the configured API credentials.") from None
-
-        # Report only the numeric status for other OpenRouter HTTP errors.
-        raise JDAnalysisError(
-            f"OpenRouter chat request failed with HTTP {error.response.status_code}."
-        ) from None
-    except httpx.RequestError as error:
-        # Report the exception type without printing request headers or content.
-        raise JDAnalysisError(
-            f"OpenRouter chat request failed ({type(error).__name__})."
-        ) from None
-
-    # Decode the outer API response while keeping any response content private.
-    try:
-        response_payload = response.json()
-    except json.JSONDecodeError as error:
-        # Report only the JSON parser location, never the response body.
-        raise JDAnalysisError(
-            "OpenRouter response body was not valid JSON "
-            f"(line {error.lineno}, column {error.colno})."
-        ) from None
-
-    # Extract the expected OpenRouter message separately from model validation.
-    try:
-        choices = response_payload["choices"]
-        if not isinstance(choices, list) or not choices:
-            raise IndexError
-        choice = choices[0]
-        if not isinstance(choice, dict):
-            raise KeyError
-        message = choice.get("message")
-        if not isinstance(message, dict):
-            raise KeyError
-        if choice.get("finish_reason") == "length":
-            raise JDAnalysisError(
-                "OpenRouter token limit reached; increase the completion token budget."
+    # Send the sanitized payload to local Ollama or legacy OpenRouter
+    if "ollama" in active_config.endpoint or not active_config.api_key or active_config.api_key == "YOUR_OPENROUTER_API_KEY":
+        try:
+            model_text = ollama_provider.chat(
+                messages=request_body["messages"],
+                model=active_config.model,
+                temperature=0.0,
+                format_json=True,
+                timeout_seconds=timeout_seconds,
             )
-        model_content = message.get("content")
-    except (KeyError, IndexError, TypeError):
-        raise JDAnalysisError(
-            "OpenRouter response envelope is missing choices[0].message.content."
-        ) from None
-
-    # Reject malformed message objects without including any response values.
-    if not isinstance(message, dict):
-        raise JDAnalysisError("OpenRouter response envelope message was not an object.")
-
-    # Detect provider refusals without exposing potentially sensitive refusal text.
-    if message.get("refusal") is not None:
-        raise JDAnalysisError("OpenRouter model refused the request.")
-
-    # Keep ordinary string content compatible with the existing response format.
-    if isinstance(model_content, str):
-        model_text = model_content
-    # Join supported text blocks in order while rejecting mixed or unknown blocks.
-    elif isinstance(model_content, list) and model_content:
-        if any(
-            not isinstance(block, dict)
-            or block.get("type") != "text"
-            or not isinstance(block.get("text"), str)
-            for block in model_content
-        ):
-            raise JDAnalysisError(
-                "OpenRouter response envelope content contained unsupported blocks."
-            )
-        model_text = "".join(block["text"] for block in model_content)
+        except Exception as error:
+            raise JDAnalysisError(f"Local Ollama chat request failed: {error}") from None
     else:
-        raise JDAnalysisError("OpenRouter response envelope content had an unsupported format.")
+        # Prepare request headers without printing or logging credential values.
+        request_headers = {
+            "Authorization": f"Bearer {active_config.api_key}",
+            "Content-Type": "application/json",
+            "Accept": "application/json",
+        }
+
+        # Send the sanitized payload to OpenRouter's chat-completions endpoint.
+        try:
+            response = httpx.post(
+                active_config.endpoint,
+                headers=request_headers,
+                json=request_body,
+                timeout=timeout_seconds,
+            )
+
+            # Convert HTTP failures into generic messages without response-body details.
+            response.raise_for_status()
+        except httpx.HTTPStatusError as error:
+            # Hide server response bodies that could echo sensitive source text.
+            if error.response.status_code == 401:
+                raise JDAnalysisError("OpenRouter rejected the configured API credentials.") from None
+
+            # Report only the numeric status for other OpenRouter HTTP errors.
+            raise JDAnalysisError(
+                f"OpenRouter chat request failed with HTTP {error.response.status_code}."
+            ) from None
+        except httpx.RequestError as error:
+            # Report the exception type without printing request headers or content.
+            raise JDAnalysisError(
+                f"OpenRouter chat request failed ({type(error).__name__})."
+            ) from None
+
+        # Decode the outer API response while keeping any response content private.
+        try:
+            response_payload = response.json()
+        except json.JSONDecodeError as error:
+            # Report only the JSON parser location, never the response body.
+            raise JDAnalysisError(
+                "OpenRouter response body was not valid JSON "
+                f"(line {error.lineno}, column {error.colno})."
+            ) from None
+
+        # Extract the expected OpenRouter message separately from model validation.
+        try:
+            choices = response_payload["choices"]
+            if not isinstance(choices, list) or not choices:
+                raise IndexError
+            choice = choices[0]
+            if not isinstance(choice, dict):
+                raise KeyError
+            message = choice.get("message")
+            if not isinstance(message, dict):
+                raise KeyError
+            if choice.get("finish_reason") == "length":
+                raise JDAnalysisError(
+                    "OpenRouter token limit reached; increase the completion token budget."
+                )
+            model_content = message.get("content")
+        except (KeyError, IndexError, TypeError):
+            raise JDAnalysisError(
+                "OpenRouter response envelope is missing choices[0].message.content."
+            ) from None
+
+        # Reject malformed message objects without including any response values.
+        if not isinstance(message, dict):
+            raise JDAnalysisError("OpenRouter response envelope message was not an object.")
+
+        # Detect provider refusals without exposing potentially sensitive refusal text.
+        if message.get("refusal") is not None:
+            raise JDAnalysisError("OpenRouter model refused the request.")
+
+        # Keep ordinary string content compatible with the existing response format.
+        if isinstance(model_content, str):
+            model_text = model_content
+        # Join supported text blocks in order while rejecting mixed or unknown blocks.
+        elif isinstance(model_content, list) and model_content:
+            if any(
+                not isinstance(block, dict)
+                or block.get("type") != "text"
+                or not isinstance(block.get("text"), str)
+                for block in model_content
+            ):
+                raise JDAnalysisError(
+                    "OpenRouter response envelope content contained unsupported blocks."
+                )
+            model_text = "".join(block["text"] for block in model_content)
+        else:
+            raise JDAnalysisError("OpenRouter response envelope content had an unsupported format.")
 
     # Reject empty text generically before attempting to parse model-generated JSON.
     if not model_text.strip():

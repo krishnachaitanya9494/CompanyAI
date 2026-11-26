@@ -83,6 +83,13 @@ def test_model_tables_are_created(model_database) -> None:
         "jd_segmentation",  # Include Phase 3 JD segmentation table.
         "job_requirement",  # Include Phase 3 granular recruitment requirement table.
         "job_embedding",  # Include Phase 5B job embedding table.
+        "job_posting",  # Section 5 Job Posting table.
+        "job_posting_version",  # Section 5 Job Posting Version table.
+        "job_posting_metrics",  # Section 5 Job Posting Metrics table.
+        "job_posting_activity",  # Section 5 Job Posting Activity table.
+        "interview_kit",  # AI Interview Kit table.
+        "boolean_search_history",
+        "candidate_job_match_result",
     }
 
 

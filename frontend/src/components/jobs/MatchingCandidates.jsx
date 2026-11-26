@@ -74,22 +74,19 @@ export const MatchingCandidates = ({
         </span>
       );
     }
-    const classification = candidate.classification || (
-      candidate.matchScore >= 88 ? 'Excellent Match' :
-      candidate.matchScore >= 75 ? 'Strong Match' :
-      candidate.matchScore >= 60 ? 'Potential Match' :
-      candidate.matchScore >= 45 ? 'Partial Match' : 'Needs Review'
-    );
+    // Use the backend's mandatory-gap-adjusted classification instead of maintaining local thresholds.
+    const classification = candidate.eligibilityAdjustedTier || candidate.classification || 'Needs Review';
 
     switch (classification) {
-      case 'Excellent Match':
-        return <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-100 dark:bg-emerald-900/40 text-emerald-800 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-700/60">★ Excellent</span>;
-      case 'Strong Match':
-        return <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-brand-100 dark:bg-brand-900/40 text-brand-800 dark:text-brand-300 border border-brand-300 dark:border-brand-700/60">● Strong</span>;
-      case 'Potential Match':
-        return <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-amber-100 dark:bg-amber-900/40 text-amber-800 dark:text-amber-300 border border-amber-300 dark:border-amber-700/60">▲ Potential</span>;
-      case 'Partial Match':
-        return <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-300 dark:border-surface-darkBorder">○ Partial</span>;
+      case 'Strong':
+        return <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-100 dark:bg-emerald-900/40 text-emerald-800 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-700/60">Strong</span>;
+      case 'Good':
+        return <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-brand-100 dark:bg-brand-900/40 text-brand-800 dark:text-brand-300 border border-brand-300 dark:border-brand-700/60">Good</span>;
+      case 'Partial':
+        return <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-amber-100 dark:bg-amber-900/40 text-amber-800 dark:text-amber-300 border border-amber-300 dark:border-amber-700/60">Partial</span>;
+      case 'Weak':
+      case 'Insufficient Evidence':
+        return <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-300 dark:border-surface-darkBorder">{classification}</span>;
     default:
       return <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-rose-100 dark:bg-rose-900/40 text-rose-800 dark:text-rose-300 border border-rose-300 dark:border-rose-700/60">! Review</span>;
     }

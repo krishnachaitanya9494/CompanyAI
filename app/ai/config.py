@@ -1,4 +1,4 @@
-"""Centralized AI configuration for CompanyAI Recruitment Intelligence Platform."""
+"""Centralized local AI configuration for CompanyAI Recruitment Intelligence Platform."""
 
 import os
 from pathlib import Path
@@ -12,44 +12,47 @@ load_dotenv(PROJECT_ROOT / ".env")
 
 @dataclass(frozen=True)
 class AIConfig:
-    """Holds validated AI provider settings, model identifiers, endpoints, and timeouts."""
+    """Holds validated local Ollama provider settings, model identifiers, endpoints, and timeouts."""
 
-    # OpenRouter API Key retrieved from environment.
-    api_key: str = os.getenv("OPENROUTER_API_KEY", "").strip()
+    # Base URL for the locally hosted Ollama server.
+    ollama_base_url: str = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434").rstrip("/")
 
-    # Primary Nemotron embedding model identifier on OpenRouter.
-    embedding_model: str = os.getenv(
-        "OPENROUTER_EMBEDDING_MODEL",
-        "nvidia/nemotron-3-embed-1b:free",
-    ).strip()
+    # Primary local LLM model identifier on Ollama.
+    llm_model: str = os.getenv("OLLAMA_LLM_MODEL", "llama3.2:3b").strip()
 
-    # Chat & reasoning model identifier on OpenRouter (verified free model).
-    chat_model: str = os.getenv(
-        "OPENROUTER_CHAT_MODEL",
-        os.getenv("OPENROUTER_LLM_MODEL", "nvidia/nemotron-3.5-super-vl:free"),
-    ).strip()
+    # Primary local embedding model identifier on Ollama.
+    embedding_model: str = os.getenv("OLLAMA_EMBEDDING_MODEL", "nomic-embed-text").strip()
 
-    # Verified embedding vector dimensions for nvidia/nemotron-3-embed-1b:free.
-    embedding_dimensions: int = 2048
+    # Embedding vector dimensions for nomic-embed-text.
+    embedding_dimensions: int = 768
 
-    # Default batch size for vector generation
+    # Default batch size for vector generation.
     batch_size: int = 16
 
-    # OpenRouter API Endpoints.
-    embedding_url: str = "https://openrouter.ai/api/v1/embeddings"
-    chat_url: str = "https://openrouter.ai/api/v1/chat/completions"
+    # HTTP client timeout in seconds for LLM generation.
+    request_timeout_seconds: float = float(os.getenv("OLLAMA_TIMEOUT_SECONDS", "120.0"))
 
-    # HTTP client timeout in seconds for provider requests.
-    request_timeout_seconds: float = 60.0
+    # HTTP client timeout in seconds for embedding generation.
+    embedding_timeout_seconds: float = float(os.getenv("OLLAMA_EMBEDDING_TIMEOUT_SECONDS", "60.0"))
 
-    # Maximum retry attempts for transient server hiccups or throttling.
-    max_retries: int = 5
+    # Maximum retry attempts for transient server hiccups.
+    max_retries: int = 2
 
     # Initial exponential backoff delay in seconds.
-    initial_backoff_seconds: float = 1.5
+    initial_backoff_seconds: float = 1.0
 
-    # Safe fallback dimension if vector projection is needed during upstream provider outages.
-    fallback_dimensions: int = 2048
+    # Fallback dimensions matching local embedding model.
+    fallback_dimensions: int = 768
+
+    # Safe compatibility aliases
+    @property
+    def chat_model(self) -> str:
+        return self.llm_model
+
+    @property
+    def api_key(self) -> str:
+        # Local Ollama requires no API key.
+        return ""
 
 
 # Single shared configuration instance.

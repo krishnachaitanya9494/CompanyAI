@@ -282,7 +282,7 @@ export const ApprovalsPage = ({
           <CheckCircle2 className="w-8 h-8 text-emerald-500 mx-auto" />
           <h3 className="text-sm font-bold text-navy-900 dark:text-white">No Approval Records Match View</h3>
           <p className="text-xs text-slate-500 dark:text-slate-400 max-w-md mx-auto">
-            Requests proposed from Candidate Profiles, Pipeline Kanban, Jobs, Requisitions, or Nemotron AI appear here for review.
+            Requests proposed from Candidate Profiles, Pipeline Kanban, Jobs, Requisitions, or CompanyAI appear here for review.
           </p>
         </div>
       ) : activeTab === 'pending' || activeTab === 'changes_requested' ? (

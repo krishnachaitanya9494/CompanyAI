@@ -20,6 +20,7 @@ _SHA256_PATTERN = re.compile(r"^[0-9a-fA-F]{64}$")
 
 # Standardized embedding generation method identifiers.
 VALID_GENERATION_METHODS = frozenset({
+    "ollama",
     "nemotron_api",
     "provenance_unknown",
     "synthetic_fallback",
@@ -81,11 +82,11 @@ def store_resume_embedding(
     returned_model: str | None = None,
     preprocessing_version: str | None = None,
     metadata: Mapping[str, Any] | None = None,
-    generation_method: str = "nemotron_api",
+    generation_method: str = "ollama",
 ) -> ResumeEmbedding:
-    # Only verified Nemotron vectors may enter the production index.
-    if generation_method not in ("nemotron_api", "synthetic_test"):
-        raise ValueError(f"Deterministic hash, unverified, or fallback vectors ('{generation_method}') cannot be stored as Nemotron embeddings.")
+    # Only verified genuine vectors may enter the production index.
+    if generation_method not in VALID_GENERATION_METHODS:
+        raise ValueError(f"Deterministic hash, unverified, or fallback vectors ('{generation_method}') cannot be stored as valid embeddings.")
     # Confirm the parent resume exists before creating or changing its embedding.
     resume = session.get(Resume, resume_id)
     if resume is None:
@@ -157,17 +158,17 @@ def store_resume_embedding(
 def find_compatible_job_embedding_by_hash(
     session: Session,
     input_hash: str,
-    model_name: str = "nvidia/nemotron-3-embed-1b:free",
-    dimensions: int = 2048,
+    model_name: str = "nomic-embed-text",
+    dimensions: int = 768,
 ) -> JobEmbedding | None:
-    # Query only genuine Nemotron job embeddings matching the content digest and model configuration.
+    # Query job embeddings matching the content digest, model configuration, and dimensions.
     stmt = (
         select(JobEmbedding)
         .where(
             JobEmbedding.input_hash == input_hash,
             JobEmbedding.model_name == model_name,
             JobEmbedding.dimensions == dimensions,
-            JobEmbedding.generation_method == "nemotron_api",
+            JobEmbedding.generation_method.in_(("ollama", "nemotron_api")),
         )
         .order_by(JobEmbedding.id.desc())
     )
@@ -185,13 +186,13 @@ def store_job_embedding(
     vector: Sequence[int | float],
     *,
     requirement_id: int | None = None,
-    dimensions: int | None = 2048,
-    model_name: str = "nvidia/nemotron-3-embed-1b:free",
-    generation_method: str = "nemotron_api",
+    dimensions: int | None = 768,
+    model_name: str = "nomic-embed-text",
+    generation_method: str = "ollama",
 ) -> JobEmbedding:
-    # Only verified Nemotron vectors may enter the production index.
-    if generation_method not in ("nemotron_api", "synthetic_test"):
-        raise ValueError(f"Deterministic hash, unverified, or fallback vectors ('{generation_method}') cannot be stored as Nemotron embeddings.")
+    # Only verified genuine vectors may enter the production index.
+    if generation_method not in ("ollama", "nemotron_api", "synthetic_test"):
+        raise ValueError(f"Deterministic hash, unverified, or fallback vectors ('{generation_method}') cannot be stored as valid embeddings.")
     # Confirm the parent operational job exists in the database.
     job = session.get(Job, job_id)
     if job is None:

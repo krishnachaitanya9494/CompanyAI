@@ -166,13 +166,13 @@ export const CandidateIntelligenceTabs = ({ candidateId, activeTab }) => {
                 <div key={jm.job_id} className="flex items-center justify-between gap-3 p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 text-xs">
                   <div className="min-w-0">
                     <span className="font-bold text-navy-900 dark:text-white block truncate">{jm.job_title}</span>
-                    <span className="text-[11px] text-slate-500">{jm.client_name || 'Internal'} • Sem Sim: {(jm.semantic_similarity ?? 0).toFixed(3)}</span>
+                    <span className="text-[11px] text-slate-500">{jm.client_name || 'Internal'} • Sem Sim: {jm.semantic_similarity == null ? 'Unavailable' : jm.semantic_similarity.toFixed(3)}</span>
                   </div>
                   <div className="flex items-center gap-2 flex-shrink-0">
                     <Badge variant={jm.match_score >= 75 ? 'success' : jm.match_score >= 60 ? 'warning' : 'neutral'} size="xs">
-                      {jm.classification}
+                      {jm.classification || (jm.match_score == null ? 'Insufficient Evidence' : 'Needs Review')}
                     </Badge>
-                    <span className="font-mono font-bold text-sm text-navy-900 dark:text-white">{jm.match_score}%</span>
+                    <span className="font-mono font-bold text-sm text-navy-900 dark:text-white">{jm.match_score == null ? 'Insufficient Evidence' : `${jm.match_score}%`}</span>
                   </div>
                 </div>
               ))}

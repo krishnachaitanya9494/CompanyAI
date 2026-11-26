@@ -6,6 +6,10 @@ from starlette.testclient import TestClient
 from app.main import app
 # Import SessionLocal from database connection module.
 from database.sqlite_connection import SessionLocal
+from app.services.talent_intelligence_service import build_candidate_digital_twin
+from app.services.matching_engine_service import compare_adhoc_jd_and_resume
+from app.routers.jobs import get_candidate_job_match_history
+from app.routers.intelligence import get_candidate_digital_twin
 # Import models for candidate, resume, job, and segmentation.
 from database.models import (
     Candidate,
@@ -15,6 +19,7 @@ from database.models import (
     JDSegmentation,
     JobRequirement,
     JobEmbedding,
+    CandidateJobMatchResult,
 )
 # Import matching engine service functions and schemas.
 from app.services.matching_engine_service import (
@@ -24,6 +29,9 @@ from app.services.matching_engine_service import (
     CandidateMatchingFilters,
     MatchScoreWeights,
     classify_match_tier,
+    compare_single_candidate_for_job,
+    store_match_history,
+    get_active_approved_segmentation,
 )
 from app.routers.jobs import (
     get_job_matches,
@@ -135,6 +143,93 @@ def test_search_and_match_candidates_service():
             assert "missing_requirements" in exp
             assert "needs_verification" in exp
             assert "summary_narrative" in exp
+    finally:
+        db.close()
+
+
+# Ensure ranking and the comparison route publish one score and source identity for the same inputs.
+def test_ranking_and_single_comparison_share_canonical_result():
+    db = SessionLocal()
+    try:
+        job = db.query(Job).first()
+        candidate = db.query(Candidate).first()
+        assert job is not None and candidate is not None
+        approved_segmentation = get_active_approved_segmentation(db, job.id)
+        next_version = max((row.version for row in db.query(JDSegmentation).filter_by(job_id=job.id).all()), default=0) + 1
+        pending = JDSegmentation(
+            job_id=job.id,
+            version=next_version,
+            status="review_pending",
+            is_approved=0,
+        )
+        db.add(pending)
+        db.flush()
+        db.add(JobRequirement(
+            segmentation_id=pending.id,
+            category="mandatory_skills",
+            classification="Mandatory",
+            original_text="Draft-only requirement must not affect official scores",
+            normalized_skill="draft-only requirement",
+        ))
+        db.commit()
+        ranked = search_and_match_candidates(db, job.id, page=1, page_size=200)
+        ranked_match = next(row for row in ranked["matches"] if row["candidate_id"] == candidate.id)
+        compared = compare_single_candidate_for_job(db, job.id, candidate.id)["comparison"]
+        assert ranked["segmentation_id"] == (approved_segmentation.id if approved_segmentation else None)
+        assert pending.is_approved == 0
+        assert all("Draft-only requirement" not in item["original_text"] for item in ranked_match["requirements"])
+        assert ranked_match["matchScore"] == compared["match_score"]
+        assert ranked_match["componentScores"] == compared["component_scores"]
+        assert ranked_match["match_provenance"]["history_id"] == compared["match_provenance"]["history_id"]
+        for key in ("job_id", "jd_version_id", "jd_content_hash", "resume_id", "resume_content_hash", "matching_engine_version", "scoring_configuration_version"):
+            assert ranked_match["match_provenance"][key] == compared["match_provenance"][key]
+        from app.routers.jobs import get_candidate_job_match_history
+        history = get_candidate_job_match_history(job.id, candidate.id, db=db)
+        assert history["results"][0]["is_current"] is True
+        assert history["results"][0]["overall_score"] == compared["match_score"]
+        db.delete(pending)
+        db.commit()
+    finally:
+        db.close()
+
+
+# Verify changed JD and resume hashes append history and mark the previous snapshot outdated.
+def test_match_history_preserves_jd_and_resume_source_versions():
+    from datetime import datetime, timezone
+    from types import SimpleNamespace
+
+    db = SessionLocal()
+    candidate_id, job_id = 987654, 987654
+    result = SimpleNamespace(
+        candidate_id=candidate_id, match_score=61, classification="Potential Match",
+        component_scores={"mandatory_skills": 50.0}, requirements=[],
+    )
+    provenance = {
+        "candidate_id": candidate_id, "job_id": job_id, "resume_id": 1,
+        "resume_content_hash": "resume-v1", "candidate_profile_hash": "profile-v1",
+        "jd_version_id": 1, "jd_content_hash": "jd-v1", "matching_engine_version": "test-v1",
+        "scoring_configuration_version": "test-config-v1", "scoring_weights_hash": "weights-v1",
+        "calculated_at": datetime.now(timezone.utc).isoformat(),
+    }
+    try:
+        store_match_history(db, result, provenance)
+        db.commit()
+        first = db.query(CandidateJobMatchResult).filter_by(candidate_id=candidate_id, job_id=job_id).one()
+
+        jd_revision = {**provenance, "jd_version_id": 2, "jd_content_hash": "jd-v2"}
+        store_match_history(db, result, jd_revision)
+        db.commit()
+        second = db.query(CandidateJobMatchResult).filter_by(candidate_id=candidate_id, job_id=job_id, jd_content_hash="jd-v2").one()
+        db.refresh(first)
+        assert first.is_current is False and second.is_current is True
+
+        resume_revision = {**jd_revision, "resume_content_hash": "resume-v2"}
+        store_match_history(db, result, resume_revision)
+        db.commit()
+        third = db.query(CandidateJobMatchResult).filter_by(candidate_id=candidate_id, job_id=job_id, resume_content_hash="resume-v2").one()
+        db.refresh(second)
+        assert second.is_current is False and third.is_current is True
+        assert db.query(CandidateJobMatchResult).filter_by(candidate_id=candidate_id, job_id=job_id).count() == 3
     finally:
         db.close()
 
@@ -548,27 +643,26 @@ def test_cosine_similarity_preservation_and_ranking():
         db.close()
 
 
-# Test evidence semantics: VERIFIED, PARTIALLY_SUPPORTED, UNVERIFIED, NO_EVIDENCE.
+# Test the canonical five-state evidence contract and ensure absence is never fabricated as a quote.
 def test_evidence_classification_semantics():
     db = SessionLocal()
     try:
         data = search_and_match_candidates(db=db, job_id=1, page=1, page_size=10)
         matches = data["matches"]
 
-        valid_statuses = {"VERIFIED", "PARTIALLY_SUPPORTED", "UNVERIFIED", "NO_EVIDENCE"}
+        valid_statuses = {"DIRECT_MATCH", "EQUIVALENT_MATCH", "PARTIAL_MATCH", "MISSING", "UNVERIFIED"}
         for m in matches:
             for req in m["requirements"]:
-                # Verification status must be one of the four defined standards.
+                # Verification status must use the shared five-state canonical vocabulary.
                 assert req["verification_status"] in valid_statuses
-                # If VERIFIED, evidence must be non-empty and provenance must be resume_text.
-                if req["verification_status"] == "VERIFIED":
+                # Direct evidence must be a real, non-empty resume excerpt.
+                if req["verification_status"] == "DIRECT_MATCH":
                     assert req["evidence_source"] == "resume_text"
                     assert len(req["evidence"]) > 0
-                    assert req["evidence"] != "No evidence found in indexed sources."
-                # If NO_EVIDENCE, provenance must be none.
-                elif req["verification_status"] == "NO_EVIDENCE":
+                # Missing requirements carry no invented evidence snippet.
+                elif req["verification_status"] == "MISSING":
                     assert req["evidence_source"] == "none"
-                    assert "No evidence found in indexed sources" in req["evidence"]
+                    assert req["evidence"] == ""
     finally:
         db.close()
 
@@ -608,8 +702,200 @@ def test_api_compare_adhoc_texts():
         )
         assert data["job"]["title"] == "Senior React Engineer"
         assert data["candidate"]["name"] == "Alex River"
-        assert "match_score" in data["comparison"]
+        assert data["comparison"]["score_source"] == "canonical_requirement_engine"
+        assert data["comparison"]["match_score"] is not None
+        assert data["comparison"]["semantic_similarity"] is None
+        assert data["comparison"]["experience_fit"]["candidate_years"] is None
         assert len(data["comparison"]["requirements_alignment"]) > 0
+
+        without_years = compare_adhoc_texts(
+            payload=CompareAdhocSchema(
+                jd_text="CAD engineer with commercial building experience.",
+                resume_text="Worked on commercial building CAD projects.",
+            ),
+            db=db,
+        )
+        assert without_years["comparison"]["match_score"] is not None
+        assert without_years["comparison"]["experience_fit"]["candidate_years"] is None
+    finally:
+        db.close()
+
+
+def test_adhoc_score_separates_supported_score_from_unverified_coverage():
+    from app.services.matching_engine_service import compare_adhoc_jd_and_resume
+
+    jd = """Required qualifications:
+- Autodesk Revit
+- MicroStation
+- commercial building systems
+- engineering CAD software
+- project management software
+- site coordination
+- construction drawings
+- architecture degree"""
+    resume = """Autodesk Revit, MicroStation, commercial building systems, engineering CAD software,
+project management software, site coordination, construction drawings."""
+
+    db = SessionLocal()
+    try:
+        result = compare_adhoc_jd_and_resume(db, jd, resume)
+        comparison = result["comparison"]
+        assert len(comparison["requirements_alignment"]) == 8
+        assert comparison["match_score"] == 100
+        assert len(comparison["skills_analysis"]["matched_mandatory"]) == 7
+        assert comparison["semantic_similarity"] is None
+        assert len(comparison["skills_analysis"]["missing_mandatory"]) == 0
+        assert comparison["evidence_coverage_pct"] == 87.5
+        assert comparison["unverified_requirement_count"] == 1
+        assert sum(row["score_contribution"] or 0 for row in comparison["requirements_alignment"]) == pytest.approx(100, abs=0.01)
+    finally:
+        db.close()
+
+
+def test_adhoc_requirements_exclude_headings_split_bullets_and_deduplicate():
+    from app.services.matching_engine_service import compare_adhoc_jd_and_resume
+
+    jd = """PRIMARY FUNCTION
+    Operate POS systems; reconcile cash drawers
+    DESIRED QUALIFICATIONS AND EXPERIENCE
+    Retail loss prevention experience
+    Retail loss prevention experience"""
+    db = SessionLocal()
+    try:
+        result = compare_adhoc_jd_and_resume(db, jd, "Operate POS systems; reconcile cash drawers.")
+        rows = result["comparison"]["requirements_alignment"]
+        assert [row["original_text"] for row in rows] == [
+            "Operate POS systems", "reconcile cash drawers", "Retail loss prevention experience"
+        ]
+        assert all(row["classification"] == "Preferred" for row in rows[-1:])
+        assert "Operate POS systems" in rows[0]["evidence"]
+        assert rows[0]["evidence_status"] == "DIRECT_MATCH"
+        assert rows[0]["jd_source_line"] == 2
+        assert rows[-1]["evidence_status"] == "UNVERIFIED"
+    finally:
+        db.close()
+
+
+def test_adhoc_does_not_invent_experience_or_award_generic_keyword_credit():
+    from app.services.matching_engine_service import compare_adhoc_jd_and_resume
+
+    db = SessionLocal()
+    try:
+        result = compare_adhoc_jd_and_resume(
+            db,
+            "Required: 3-5 years of commercial building systems experience; MicroStation",
+            "Worked on a project with a team. 8 years total experience.",
+        )["comparison"]
+        assert result["experience_fit"]["candidate_years"] is None
+        assert result["match_score"] is None
+        assert result["classification"] == "Insufficient Evidence"
+        assert all(row["evidence_status"] in {"MISSING", "UNVERIFIED"} for row in result["requirements_alignment"])
+    finally:
+        db.close()
+
+
+def test_adhoc_equivalence_is_explicit_and_keeps_unrelated_tools_distinct():
+    from app.services.matching_engine_service import compare_adhoc_jd_and_resume
+
+    db = SessionLocal()
+    try:
+        result = compare_adhoc_jd_and_resume(
+            db,
+            "Required: asset protection; MicroStation",
+            "Loss prevention experience with AutoCAD.",
+        )["comparison"]
+        rows = result["requirements_alignment"]
+        assert rows[0]["evidence_status"] == "EQUIVALENT_MATCH"
+        assert rows[0]["evidence"] == "Loss prevention"
+        assert rows[1]["evidence_status"] == "UNVERIFIED"
+    finally:
+        db.close()
+
+
+def test_synthetic_source_consistency_across_pasted_persisted_bulk_workspace_and_suitability(tmp_path):
+    """Exercise every scorer adapter with identical synthetic source text and verify history revisions."""
+    import hashlib
+
+    from app.services.matching_engine_service import search_and_match_candidates
+
+    jd = """REQUIRED QUALIFICATIONS
+- Experience with Autodesk Revit
+REQUIRED EXPERIENCE
+- 2-4 years of mechanical engineering experience"""
+    resume_text = """PROFESSIONAL EXPERIENCE
+Mechanical Engineer | Jan 2020 - Dec 2023
+Performed mechanical engineering design and used Autodesk Revit for commercial systems.
+EDUCATION
+Bachelor of Mechanical Engineering"""
+    resume_file = tmp_path / "synthetic_resume.txt"
+    resume_file.write_text(resume_text, encoding="utf-8")
+    db = SessionLocal()
+    try:
+        # Keep the twin's ten-job limit deterministic and make all created data disposable in fixture DB.
+        for existing_job in db.query(Job).all():
+            existing_job.status = "closed"
+        job = Job(title="Synthetic Revit Engineer", description=jd, status="open", version=1)
+        candidate_a = Candidate(name="Codex Synthetic Match A", skills=[])
+        candidate_b = Candidate(name="Codex Synthetic Match B", skills=[])
+        db.add_all([job, candidate_a, candidate_b])
+        db.flush()
+        for candidate in (candidate_a, candidate_b):
+            db.add(Resume(
+                candidate_id=candidate.id,
+                source_filename=resume_file.name,
+                file_path=str(resume_file),
+                content_sha256=hashlib.sha256((resume_text + str(candidate.id)).encode()).hexdigest(),
+            ))
+        db.commit()
+
+        pasted = compare_adhoc_jd_and_resume(db, jd, resume_text, role_title=job.title)["comparison"]
+        single = compare_single_candidate(str(job.id), candidate_a.id, db=db)["comparison"]
+        ranking = get_job_matches(str(job.id), search="Codex Synthetic Match", page=1, limit=10, as_object=True, db=db)
+        ranked = next(row for row in ranking["matches"] if row["candidate_id"] == candidate_a.id)
+        bulk = compare_job_candidates(str(job.id), CompareCandidatesSchema(candidate_ids=[candidate_a.id, candidate_b.id]), db=db)
+        bulk_a = next(row for row in bulk["candidates"] if row["candidate_id"] == candidate_a.id)
+        suitability = get_candidate_digital_twin(str(candidate_a.id), db=db)["job_suitability"]
+        suitable_job = next(row for row in suitability if row["job_id"] == job.id)
+
+        assert pasted["match_score"] == single["match_score"] == ranked["match_score"] == bulk_a["match_score"] == suitable_job["match_score"]
+        expected_rows = pasted["requirements_alignment"]
+        for actual_rows in (
+            single["requirements_alignment"],
+            ranked["requirements"],
+            [bulk["matrix_rows"][i]["evaluations"][candidate_a.id] for i in range(len(bulk["matrix_rows"]))],
+            suitable_job["requirements"],
+        ):
+            assert [row.get("evidence_status") for row in actual_rows] == [row["evidence_status"] for row in expected_rows]
+        assert sum(row["score_contribution"] or 0 for row in expected_rows) == pytest.approx(pasted["match_score_unrounded"])
+        assert bulk_a["match_provenance"]["matching_engine_version"] == suitable_job["match_provenance"]["matching_engine_version"]
+
+        first_id = single["match_provenance"]["history_id"]
+        first_history = get_candidate_job_match_history(job.id, candidate_a.id, db=db)
+        assert first_history["results"][0]["is_current"] is True
+        first_resume_hash = db.query(Resume).filter_by(candidate_id=candidate_a.id).one().content_sha256
+
+        resume_text_v2 = resume_text.replace("used Autodesk Revit", "used Bentley MicroStation")
+        resume_file.write_text(resume_text_v2, encoding="utf-8")
+        changed_resume = db.query(Resume).filter_by(candidate_id=candidate_a.id).one()
+        changed_resume.content_sha256 = hashlib.sha256((resume_text_v2 + str(candidate_a.id)).encode()).hexdigest()
+        db.commit()
+        revised_resume_match = compare_single_candidate(str(job.id), candidate_a.id, db=db)["comparison"]
+        assert revised_resume_match["match_score"] < single["match_score"]
+        assert next(row for row in revised_resume_match["requirements_alignment"] if "Revit" in row["original_text"])["evidence_status"] == "MISSING"
+        history_after_resume = get_candidate_job_match_history(job.id, candidate_a.id, db=db)["results"]
+        assert any(row["history_id"] == first_id and not row["is_current"] for row in history_after_resume)
+        assert any(row["resume_content_hash"] == changed_resume.content_sha256 for row in history_after_resume)
+        assert changed_resume.content_sha256 != first_resume_hash
+
+        job.description += "\nPREFERRED QUALIFICATIONS\n- MicroStation"
+        job.version += 1
+        db.commit()
+        compare_single_candidate(str(job.id), candidate_a.id, db=db)
+        final_history = get_candidate_job_match_history(job.id, candidate_a.id, db=db)["results"]
+        assert sum(row["is_current"] for row in final_history) == 1
+        assert len(final_history) == 3
+        assert any(row["provenance"]["jd_version_id"] == 1 for row in final_history)
+        assert any(row["provenance"]["jd_version_id"] == 2 for row in final_history)
     finally:
         db.close()
 

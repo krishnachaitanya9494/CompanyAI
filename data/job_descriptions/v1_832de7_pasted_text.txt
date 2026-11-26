@@ -1,0 +1,27 @@
+JOB DESCRIPTION
+This role is for staff augmentation support and resources will be assisting non-core activities 
+Key Responsibilities
+·   Monitor real-time queues, service level, average speed of answer (ASA), occupancy, adherence, shrinkage, handle time, backlog, agent states, and staffing coverage using approved WFM and contact-center platforms.
+·   Compare actual volume, workload, staffing, and productivity against intraday forecasts and interval plans; identify emerging gaps and quantify expected service impact.
+·   Execute approved recovery actions such as schedule adjustments, skill or channel rebalancing, movement of blended resources, overtime, voluntary time off (VTO), break or meeting movement, and off-phone work controls.
+·   Coordinate with Operations and partner teams during demand spikes, absenteeism, system outages, routing issues, promotional events, and other business disruptions.
+·   Maintain timely intraday updates through dashboards, email, Teams, Slack, or designated operating channels, clearly stating the issue, business impact, action taken, owner, and next update time.
+·   Escalate service risks according to defined thresholds and playbooks; track actions through closure and document material decisions and outcomes.
+·   Support daily performance recaps by explaining variance to forecast, staffing or shrink gaps, channel-mix changes, recovery actions, and unresolved risks.
+·   Validate data quality and flag potential reporting, routing, or tool issues instead of treating unusual metrics as confirmed performance.
+·   Follow WFM governance, access controls, attendance policies, and change-management procedures when making or recommending intraday adjustments.
+·   Contribute to continuous improvement by identifying repeat contact drivers, schedule inefficiencies, process gaps, and opportunities for automation or stronger alerting.
+Required Experience and Qualifications
+·   Minimum 2 years of work experience in a contact-center environment.
+·   Minimum 6 months of hands-on experience within a Real-Time Management (RTM) or intraday WFM team.
+·   Working knowledge of contact-center operations across at least one live channel such as phone or chat; exposure to blended or omnichannel operations is preferred.
+·   Practical understanding of service level, ASA, abandonment, AHT, occupancy, adherence, shrinkage, staffing requirement, forecast variance, and interval performance.
+·   Experience using a WFM platform such as NICE IEX/NICE WFM, Verint, or Genesys WFM, along with ACD or routing dashboards and Microsoft Excel.
+·   Ability to work rotational shifts and provide coverage during weekends, holidays, peak periods, and business events as scheduled.
+Skills and Competencies
+·   Strong real-time judgment: distinguishes urgent service risks from normal interval variation and selects proportionate actions.
+·   Analytical capability: interprets interval data, identifies patterns, and explains operational drivers using evidence.
+·   Clear communication: provides concise, fact-based updates to Operations and leadership, including impact, action, and next steps.
+·   Collaboration and influence: works effectively with frontline leaders, scheduling, forecasting, technology, and vendor partners without direct authority.
+·   Execution under pressure: manages multiple queues and competing priorities while following escalation and change-control standards.
+·   Proficiency in Microsoft Excel, including filters, pivot tables, lookups, basic formulas, and time-interval analysis; Power BI or Domo experience is advantageous

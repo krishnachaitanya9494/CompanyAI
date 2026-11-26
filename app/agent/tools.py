@@ -98,70 +98,64 @@ def search_candidates_tool(query: str, limit: int = 5, session: Session = None) 
         # Normalize candidate location string.
         cand_location = (c.location or "").lower()
 
-        # Check for skill and concept matches.
+        # Check for skill and concept matches using word boundaries to prevent substring collisions in names/words.
+        def _match_word(pattern: str, text: str) -> bool:
+            return bool(re.search(r"(?:\b|_)" + re.escape(pattern) + r"(?:\b|_)", text, re.IGNORECASE))
+
         concept_match = False
-        # If user searched for technical concepts, verify alias matches.
         if matched_aliases:
-            # Check skills, filename, or summary for any alias.
             concept_match = any(
-                alias in s for alias in matched_aliases for s in cand_skills
+                _match_word(alias, s) for alias in matched_aliases for s in cand_skills
             ) or any(
-                alias in filename_str for alias in matched_aliases
+                _match_word(alias, filename_str) for alias in matched_aliases
             ) or any(
-                alias in cand_summary for alias in matched_aliases
+                _match_word(alias, cand_summary) for alias in matched_aliases
             )
+            # Require verified concept match when searching for technical concepts.
+            if not concept_match:
+                continue
 
         # Check for content term matches in skills, filename, or summary.
         term_matches = sum(
-            1 for term in content_terms if any(term in s for s in cand_skills) or term in filename_str or term in cand_summary
+            1 for term in content_terms if any(_match_word(term, s) for s in cand_skills) or _match_word(term, filename_str) or _match_word(term, cand_summary)
         )
 
-        # Location matching (e.g. hyderabad, bangalore).
-        loc_match = any(term in cand_location for term in ["hyderabad", "bangalore", "pune", "delhi", "bhubaneswar", "noida", "mumbai", "chennai"] if term in q)
-
-        # If user searched for a specific technical role or concept, require either concept or term match.
-        if matched_aliases and not concept_match and term_matches == 0:
-            # Skip candidates without matching technical qualifications.
-            continue
-
         # If general terms were provided without aliases, ensure at least one match.
-        if not matched_aliases and content_terms and term_matches == 0 and not any(term in cand_name for term in content_terms):
-            # Skip candidate if no name or keyword match.
+        if not matched_aliases and content_terms and term_matches == 0 and not any(_match_word(term, cand_name) for term in content_terms):
             continue
+
+        # Calculate grounded relevance score prioritizing core specialization over incidental keywords.
+        score = term_matches * 2
+        if any(_match_word(alias, filename_str) for alias in matched_aliases):
+            score += 25
+        cand_headline = cand_summary.split("\n")[0] if cand_summary else ""
+        if any(_match_word(alias, cand_headline) for alias in matched_aliases):
+            score += 15
+        if any(_match_word(alias, s) for alias in matched_aliases for s in cand_skills[:4]):
+            score += 10
+        elif concept_match:
+            score += 3
+
+        # Penalize if candidate belongs to a distinct conflicting domain (e.g. Teamcenter PLM, SAP, Mainframe, .NET).
+        conflicting_domains = [
+            "teamcenter", "sap", "mainframe", "pega", "salesforce", "sre", ".net", "cobol", "plm",
+            "production support", "incident management"
+        ]
+        has_domain_conflict = any(
+            cd in cand_headline or cd in filename_str or any(cd in s for s in cand_skills[:3])
+            for cd in conflicting_domains
+        )
+        if has_domain_conflict and not any(_match_word(alias, filename_str) for alias in matched_aliases):
+            score -= 35
+
+        # If searching for developer/engineer without mentioning test/qa, penalize pure QA/testing profiles
+        is_dev_query = any(k in q for k in ["developer", "dev", "lead", "architect", "programmer"]) and not any(k in q for k in ["qa", "test", "testing", "automation"])
+        cand_role_lower = cand_headline.lower() + " " + filename_str
+        if is_dev_query and any(k in cand_role_lower for k in ["automation test", "qa engineer", "tester", "testing"]):
+            score -= 30
 
         # Extract clean job role.
         role_title = extract_candidate_role(c.summary)
-        # Check if the extracted role directly contains any alias.
-        role_match = any(alias in role_title.lower() for alias in matched_aliases) if matched_aliases else False
-
-        # Compute grounded match score starting at baseline 75.
-        score = 75
-        # Add high boost if the candidate's primary job title matches the target role.
-        if role_match:
-            # Award 15 points for direct role title match.
-            score += 15
-        elif concept_match:
-            # Award 10 points for skill or resume evidence match.
-            score += 10
-
-        # Award bonus for term matches.
-        if term_matches > 0:
-            # Add up to 6 points for keyword density.
-            score += min(term_matches * 2, 6)
-
-        # Award experience seniority bonus.
-        if c.experience_years:
-            # Add up to 5 points for experience tenure.
-            score += min(int(c.experience_years), 5)
-
-        # Award bonus if candidate location matches requested city.
-        if loc_match:
-            # Add 3 points for location match.
-            score += 3
-
-        # Cap score at 98 percent.
-        score = min(score, 98)
-
         # Retrieve evidence highlights from embedding metadata if present.
         evidence = []
         # Check if embedding object and metadata are available.
@@ -174,7 +168,7 @@ def search_candidates_tool(query: str, limit: int = 5, session: Session = None) 
         # Extract skills that match target aliases or content terms.
         matched_skills = [
             s for s in raw_skills
-            if any(alias in s.lower() for alias in matched_aliases) or any(t in s.lower() for t in content_terms)
+            if any(_match_word(alias, s) for alias in matched_aliases) or any(_match_word(t, s) for t in content_terms)
         ]
         # Extract remaining skills preserving original order.
         other_skills = [s for s in raw_skills if s not in matched_skills]
@@ -194,16 +188,19 @@ def search_candidates_tool(query: str, limit: int = 5, session: Session = None) 
             "location": c.location or "Not specified",
             "availability": c.availability or "Not specified",
             "status": c.stage or "New",
-            "matchScore": score,
+            # Candidate discovery has no target JD, so it must not present a suitability score.
+            "matchScore": None,
             "primarySkills": ordered_skills[:4],
             "secondarySkills": ordered_skills[4:],
             "summary": c.summary or "",
             "evidenceHighlights": evidence,
+            "_relevance": score,
         })
 
-    # Sort descending by match score and return top results.
-    results.sort(key=lambda x: x["matchScore"], reverse=True)
-    # Return limited top candidates.
+    # Sort candidates by relevance score so top domain matches appear first.
+    results.sort(key=lambda x: x.get("_relevance", 0), reverse=True)
+    for r in results:
+        r.pop("_relevance", None)
     return results[:limit]
 
 
@@ -267,19 +264,13 @@ def match_candidates_to_job_tool(
     if not session:
         return {"job": None, "matches": []}
 
-    # Resolve target job either by numeric ID or case-insensitive title match.
+    # Require a stable job ID because display titles can be duplicated or stale.
     job = None
     if isinstance(job_id_or_title, int) or str(job_id_or_title).isdigit():
         # Lookup job by primary key ID.
         job = session.query(Job).filter(Job.id == int(job_id_or_title)).first()
     if not job:
-        # Search job by title substring.
-        job = session.query(Job).filter(Job.title.ilike(f"%{job_id_or_title}%")).first()
-    if not job:
-        # Fallback to the latest job if no specific title match found.
-        job = session.query(Job).first()
-    if not job:
-        return {"job": None, "matches": []}
+        return {"job": None, "matches": [], "error": "A valid job ID is required to calculate candidate suitability."}
 
     # Invoke the deterministic and vector-grounded Phase 5C matching engine.
     from app.services.matching_engine_service import search_and_match_candidates

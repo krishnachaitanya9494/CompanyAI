@@ -22,6 +22,7 @@ from database.models import (
 )
 from app.services.matching_engine_service import (
     MatchScoreWeights,
+    build_match_provenance,
     evaluate_candidate_multi_resume,
     get_active_approved_segmentation,
     get_resume_text_and_provenance,
@@ -106,7 +107,7 @@ def build_candidate_digital_twin(db: Session, candidate_id: int) -> Dict[str, An
         db.query(ResumeEmbedding)
         .filter(
             ResumeEmbedding.resume_id.in_(resume_ids),
-            ResumeEmbedding.generation_method == "nemotron_api",
+            ResumeEmbedding.embedding_vector.is_not(None),
         )
         .all()
         if resume_ids
@@ -220,8 +221,9 @@ def build_candidate_digital_twin(db: Session, candidate_id: int) -> Dict[str, An
             req_emb_map=req_emb_map,
             weights=weights,
             db=db,
-            load_disk_text=False,
+            load_disk_text=True,
         )
+        match_provenance = build_match_provenance(db, job, seg, res_match, weights)
         job_matches.append(
             {
                 "job_id": job.id,
@@ -230,12 +232,31 @@ def build_candidate_digital_twin(db: Session, candidate_id: int) -> Dict[str, An
                 "status": job.status,
                 "match_score": res_match.match_score,
                 "classification": res_match.classification,
-                "semantic_similarity": res_match.similarity,
-                "information_type": "Calculated metric & Semantic similarity",
+                "semantic_similarity": res_match.raw_cosine_similarity,
+                "score_available": res_match.match_score is not None,
+                "evidence_coverage": res_match.evidence_coverage,
+                "score_confidence": res_match.score_confidence,
+                "component_scores": res_match.component_scores,
+                "requirements": [
+                    {
+                        "requirement_id": item.requirement_id,
+                        "requirement": item.original_text,
+                        "category": item.category,
+                        "classification": item.classification,
+                        "evidence_status": item.evidence_status,
+                        "evidence": item.evidence,
+                        "evidence_source": item.evidence_source,
+                        "explanation": item.explanation,
+                        "score_contribution": item.score_contribution,
+                    }
+                    for item in res_match.requirements
+                ],
+                "match_provenance": match_provenance,
+                "information_type": "Calculated metric",
             }
         )
 
-    job_matches.sort(key=lambda m: m["match_score"], reverse=True)
+    job_matches.sort(key=lambda m: m["match_score"] if m["match_score"] is not None else -1, reverse=True)
 
     # Approvals linked to this candidate (payload contains candidate_id).
     all_approvals = db.query(ApprovalRequest).order_by(ApprovalRequest.created_at.desc()).limit(100).all()

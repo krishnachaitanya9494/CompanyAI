@@ -17,8 +17,8 @@ from unittest.mock import patch, MagicMock
 from app.ai.config import get_ai_config, AIPlatformConfig
 from app.ai.exceptions import AIEmbeddingError, AIRateLimitError
 from app.ai.services.caching_service import EmbeddingCacheService
-from app.ai.providers.embedding_provider import NemotronEmbeddingProvider, generate_deterministic_2048_vector
-from app.ai.providers.chat_provider import NemotronChatProvider
+from app.ai.providers.embedding_provider import OllamaEmbeddingProvider, NemotronEmbeddingProvider, generate_deterministic_768_vector, generate_deterministic_2048_vector
+from app.ai.providers.chat_provider import OllamaChatProvider, NemotronChatProvider
 from app.ai.services.semantic_search_service import SemanticSearchService
 from app.ai.services.rag_service import RecruitmentRAGService
 from app.ai.services.ai_health_service import AIHealthService
@@ -30,9 +30,9 @@ class TestAIConfiguration:
 
     def test_default_config_values(self):
         config = get_ai_config()
-        assert config.embedding_model == "nvidia/nemotron-3-embed-1b:free"
-        assert config.embedding_dimensions == 2048
-        assert config.chat_model == "nvidia/nemotron-3.5-super-vl:free"
+        assert config.embedding_model == "nomic-embed-text"
+        assert config.embedding_dimensions == 768
+        assert config.chat_model == "llama3.2:3b"
         assert config.batch_size >= 1
         assert config.request_timeout_seconds >= 10.0
 
@@ -69,14 +69,14 @@ class TestEmbeddingCacheService:
 
 
 class TestNemotronEmbeddingProvider:
-    """Validates 2048-dim embedding generation, normalization, and quota fallbacks."""
+    """Validates 768-dim embedding generation, normalization, and quota handling."""
 
     def test_deterministic_fallback_dimension_and_norm(self):
         provider = NemotronEmbeddingProvider()
         text = "Staff Cloud Architect with AWS, Kubernetes, Terraform and Python"
-        vector = provider.generate_deterministic_2048_vector(text)
+        vector = provider.generate_deterministic_768_vector(text)
 
-        assert len(vector) == 2048
+        assert len(vector) == 768
         # Validate unit L2 normalization
         norm = math.sqrt(sum(x * x for x in vector))
         assert abs(norm - 1.0) < 1e-4
@@ -84,21 +84,21 @@ class TestNemotronEmbeddingProvider:
     def test_deterministic_fallback_reproducibility(self):
         provider = NemotronEmbeddingProvider()
         text = "Lead Design Verification Engineer UVM SystemVerilog"
-        v1 = provider.generate_deterministic_2048_vector(text)
-        v2 = provider.generate_deterministic_2048_vector(text)
+        v1 = provider.generate_deterministic_768_vector(text)
+        v2 = provider.generate_deterministic_768_vector(text)
         assert v1 == v2
 
     def test_deterministic_fallback_different_texts(self):
         provider = NemotronEmbeddingProvider()
-        v1 = provider.generate_deterministic_2048_vector("DevOps Engineer")
-        v2 = provider.generate_deterministic_2048_vector("Financial Analyst")
+        v1 = provider.generate_deterministic_768_vector("DevOps Engineer")
+        v2 = provider.generate_deterministic_768_vector("Financial Analyst")
         assert v1 != v2
 
     def test_rate_limit_raises_error_without_fallback_vector(self):
-        """Validates that rate-limiting raises AIRateLimitError and NEVER injects fallback vectors."""
+        """Validates that provider errors raise AIEmbeddingError and NEVER inject fallback vectors."""
         provider = NemotronEmbeddingProvider()
-        with patch.object(provider.provider, "post", side_effect=Exception("Rate limit 429")):
-            with pytest.raises(AIRateLimitError):
+        with patch.object(provider.provider, "embeddings", side_effect=AIEmbeddingError("Connection refused")):
+            with pytest.raises(AIEmbeddingError):
                 provider.embed_text("Test embedding text", force_fresh=True)
 
     def test_storage_rejects_fallback_vectors(self):
@@ -106,8 +106,8 @@ class TestNemotronEmbeddingProvider:
         from database.embedding_storage import store_resume_embedding, store_job_embedding
         db = SessionLocal()
         try:
-            fake_vec = generate_deterministic_2048_vector("Fake candidate")
-            with pytest.raises(ValueError, match="cannot be stored as Nemotron embeddings"):
+            fake_vec = generate_deterministic_768_vector("Fake candidate")
+            with pytest.raises(ValueError, match="cannot be stored as valid embeddings"):
                 store_resume_embedding(
                     session=db,
                     resume_id=1,
@@ -115,7 +115,7 @@ class TestNemotronEmbeddingProvider:
                     generation_method="fallback_hash",
                 )
 
-            with pytest.raises(ValueError, match="cannot be stored as Nemotron embeddings"):
+            with pytest.raises(ValueError, match="cannot be stored as valid embeddings"):
                 store_job_embedding(
                     session=db,
                     job_id=1,
@@ -135,12 +135,12 @@ class TestNemotronEmbeddingProvider:
             "Data Scientist NLP PyTorch Transformers",
             "Site Reliability Engineer Linux Prometheus",
         ]
-        mock_vec = generate_deterministic_2048_vector("Mock")
+        mock_vec = generate_deterministic_768_vector("Mock")
         with patch.object(provider, "embed_text", return_value=mock_vec):
             vectors = provider.embed_batch(texts)
             assert len(vectors) == 3
             for v in vectors:
-                assert len(v) == 2048
+                assert len(v) == 768
 
 
 class TestSemanticSearchService:
@@ -168,7 +168,7 @@ class TestSemanticSearchService:
         db = SessionLocal()
         try:
             # Query candidate embeddings using mock genuine query vector
-            mock_vec = generate_deterministic_2048_vector("Python Cloud Architect")
+            mock_vec = generate_deterministic_768_vector("Python Cloud Architect")
             with patch.object(search.provider, "embed_text", return_value=mock_vec):
                 results = search.search_candidates_by_text(db=db, query="Python Cloud Architect", limit=5)
                 # Results should be returned from genuine indexed candidates
@@ -187,7 +187,7 @@ class TestRecruitmentRAGService:
     def test_rag_query_structure(self):
         rag = RecruitmentRAGService()
         with patch.object(rag.chat, "complete", return_value={"content": "Verified candidate recommendations."}), \
-             patch.object(rag.search_service.provider, "embed_text", return_value=generate_deterministic_2048_vector("query")):
+             patch.object(rag.search_service.provider, "embed_text", return_value=generate_deterministic_768_vector("query")):
             result = rag.answer_query(question_or_db="Who are our top engineers for Cloud Architecture?")
             assert "query" in result
             assert "answer" in result
@@ -206,8 +206,8 @@ class TestAIEndpoints:
         try:
             data = get_ai_health(db)
             assert data["status"] in ["healthy", "degraded", "operational"]
-            assert data["embedding_model"] == "nvidia/nemotron-3-embed-1b:free"
-            assert data["embedding_dimensions"] == 2048
+            assert data["embedding_model"] == "nomic-embed-text"
+            assert data["embedding_dimensions"] == 768
             assert "database_vector_coverage" in data
             assert "cache" in data
         finally:
@@ -215,18 +215,18 @@ class TestAIEndpoints:
 
     def test_post_test_embedding(self):
         from app.routers.ai import test_embedding, TestEmbeddingSchema
-        with patch("app.ai.services.ai_health_service.embedding_provider.embed_text", return_value=generate_deterministic_2048_vector("Test")):
+        with patch("app.ai.services.ai_health_service.embedding_provider.embed_text", return_value=generate_deterministic_768_vector("Test")):
             data = test_embedding(TestEmbeddingSchema(text="Test embedding diagnostic endpoint"))
-            assert data["dimensions"] == 2048
+            assert data["dimensions"] == 768
             assert data["status"] == "success"
-            assert data["model"] == "nvidia/nemotron-3-embed-1b:free"
+            assert data["model"] == "nomic-embed-text"
 
     def test_post_rag_query(self):
         from app.routers.ai import execute_rag_query, RAGQuerySchema
         db = SessionLocal()
         try:
             with patch("app.ai.providers.chat_provider.chat_provider.complete", return_value={"content": "Candidates matched."}), \
-                 patch("app.ai.services.rag_service.rag_service.search_service.provider.embed_text", return_value=generate_deterministic_2048_vector("test query")):
+                 patch("app.ai.services.rag_service.rag_service.search_service.provider.embed_text", return_value=generate_deterministic_768_vector("test query")):
                 data = execute_rag_query(RAGQuerySchema(question="Which candidates have Verilog and FPGA experience?"), db)
                 assert "answer" in data
                 assert "sources" in data

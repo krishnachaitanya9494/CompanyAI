@@ -41,13 +41,13 @@ class ReindexSchema(BaseModel):
 
 @router.get("/health")
 def get_ai_health(db: Session = Depends(get_db)) -> Dict[str, Any]:
-    """Retrieve active AI models, verified 2048 dimensions, database vector coverage, and cache status."""
+    """Retrieve active local Ollama AI models, verified 768 dimensions, database vector coverage, and cache status."""
     return ai_health_service.get_health_report(db)
 
 
 @router.post("/test-embedding")
 def test_embedding(payload: Optional[TestEmbeddingSchema] = None) -> Dict[str, Any]:
-    """Execute a test embedding with the primary Nemotron model and return latency and dimensions."""
+    """Execute a test embedding with the local Ollama nomic-embed-text model and return latency and dimensions."""
     sample_text = payload.text if payload else "Recruitment test"
     return ai_health_service.test_embedding_generation(sample_text)
 

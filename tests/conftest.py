@@ -20,6 +20,8 @@ from sqlalchemy.engine import URL
 
 # Import production SQLite module references that require isolation during tests.
 from database import sqlite_connection
+from database.sqlite_connection import Base
+from database import models as database_models
 
 # Import the FastAPI application instance for dependency override management.
 from app.main import app
@@ -83,6 +85,10 @@ def isolated_test_database():
 
     # Register the foreign keys and busy timeout event hook on the isolated engine.
     event.listen(isolated_engine, "connect", sqlite_connection._enable_sqlite_foreign_keys)
+
+    # Create additive model tables in the isolated copy so history writes exercise the migrated schema.
+    _ = database_models
+    Base.metadata.create_all(bind=isolated_engine)
 
     # Rebind the shared SessionLocal factory to the isolated engine in-place.
     sqlite_connection.SessionLocal.configure(bind=isolated_engine)
@@ -199,3 +205,19 @@ def ensure_test_isolation_and_handle_config_tests(request, isolated_test_databas
 
         # Execute the test.
         yield
+
+
+@pytest.fixture(autouse=True)
+def mock_embedding_provider_for_offline_tests(monkeypatch, request):
+    """Provide deterministic offline 768-dim vectors in unit tests to prevent quota exhaustion and rate limiting."""
+    if "integration" in request.keywords or "live_ai" in request.keywords:
+        return
+    if "rate_limit" in request.node.name or "offline_handling" in request.node.name:
+        return
+
+    from app.ai.providers.embedding_provider import NemotronEmbeddingProvider, generate_deterministic_768_vector
+
+    def _offline_embed_text(self, text: str, force_fresh: bool = False):
+        return generate_deterministic_768_vector(text)
+
+    monkeypatch.setattr(NemotronEmbeddingProvider, "embed_text", _offline_embed_text)

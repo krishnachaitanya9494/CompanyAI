@@ -337,13 +337,13 @@ export const MatchingMatrixPage = ({
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
         <div>
           <h2 className="text-2xl sm:text-[26px] font-bold font-display text-navy-950 dark:text-slate-100 tracking-tight flex items-center gap-2">
-            <span>Recruiter Matching Workspace</span>
+            <span>Candidate Matching Hub</span>
             <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-brand-50 dark:bg-brand-950/50 text-brand-700 dark:text-brand-300 border border-brand-200 dark:border-brand-800">
-              Phase 5D Intelligence
+              Smart Fit Ranking
             </span>
           </h2>
           <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-            Evaluate and compare candidates using approved JD segmentation embeddings, requirement matrices, and resume evidence.
+            Evaluate and compare candidate fit against job requirements, verified skills, and experience.
           </p>
         </div>
 
@@ -383,36 +383,36 @@ export const MatchingMatrixPage = ({
               spotlight: '#64748b',
             },
             {
-              label: 'Excellent',
-              value: summary.excellent_matches ?? 0,
-              desc: 'Score ≥ 88% • Top fit',
+              label: 'Strong',
+              value: summary.strong_matches ?? 0,
+              desc: 'Score 80% or higher',
               accent: 'text-emerald-700 dark:text-emerald-400',
               dot: 'bg-emerald-500',
               tint: 'border-emerald-200/80 dark:border-emerald-900/70',
               spotlight: '#10b981',
             },
             {
-              label: 'Strong Fit',
-              value: summary.strong_matches ?? 0,
-              desc: 'Score 75–87% • Ready',
+              label: 'Good Fit',
+              value: summary.good_matches ?? summary.potential_matches ?? 0,
+              desc: 'Score 60–79%',
               accent: 'text-brand-700 dark:text-brand-400',
               dot: 'bg-brand-500',
               tint: 'border-brand-200/80 dark:border-brand-900/70',
               spotlight: '#059669',
             },
             {
-              label: 'Potential',
-              value: summary.potential_matches ?? 0,
-              desc: 'Score 60–74% • Review',
+              label: 'Partial',
+              value: summary.partial_matches ?? 0,
+              desc: 'Score 40–59%',
               accent: 'text-amber-700 dark:text-amber-400',
               dot: 'bg-amber-500',
               tint: 'border-amber-200/80 dark:border-amber-900/70',
               spotlight: '#f59e0b',
             },
             {
-              label: 'Partial / Review',
-              value: (summary.partial_matches || 0) + (summary.needs_review || 0),
-              desc: 'Requires interview verify',
+              label: 'Weak / Unscored',
+              value: (summary.weak_matches || 0) + (summary.needs_review || 0),
+              desc: 'Below 40% or insufficient evidence',
               accent: 'text-slate-700 dark:text-slate-300',
               dot: 'bg-slate-400',
               tint: 'border-slate-200/80 dark:border-surface-darkBorder',
@@ -420,7 +420,7 @@ export const MatchingMatrixPage = ({
             },
             {
               label: 'Average Score',
-              value: `${summary.average_score ?? 0}%`,
+              value: summary.average_score == null ? 'N/A' : `${summary.average_score}%`,
               desc: 'Deterministic pool mean',
               accent: 'text-sky-700 dark:text-sky-400',
               dot: 'bg-sky-500',
@@ -721,21 +721,25 @@ export const MatchingMatrixPage = ({
                 const isChecked = selectedForCompare.includes(item.candidate_id);
                 const isExpanded = expandedEvidenceIds.includes(candKey);
                 const reqs = item.requirements || [];
-                const satisfied = reqs.filter((r) => r.status === 'SATISFIED').length;
-                const gaps = reqs.filter((r) => r.status === 'GAP').length;
-                const unverified = reqs.filter((r) => r.status === 'UNVERIFIED').length;
+                const evidenceStatus = (r) => r.evidence_status || (r.status === 'SATISFIED' ? 'DIRECT_MATCH' : r.status === 'PARTIAL' ? 'PARTIAL_MATCH' : r.status === 'GAP' ? 'MISSING' : 'UNVERIFIED');
+                const satisfied = reqs.filter((r) => ['DIRECT_MATCH', 'EQUIVALENT_MATCH'].includes(evidenceStatus(r))).length;
+                const partial = reqs.filter((r) => evidenceStatus(r) === 'PARTIAL_MATCH').length;
+                const gaps = reqs.filter((r) => evidenceStatus(r) === 'MISSING').length;
+                const unverified = reqs.filter((r) => evidenceStatus(r) === 'UNVERIFIED').length;
                 const mandatoryReqs = reqs.filter((r) => (r.classification || '').toLowerCase() === 'mandatory');
                 const preferredReqs = reqs.filter((r) => (r.classification || '').toLowerCase() === 'preferred');
-                const mandatoryMet = mandatoryReqs.filter((r) => r.status === 'SATISFIED').length;
-                const preferredMet = preferredReqs.filter((r) => r.status === 'SATISFIED').length;
-                const rawScore = item.rawScore ?? item.matchScore ?? item.match_score ?? 0;
+                const mandatoryMet = mandatoryReqs.filter((r) => ['DIRECT_MATCH', 'EQUIVALENT_MATCH'].includes(evidenceStatus(r))).length;
+                const preferredMet = preferredReqs.filter((r) => ['DIRECT_MATCH', 'EQUIVALENT_MATCH'].includes(evidenceStatus(r))).length;
+                const rawScore = item.rawScore ?? item.matchScore ?? item.match_score ?? null;
                 const displayTier = item.eligibilityAdjustedTier || item.classification || 'Fit';
                 const semSim =
                   item.semanticSimilarity != null
                     ? item.semanticSimilarity.toFixed(2)
+                    : item.semantic_similarity === null || item.semanticSimilarity === null
+                    ? 'Unavailable'
                     : item.similarity != null
                     ? item.similarity.toFixed(2)
-                    : '0.00';
+                    : 'Unavailable';
                 const primaryEvidence =
                   item.evidenceHighlights?.[0] ||
                   (item.evidence_citation && item.evidence_citation !== 'Evidence unavailable.'
@@ -810,7 +814,7 @@ export const MatchingMatrixPage = ({
                         <div className="flex flex-wrap items-center gap-2">
                           <div className="px-3 py-1 rounded-xl bg-white dark:bg-surface-darkCard border border-slate-200 dark:border-slate-700 shadow-subtle flex items-baseline gap-1">
                             <span className="text-lg font-extrabold font-mono text-navy-950 dark:text-white">
-                              {rawScore}%
+                              {rawScore == null ? 'Insufficient Evidence' : `${rawScore}%`}
                             </span>
                             <span className="text-[10px] font-semibold text-slate-400 uppercase">Score</span>
                           </div>
@@ -856,6 +860,7 @@ export const MatchingMatrixPage = ({
                                 {gaps} Gap
                               </span>
                             )}
+                            {partial > 0 && <span className="px-2 py-0.5 rounded-md bg-amber-50 dark:bg-amber-950/50 text-amber-700 dark:text-amber-300 font-semibold border border-amber-200 dark:border-amber-800">{partial} Partial</span>}
                             {unverified > 0 && (
                               <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-amber-50 dark:bg-amber-950/50 text-amber-700 dark:text-amber-300 font-semibold border border-amber-200 dark:border-amber-800">
                                 <HelpCircle className="w-3 h-3" />
@@ -891,8 +896,8 @@ export const MatchingMatrixPage = ({
                             </>
                           )}
                           <span>•</span>
-                          <span title="Raw embedding cosine similarity (not a standalone hiring suitability score)">
-                            Semantic Sim: <strong className="text-sky-700 dark:text-sky-400">{semSim}</strong>
+                          <span title="AI Requirement Alignment Score">
+                            Skill Alignment: <strong className="text-sky-700 dark:text-sky-400">{semSim}</strong>
                           </span>
                         </div>
                       )}
@@ -1336,7 +1341,7 @@ export const MatchingMatrixPage = ({
 
                         <div className="mt-2 text-base font-extrabold text-navy-950 dark:text-white flex items-center justify-between">
                           {/* Raw and final deterministic score */}
-                          <span>{c.match_score}%</span>
+                          <span>{c.match_score == null ? 'Insufficient Evidence' : `${c.match_score}%`}</span>
                           {/* Eligibility-adjusted classification tier badge */}
                           <span
                             className={`text-[9px] px-1.5 py-0.5 rounded-full font-bold border ${getTierColor(
@@ -1545,25 +1550,26 @@ export const MatchingMatrixPage = ({
                   {/* Map through each evaluated JD requirement */}
                   {(inspectCandidate.requirements || []).map((req, idx) => {
                     // Extract verification status classification.
-                    const vStatus =
-                      req.verification_status ||
-                      (req.status === 'SATISFIED' ? 'VERIFIED' : req.status === 'GAP' ? 'NO_EVIDENCE' : 'UNVERIFIED');
+                    const evidenceStatus = req.evidence_status || (req.status === 'SATISFIED' ? 'DIRECT_MATCH' : req.status === 'PARTIAL' ? 'PARTIAL_MATCH' : req.status === 'GAP' ? 'MISSING' : 'UNVERIFIED');
+                    const isMatched = evidenceStatus === 'DIRECT_MATCH' || evidenceStatus === 'EQUIVALENT_MATCH';
+                    const vStatus = evidenceStatus;
 
                     // Determine verification badge styling.
                     const getVBadge = (status) => {
                       // Switch on status token.
                       switch (status) {
                         // Fully corroborated evidence.
-                        case 'VERIFIED':
+                        case 'DIRECT_MATCH':
+                        case 'EQUIVALENT_MATCH':
                           return 'bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 border-emerald-300 dark:border-emerald-800';
                         // Partial skill or title match.
-                        case 'PARTIALLY_SUPPORTED':
+                        case 'PARTIAL_MATCH':
                           return 'bg-blue-100 dark:bg-blue-950 text-blue-800 dark:text-blue-300 border-blue-300 dark:border-blue-800';
                         // Requires human recruiter interview.
                         case 'UNVERIFIED':
                           return 'bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300 border-amber-300 dark:border-amber-800';
                         // Absent or negative evidence.
-                        case 'NO_EVIDENCE':
+                        case 'MISSING':
                         default:
                           return 'bg-rose-100 dark:bg-rose-950 text-rose-800 dark:text-rose-300 border-rose-300 dark:border-rose-800';
                       }
@@ -1573,9 +1579,9 @@ export const MatchingMatrixPage = ({
                       <div
                         key={idx}
                         className={`p-3 rounded-xl border ${
-                          req.status === 'SATISFIED'
+                          isMatched
                             ? 'bg-emerald-50/40 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-900/60'
-                            : req.status === 'GAP'
+                          : evidenceStatus === 'MISSING'
                             ? 'bg-rose-50/40 dark:bg-rose-950/20 border-rose-200 dark:border-rose-900/60'
                             : 'bg-amber-50/40 dark:bg-amber-950/20 border-amber-200 dark:border-amber-900/60'
                         }`}
@@ -1599,14 +1605,14 @@ export const MatchingMatrixPage = ({
                             {/* Evaluated outcome badge */}
                             <span
                               className={`text-[9px] font-bold px-2 py-0.5 rounded-full ${
-                                req.status === 'SATISFIED'
+                                isMatched
                                   ? 'bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300'
-                                  : req.status === 'GAP'
+                                  : evidenceStatus === 'MISSING'
                                   ? 'bg-rose-100 dark:bg-rose-950 text-rose-800 dark:text-rose-300'
                                   : 'bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300'
                               }`}
                             >
-                              {req.status}
+                              {evidenceStatus}
                             </span>
                           </div>
                         </div>
@@ -1624,6 +1630,7 @@ export const MatchingMatrixPage = ({
                               : req.notes || 'Evidence unavailable in indexed profile.'}
                           </p>
                         </div>
+                        <span className="block mt-1 text-[10px] text-slate-500">{req.score_contribution == null ? 'No score contribution' : `Contribution: ${req.score_contribution}%`}</span>
                       </div>
                     );
                   })}

@@ -1,5 +1,6 @@
 # Import APIRouter, Depends, HTTPException, Query, status, UploadFile, File, Form from FastAPI.
 from fastapi import APIRouter, Depends, HTTPException, Query, status, UploadFile, File, Form
+import logging
 # Import Session from SQLAlchemy.
 from sqlalchemy.orm import Session
 # Import typing helpers.
@@ -19,6 +20,8 @@ from database.models import (
     ActivityEvent,
     JDSegmentation,
     JobRequirement,
+    BooleanSearchHistory,
+    CandidateJobMatchResult,
 )
 # Import candidate search service for semantic vector matching.
 from app.candidate_search_service import search_candidates
@@ -28,10 +31,13 @@ from datetime import datetime, timezone
 from pathlib import Path
 # Import hashlib for SHA digests.
 import hashlib
+import json
 # Import uuid for unique identifiers.
 import uuid
 # Import re for regex validation and sanitization.
 import re
+from app.ai.config import ai_config
+from app.ai.providers.chat_provider import chat_provider
 # Import extraction and validation service for manual JD processing.
 from app.services.jd_extraction_service import (
     validate_file_upload,
@@ -71,10 +77,12 @@ from app.services.jd_intelligence_service import (
 )
 from app.services.boolean_query_service import (
     generate_boolean_queries,
+    customize_boolean_query_conversationally,
 )
 
 # Create a modular FastAPI router for all job description and matching endpoints.
 router = APIRouter(prefix="/api/jobs", tags=["Jobs"])
+logger = logging.getLogger("companyai.routers.jobs")
 
 # Configure the destination directory for uploaded job description source documents.
 JOB_DESCRIPTIONS_UPLOAD_DIR = Path(__file__).resolve().parent.parent.parent / "data" / "job_descriptions"
@@ -100,7 +108,7 @@ def list_jobs(
     if isinstance(status, str) and status.strip():
         query = query.filter(Job.status == status.strip())
 
-    jobs = query.order_by(Job.id.asc()).all()
+    jobs = query.order_by(Job.id.desc()).all()
     results = []
 
     for idx, j in enumerate(jobs):
@@ -129,7 +137,7 @@ def list_jobs(
             analysis_data = {
                 "status": "Analyzed",
                 "analyzedAt": an.analyzed_at.strftime("%Y-%m-%d %H:%M UTC") if an.analyzed_at else "Recent",
-                "modelUsed": an.model_name or "nvidia/nemotron-3.5-super-vl",
+                "modelUsed": an.model_name or "ollama/llama3.2:3b",
                 "confidenceScore": an.requirements.get("confidence_score", 95) if isinstance(an.requirements, dict) else 95,
                 "extractedResponsibilities": stored_resps or [
                     r.original_text for r in (latest_seg.requirements if latest_seg else []) if r.category == "key_responsibilities"
@@ -229,7 +237,7 @@ def get_job(job_id: str, db: Session = Depends(get_db)) -> dict[str, Any]:
         analysis_data = {
             "status": "Analyzed",
             "analyzedAt": an.analyzed_at.strftime("%Y-%m-%d %H:%M UTC") if an.analyzed_at else "Recent",
-            "modelUsed": an.model_name or "nvidia/nemotron-3.5-super-vl",
+            "modelUsed": an.model_name or "ollama/llama3.2:3b",
             "confidenceScore": an.requirements.get("confidence_score", 95) if isinstance(an.requirements, dict) else 95,
             "extractedResponsibilities": stored_resps or [
                 r.original_text for r in (latest_seg.requirements if latest_seg else []) if r.category == "key_responsibilities"
@@ -498,6 +506,7 @@ def get_job_matches(
         )
     except Exception:
         # Return sanitized 500 error without exposing internal SQL or filesystem trace details.
+        logger.exception("Candidate matching failed for job_id=%s", j.id)
         raise HTTPException(status_code=500, detail="Matching engine execution failed.")
 
     # Return full object if caller requested structured object format.
@@ -532,6 +541,54 @@ def get_job_matches_summary(job_id: str, db: Session = Depends(get_db)) -> dict[
     except Exception:
         # Return sanitized 500 error without exposing raw server exception details.
         raise HTTPException(status_code=500, detail="Failed to generate matching summary.")
+
+
+@router.get("/{job_id}/match-history/{candidate_id}")
+def get_candidate_job_match_history(
+    job_id: int,
+    candidate_id: int,
+    limit: int = Query(default=20, ge=1, le=100),
+    db: Session = Depends(get_db),
+) -> dict[str, Any]:
+    # Expose immutable score snapshots so callers can distinguish current results from recalculated history.
+    actual_limit = limit.default if hasattr(limit, "default") else limit
+    job = db.query(Job).filter(Job.id == job_id).first()
+    candidate = db.query(Candidate).filter(Candidate.id == candidate_id).first()
+    latest_resume = db.query(Resume).filter(Resume.candidate_id == candidate_id).order_by(Resume.created_at.desc(), Resume.id.desc()).first()
+    jd_hash = hashlib.sha256((job.description or "").encode("utf-8")).hexdigest() if job else None
+    profile_hash = hashlib.sha256(json.dumps({
+        "skills": candidate.skills or [], "summary": candidate.summary,
+        "experience_years": candidate.experience_years, "location": candidate.location,
+    }, sort_keys=True, ensure_ascii=False).encode()).hexdigest() if candidate else None
+    records = (
+        db.query(CandidateJobMatchResult)
+        .filter_by(job_id=job_id, candidate_id=candidate_id)
+        .order_by(CandidateJobMatchResult.calculated_at.desc(), CandidateJobMatchResult.id.desc())
+        .limit(actual_limit)
+        .all()
+    )
+    return {
+        "job_id": job_id,
+        "candidate_id": candidate_id,
+        "results": [
+            {
+                "history_id": record.id,
+                "overall_score": record.overall_score if record.score_available else None,
+                "score_available": record.score_available,
+                "classification": record.classification,
+                "component_scores": record.component_scores,
+                "provenance": record.provenance,
+                "is_current": bool(record.is_current and job and candidate
+                    and record.jd_version_id == job.version and record.jd_content_hash == jd_hash
+                    and record.candidate_profile_hash == profile_hash
+                    and (latest_resume is None and record.resume_id is None
+                         or latest_resume is not None and record.resume_id == latest_resume.id
+                         and record.resume_content_hash == latest_resume.content_sha256)),
+                "calculated_at": record.calculated_at.isoformat(),
+            }
+            for record in records
+        ],
+    }
 
 
 @router.post("/{job_id}/compare-candidates")
@@ -673,31 +730,17 @@ def tune_and_extract_job_text(text: str, fallback_filename: str = "") -> dict[st
     loc_match = re.search(r'\b(Bengaluru|Bangalore|Hyderabad|Pune|Mumbai|Chennai|Delhi|Noida|Gurgaon|Gurugram|Kolkata|Ahmedabad|Remote|Hybrid)(?:\s*(?:&|/|,|and)\s*(Bengaluru|Bangalore|Hyderabad|Pune|Mumbai|Chennai|Delhi|Noida|Gurgaon|Gurugram|Kolkata|Ahmedabad|Remote|Hybrid))?\b', raw, re.I)
     location = loc_match.group(0).strip() if loc_match else "Bengaluru & Hyderabad"
 
-    # 5. Skills extraction
-    common_tech = [
-        "Verilog", "SystemVerilog", "UVM", "VHDL", "FPGA design", "FPGA", "SVA",
-        "DO-254", "AXI", "APB", "AHB", "Python", "Perl", "Tcl", "Shell", "ASIC",
-        "C++", "Java", "Oracle EPM", "Hyperion", "PBCS", "FCCS", "ServiceNow",
-        "Flow Designer", "Business Rules", "REST APIs", "AWS", "Azure", "GCP",
-        "Docker", "Kubernetes", "SQL", "Linux", "EDA Tools", "Cadence", "Synopsys",
-        "simulation and debug", "functional/code coverage", "verification & validation",
-        "Team Handling and Co-ordination", "DAL-B exposure",
-    ]
-    found_skills = []
-    for skill in common_tech:
-        pattern = r'\b' + re.escape(skill) + r'\b'
-        if re.search(pattern, raw, re.I):
-            found_skills.append(skill)
-
-    required_skills = [s for s in found_skills if "DAL-B" not in s and "preferred" not in s.lower()]
-    preferred_skills = [s for s in found_skills if "DAL-B" in s or "preferred" in s.lower()]
-    if not preferred_skills and re.search(r'DAL-B exposure preferred', raw, re.I):
-        preferred_skills.append("DAL-B exposure preferred")
+    # 5. Skills extraction using unified canonical taxonomy pipeline
+    from app.services.skill_taxonomy_service import extract_skills_from_jd
+    skill_data = extract_skills_from_jd(raw, title=title, use_ai=False)
+    required_skills = skill_data.get("mandatory_skills", [])
+    preferred_skills = skill_data.get("preferred_skills", [])
 
     # Check if already structured markdown with ##
     has_existing_structure = bool(re.search(r'(?:^|\n)#{1,3}\s+(?:Responsibilities|Requirements|Summary|Overview|Competencies|Qualifications)', raw, re.I))
 
-    if has_existing_structure:
+    # Preserve source text; legacy rewrites invented engineering scope and duplicate bullets.
+    if True:
         tuned_text = raw
     else:
         # Clean ATS/table prefix noise
@@ -718,13 +761,15 @@ def tune_and_extract_job_text(text: str, fallback_filename: str = "") -> dict[st
         tech_competencies = []
         qualifications = []
 
+        skill_keywords_pattern = r'Verilog|SystemVerilog|UVM|VHDL|FPGA design|SVA|Simulation and debug|Python|Perl|Tcl|Shell|EDA|Cadence|Synopsys|AXI|APB|AHB|C\+\+|Java|ServiceNow|AWS|Azure|TDS|GST|Tax|Accounting|Ledger|Reconciliation|SAP|Oracle|Audit|Challan|SUT'
+
         for seg in segments:
             clean_seg = seg.strip().strip(',')
             if not clean_seg:
                 continue
             if re.search(r'preferred|is an advantage|plus|desirable', clean_seg, re.I):
                 qualifications.append(clean_seg)
-            elif re.search(r'Verilog|SystemVerilog|UVM|VHDL|FPGA design|SVA|Simulation and debug|Python|Perl|Tcl|Shell|EDA|Cadence|Synopsys|AXI|APB|AHB|C\+\+|Java|ServiceNow|AWS|Azure', clean_seg, re.I) and not re.search(r'Should be capable of|Team Handling|Responsible for', clean_seg, re.I):
+            elif re.search(skill_keywords_pattern, clean_seg, re.I) and not re.search(r'Should be capable of|Team Handling|Responsible for', clean_seg, re.I):
                 tech_competencies.append(clean_seg)
             else:
                 responsibilities.append(clean_seg)
@@ -732,6 +777,15 @@ def tune_and_extract_job_text(text: str, fallback_filename: str = "") -> dict[st
         effective_title = title or "Technical Specialist"
         exp_display = f"{int(min_exp)}+ Years" if min_exp > 0 else "5+ Years"
         loc_display = location or "Bengaluru & Hyderabad"
+
+        # Domain-aware contextual scope to prevent engineering jargon leaking into finance/accounting/business roles
+        is_tech = bool(re.search(r'engineer|developer|architect|verification|hardware|software|firmware|devops|qa|vlsi|semiconductor|chip', effective_title + " " + raw, re.I))
+        team_display = "engineering team" if is_tech else "core operations and finance team"
+        scope_display = (
+            "owns end-to-end specification analysis, design verification, hardware-software integration, and compliance across key project deliverables."
+            if is_tech
+            else "owns routine statutory compliance, cross-functional reconciliations, audit readiness, and process documentation across business operations."
+        )
 
         out_lines = [
             f"## Role: {effective_title}",
@@ -742,15 +796,15 @@ def tune_and_extract_job_text(text: str, fallback_filename: str = "") -> dict[st
         out_lines.append(f"• Location / Work Mode: {loc_display}")
         out_lines.append("")
         out_lines.append("### Role Summary & Scope:")
-        out_lines.append(f"Looking for an experienced {effective_title} with {exp_display} of domain expertise to join the engineering team in {loc_display}. The role owns end-to-end specification analysis, design verification, hardware-software integration, and compliance across key project deliverables.")
+        out_lines.append(f"Looking for an experienced {effective_title} with {exp_display} of domain expertise to join the {team_display} in {loc_display}. The role {scope_display}")
         out_lines.append("")
         out_lines.append("### Key Responsibilities:")
         if responsibilities:
             for r in responsibilities:
                 out_lines.append(f"• {r}")
         else:
-            out_lines.append("• Lead end-to-end verification, architecture validation, and quality engineering.")
-            out_lines.append("• Oversee development lifecycle milestones and regulatory compliance.")
+            out_lines.append("• Lead end-to-end domain operations, reporting, and quality governance.")
+            out_lines.append("• Oversee lifecycle milestones and regulatory compliance.")
         out_lines.append("")
         out_lines.append("### Mandatory Technical Competencies:")
         if tech_competencies:
@@ -759,8 +813,11 @@ def tune_and_extract_job_text(text: str, fallback_filename: str = "") -> dict[st
         elif required_skills:
             for s in required_skills:
                 out_lines.append(f"• {s}")
+        elif responsibilities:
+            for r in responsibilities[:3]:
+                out_lines.append(f"• {r}")
         else:
-            out_lines.append("• Core programming, verification methodologies, and industry-standard tools.")
+            out_lines.append("• Core domain competencies, enterprise systems, and operational methodologies.")
         out_lines.append("")
         if qualifications or preferred_skills:
             out_lines.append("### Preferred Qualifications & Additional Tools:")
@@ -981,7 +1038,7 @@ def create_manual_job(
         title = "Technical Specialist"
 
     if not description:
-        description = auto_tuning["tuned_text"] or original_text
+        description = original_text
 
     if not description:
         raise HTTPException(
@@ -1698,6 +1755,30 @@ class BooleanQueryRequestSchema(BaseModel):
     custom_preferred: Optional[list[str]] = None
     custom_exclusions: Optional[list[str]] = None
     target_companies: Optional[list[str]] = None
+    search_mode: str = "balanced"
+
+
+class CustomizeBooleanQuerySchema(BaseModel):
+    instruction: str
+    custom_mandatory: Optional[list[str]] = None
+    custom_preferred: Optional[list[str]] = None
+    custom_exclusions: Optional[list[str]] = None
+    target_companies: Optional[list[str]] = None
+    search_mode: str = "balanced"
+
+
+class TargetCompaniesRequestSchema(BaseModel):
+    selected_strategy: Optional[str] = None
+    custom_companies: Optional[list[dict[str, Any]]] = None
+    excluded_companies: Optional[list[str]] = None
+    off_limits_companies: Optional[list[str]] = None
+
+
+class SaveBooleanSearchSchema(BaseModel):
+    platform: str
+    search_mode: str = "balanced"
+    query_text: str
+    recruiter: Optional[str] = None
 
 
 class UpdateStructuredScopeSchema(BaseModel):
@@ -1775,26 +1856,409 @@ def get_job_boolean_queries(
     if not job:
         raise HTTPException(status_code=404, detail="Job not found.")
 
-    # Retrieve current intelligence or generate
-    intel = analyze_job_description_intelligence(db=db, job_id=job.id, force_refresh=False)
+    # Source JD text wins over cached intelligence. This prevents cross-JD and stale fallback terms.
+    source_jd = db.query(JobDescription).filter(JobDescription.id == job.job_description_id).first() if job.job_description_id else None
+    source_text = source_jd.original_text if source_jd and source_jd.original_text else job.description or ""
 
-    mand_skills = payload.custom_mandatory if (payload and payload.custom_mandatory is not None) else intel.technical_skills.mandatory_skills
-    pref_skills = payload.custom_preferred if (payload and payload.custom_preferred is not None) else intel.technical_skills.preferred_skills
+    # Call central shared extraction pipeline (JD is single source of truth)
+    from app.services.skill_taxonomy_service import extract_skills_from_jd
+    extraction = extract_skills_from_jd(source_text, title=job.title, use_ai=True)
+
+    mand_skills = payload.custom_mandatory if (payload and payload.custom_mandatory is not None) else extraction["mandatory_skills"]
+    pref_skills = payload.custom_preferred if (payload and payload.custom_preferred is not None) else extraction["preferred_skills"]
     exclusions = payload.custom_exclusions if (payload and payload.custom_exclusions is not None) else ["Intern", "Trainee", "Student", "Fresher"]
 
     queries = generate_boolean_queries(
         title=job.title,
         mandatory_skills=mand_skills,
         preferred_skills=pref_skills,
-        domain_terms=intel.domain_intelligence.industry_terminology,
-        alternative_titles=intel.role_intelligence.alternative_titles,
+        domain_terms=extraction["domain_terms"],
+        alternative_titles=extraction["alternative_titles"],
+        adjacent_skills=extraction["adjacent_skills"],
+        term_explanations=extraction.get("term_explanations", {}),
         location=job.location,
         experience_years=job.min_experience_years,
         target_companies=payload.target_companies if payload else None,
         exclusions=exclusions,
         job_id=job.id,
+        search_mode=payload.search_mode if payload else "balanced",
     )
-    return queries.model_dump()
+    response = queries.model_dump()
+    response["domain"] = extraction["domain"]
+    response["domain_label"] = extraction["domain_label"]
+    response["adjacent_skills"] = extraction["adjacent_skills"]
+    response["term_provenance"] = extraction["term_provenance"]
+    response["term_explanations"] = extraction.get("term_explanations", {})
+    response["generation_method"] = extraction["extraction_method"]
+    response["model_name"] = extraction["model_used"]
+    response["jd_version"] = job.version or 1
+    response["search_depth"] = payload.search_mode if payload else "balanced"
+    return response
+
+
+@router.post("/{job_id}/boolean-queries/customize")
+def customize_job_boolean_queries(
+    job_id: str,
+    payload: CustomizeBooleanQuerySchema,
+    db: Session = Depends(get_db),
+) -> dict[str, Any]:
+    """Interactively customize Boolean search queries using conversational instructions while preserving platform limits."""
+    raw_id = job_id.replace("job-", "").lstrip("0") or "0"
+    try:
+        j_id = int(raw_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid job ID format.")
+
+    job = db.query(Job).filter(Job.id == j_id).first()
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found.")
+
+    source_jd = db.query(JobDescription).filter(JobDescription.id == job.job_description_id).first() if job.job_description_id else None
+    source_text = source_jd.original_text if source_jd and source_jd.original_text else job.description or ""
+
+    from app.services.skill_taxonomy_service import extract_skills_from_jd
+    extraction = extract_skills_from_jd(source_text, title=job.title, use_ai=True)
+
+    mand_skills = payload.custom_mandatory if payload.custom_mandatory is not None else extraction["mandatory_skills"]
+    pref_skills = payload.custom_preferred if payload.custom_preferred is not None else extraction["preferred_skills"]
+    exclusions = payload.custom_exclusions if payload.custom_exclusions is not None else ["Intern", "Trainee", "Student", "Fresher"]
+
+    customized = customize_boolean_query_conversationally(
+        title=job.title,
+        instruction=payload.instruction,
+        mandatory_skills=mand_skills,
+        preferred_skills=pref_skills,
+        domain_terms=extraction["domain_terms"],
+        alternative_titles=extraction["alternative_titles"],
+        adjacent_skills=extraction["adjacent_skills"],
+        location=job.location,
+        experience_years=job.min_experience_years,
+        target_companies=payload.target_companies,
+        exclusions=exclusions,
+        job_id=job.id,
+        search_mode=payload.search_mode,
+    )
+    customized["domain"] = extraction["domain"]
+    customized["domain_label"] = extraction["domain_label"]
+    customized["adjacent_skills"] = extraction["adjacent_skills"]
+    customized["term_provenance"] = extraction["term_provenance"]
+    customized["jd_version"] = job.version or 1
+    return customized
+
+
+@router.get("/{job_id}/target-companies")
+def get_job_target_companies_endpoint(
+    job_id: str,
+    db: Session = Depends(get_db),
+) -> dict[str, Any]:
+    """Retrieve dynamic, JD-aware corporate headhunting recommendations and sourcing strategies."""
+    raw_id = job_id.replace("job-", "").lstrip("0") or "0"
+    try:
+        j_id = int(raw_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid job ID format.")
+
+    from app.services.target_company_service import get_target_company_recommendations_for_job
+    res = get_target_company_recommendations_for_job(db=db, job_id=j_id)
+    if "error" in res:
+        raise HTTPException(status_code=404, detail=res["error"])
+    return res
+
+
+@router.get("/{job_id}/target-companies/excel")
+def export_job_target_companies_excel_endpoint(
+    job_id: str,
+    db: Session = Depends(get_db),
+):
+    """Generate and stream a beautifully styled Excel spreadsheet with executive headers and formatting."""
+    from fastapi.responses import Response
+    from app.services.target_company_service import get_target_company_recommendations_for_job
+
+    raw_id = job_id.replace("job-", "").lstrip("0") or "0"
+    try:
+        j_id = int(raw_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid job ID format.")
+
+    res = get_target_company_recommendations_for_job(db=db, job_id=j_id)
+    if "error" in res:
+        raise HTTPException(status_code=404, detail=res["error"])
+
+    job_title = res.get("job_title", f"Job #{j_id}")
+    ecosystem = res.get("ecosystem_name", "Target Corporate Sourcing Ecosystem")
+    strategy = res.get("primary_strategy", "Direct Industry Experience")
+    rationale = res.get("strategy_rationale", "Target leading platform partners and specialized consultancies.")
+    companies = res.get("companies", [])
+
+    category_labels = {
+        "product": "Product & OEMs",
+        "oem": "Product & OEMs",
+        "gsi": "Global System Integrators",
+        "big4": "Big 4 & Advisory",
+        "advisory": "Big 4 & Advisory",
+        "agency": "Advertising & Creative Studios",
+        "retail": "Retail & E-Commerce Hubs",
+        "gcc": "Enterprise GCCs & Hubs",
+    }
+
+    rows_html = ""
+    for idx, co in enumerate(companies, 1):
+        cat_label = category_labels.get(co.get("category", ""), co.get("category", "General"))
+        skills_str = ", ".join(co.get("overlap_skills", [])) if co.get("overlap_skills") else "Direct Domain Experience"
+        tier_lvl = co.get("tier_level") or ("Tier 1" if "tier 1" in co.get("tier", "").lower() or "tier-1" in co.get("tier", "").lower() or co.get("category") in ["oem", "gcc", "retail"] else ("Tier 2" if "tier 2" in co.get("tier", "").lower() or "tier-2" in co.get("tier", "").lower() else "Tier 3"))
+        tier_color = "#4338CA" if "1" in tier_lvl else ("#0284C7" if "2" in tier_lvl else "#7C3AED")
+        reason_str = co.get("why_recommended") or co.get("recommendation_reason") or co.get("description", "")
+        row_bg = "#FFFFFF" if idx % 2 != 0 else "#F8FAFC"
+        rows_html += f"""
+        <tr style="background-color: {row_bg}; height: 28pt;">
+            <td style="border: 1px solid #CBD5E1; text-align: center; font-weight: bold; color: #64748B;">{idx}</td>
+            <td style="border: 1px solid #CBD5E1; font-weight: bold; color: #0F172A; padding: 6px 10px;">{co.get('name', '')}</td>
+            <td style="border: 1px solid #CBD5E1; color: #334155; padding: 6px 10px;">{cat_label}</td>
+            <td style="border: 1px solid #CBD5E1; text-align: center; font-weight: bold; color: {tier_color}; padding: 6px 8px;">{tier_lvl}</td>
+            <td style="border: 1px solid #CBD5E1; color: #475569; padding: 6px 10px;">{co.get('tier', 'Industry Peer')}</td>
+            <td style="border: 1px solid #CBD5E1; color: #334155; padding: 6px 10px;">{co.get('location', '')}</td>
+            <td style="border: 1px solid #CBD5E1; text-align: center; padding: 6px 10px;">
+                <span style="background-color: #EEF2FF; color: #3730A3; font-weight: bold; padding: 3px 8px; border-radius: 4px;">Available</span>
+            </td>
+            <td style="border: 1px solid #CBD5E1; text-align: center; font-weight: bold; color: #047857;">{co.get('confidence', 'High')}</td>
+            <td style="border: 1px solid #CBD5E1; color: #1E293B; padding: 6px 10px;">{skills_str}</td>
+            <td style="border: 1px solid #CBD5E1; color: #334155; padding: 6px 10px;">{reason_str}</td>
+            <td style="border: 1px solid #CBD5E1; color: #475569; padding: 6px 10px;">{co.get('description', '')}</td>
+        </tr>
+        """
+
+    html = f"""
+    <html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">
+    <head>
+        <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+        <!--[if gte mso 9]>
+        <xml>
+            <x:ExcelWorkbook>
+                <x:ExcelWorksheets>
+                    <x:ExcelWorksheet>
+                        <x:Name>Target Sourcing Pools</x:Name>
+                        <x:WorksheetOptions>
+                            <x:DisplayGridlines/>
+                            <x:FreezePanes/>
+                            <x:FrozenNoSplit/>
+                            <x:SplitHorizontal>6</x:SplitHorizontal>
+                            <x:TopRowBottomPane>6</x:TopRowBottomPane>
+                            <x:ActivePane>2</x:ActivePane>
+                            <x:AutoFilter x:Range="A6:K6"/>
+                        </x:WorksheetOptions>
+                    </x:ExcelWorksheet>
+                </x:ExcelWorksheets>
+            </x:ExcelWorkbook>
+        </xml>
+        <![endif]-->
+        <style>
+            body {{ font-family: Calibri, 'Segoe UI', Arial, sans-serif; }}
+            table {{ border-collapse: collapse; width: 100%; }}
+            th {{ font-family: Calibri, 'Segoe UI', Arial, sans-serif; }}
+            td {{ font-family: Calibri, 'Segoe UI', Arial, sans-serif; vertical-align: middle; }}
+        </style>
+    </head>
+    <body>
+        <table>
+            <tr style="height: 36pt;">
+                <th colspan="11" style="background-color: #1E293B; color: #FFFFFF; font-size: 15pt; font-weight: bold; text-align: left; padding: 10px 14px; border: 1px solid #0F172A;">
+                    TALENT SOURCING INTELLIGENCE &bull; TARGET COMPANIES SPREADSHEET
+                </th>
+            </tr>
+            <tr style="height: 24pt;">
+                <td colspan="11" style="background-color: #F1F5F9; color: #0F172A; font-size: 11pt; font-weight: bold; padding: 6px 14px; border: 1px solid #CBD5E1;">
+                    Position: <span style="color: #4338CA;">{job_title}</span> &nbsp;|&nbsp; 
+                    Requisition ID: <span style="color: #475569;">#{j_id}</span> &nbsp;|&nbsp; 
+                    Total Recommended Pools: <span style="color: #047857;">{len(companies)}</span>
+                </td>
+            </tr>
+            <tr style="height: 22pt;">
+                <td colspan="11" style="background-color: #F8FAFC; color: #334155; font-size: 10.5pt; padding: 5px 14px; border: 1px solid #CBD5E1;">
+                    Corporate Sourcing Ecosystem: <strong>{ecosystem}</strong> &nbsp;|&nbsp; 
+                    Strategy: <strong>{strategy}</strong>
+                </td>
+            </tr>
+            <tr style="height: 20pt;">
+                <td colspan="11" style="background-color: #FFFFFF; color: #64748B; font-size: 9.5pt; font-style: italic; padding: 4px 14px; border: 1px solid #CBD5E1;">
+                    Strategy Rationale: {rationale}
+                </td>
+            </tr>
+            <tr style="height: 8pt;"><td colspan="11" style="border: none;"></td></tr>
+            <tr style="background-color: #0F172A; color: #FFFFFF; height: 32pt; font-size: 11pt;" x:autofilter="all">
+                <th style="border: 1px solid #334155; padding: 8px 6px; width: 45px; text-align: center;">#</th>
+                <th style="border: 1px solid #334155; padding: 8px 12px; width: 230px; text-align: left;">Target Company</th>
+                <th style="border: 1px solid #334155; padding: 8px 12px; width: 170px; text-align: left;">Category</th>
+                <th style="border: 1px solid #334155; padding: 8px 10px; width: 100px; text-align: center;">Tier Level</th>
+                <th style="border: 1px solid #334155; padding: 8px 12px; width: 220px; text-align: left;">Tier & Focus</th>
+                <th style="border: 1px solid #334155; padding: 8px 12px; width: 180px; text-align: left;">Target Locations</th>
+                <th style="border: 1px solid #334155; padding: 8px 12px; width: 130px; text-align: center;">Sourcing Status</th>
+                <th style="border: 1px solid #334155; padding: 8px 10px; width: 100px; text-align: center;">Confidence</th>
+                <th style="border: 1px solid #334155; padding: 8px 12px; width: 250px; text-align: left;">JD Overlap Skills</th>
+                <th style="border: 1px solid #334155; padding: 8px 12px; width: 340px; text-align: left;">Why Recommended / Headhunting Strategy</th>
+                <th style="border: 1px solid #334155; padding: 8px 12px; width: 340px; text-align: left;">Company Overview</th>
+            </tr>
+            {rows_html}
+        </table>
+    </body>
+    </html>
+    """
+
+    sanitized_title = "".join(c if c.isalnum() or c in ("-", "_") else "_" for c in job_title)[:40]
+    filename = f"Target_Companies_{sanitized_title}_Job_{j_id}.xls"
+
+    return Response(
+        content=html.encode("utf-8"),
+        media_type="application/vnd.ms-excel; charset=utf-8",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
+
+
+@router.get("/{job_id}/target-companies/csv")
+def export_job_target_companies_csv_endpoint(
+    job_id: str,
+    db: Session = Depends(get_db),
+):
+    """Generate and stream a downloadable CSV file of target companies for recruiters."""
+    import io
+    import csv
+    from fastapi.responses import Response
+    from app.services.target_company_service import get_target_company_recommendations_for_job
+
+    raw_id = job_id.replace("job-", "").lstrip("0") or "0"
+    try:
+        j_id = int(raw_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid job ID format.")
+
+    res = get_target_company_recommendations_for_job(db=db, job_id=j_id)
+    if "error" in res:
+        raise HTTPException(status_code=404, detail=res["error"])
+
+    output = io.StringIO()
+    output.write("\ufeff")
+    writer = csv.writer(output, quoting=csv.QUOTE_ALL)
+
+    writer.writerow([
+        "Company Name",
+        "Category",
+        "Tier / Type",
+        "Target Locations",
+        "Confidence",
+        "Why Recommended / Headhunting Strategy",
+        "Overlap Skills",
+        "Company Overview",
+        "Corporate Sourcing Ecosystem",
+        "Job Title",
+        "Job ID",
+    ])
+
+    ecosystem = res.get("ecosystem_name", "Enterprise Ecosystem")
+    job_title = res.get("job_title", f"Job #{j_id}")
+
+    for co in res.get("companies", []):
+        writer.writerow([
+            co.get("name", ""),
+            co.get("category", ""),
+            co.get("tier", "Industry Peer"),
+            co.get("location", ""),
+            co.get("confidence", "High"),
+            co.get("recommendation_reason", co.get("description", "")),
+            ", ".join(co.get("overlap_skills", [])),
+            co.get("description", ""),
+            ecosystem,
+            job_title,
+            j_id,
+        ])
+
+    csv_bytes = output.getvalue().encode("utf-8")
+    sanitized_title = "".join(c if c.isalnum() or c in ("-", "_") else "_" for c in job_title)[:40]
+    filename = f"Target_Companies_{sanitized_title}_Job_{j_id}.csv"
+
+    return Response(
+        content=csv_bytes,
+        media_type="text/csv; charset=utf-8",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
+
+
+@router.post("/{job_id}/target-companies")
+def customize_job_target_companies_endpoint(
+    job_id: str,
+    payload: TargetCompaniesRequestSchema,
+    db: Session = Depends(get_db),
+) -> dict[str, Any]:
+    """Dynamically refine target companies based on recruiter sourcing strategy, exclusions, and custom targets."""
+    raw_id = job_id.replace("job-", "").lstrip("0") or "0"
+    try:
+        j_id = int(raw_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid job ID format.")
+
+    from app.services.target_company_service import get_target_company_recommendations_for_job
+    res = get_target_company_recommendations_for_job(
+        db=db,
+        job_id=j_id,
+        selected_strategy=payload.selected_strategy,
+        custom_companies=payload.custom_companies,
+        excluded_companies=payload.excluded_companies,
+        off_limits_companies=payload.off_limits_companies,
+    )
+    if "error" in res:
+        raise HTTPException(status_code=404, detail=res["error"])
+    return res
+
+
+@router.get("/{job_id}/boolean-search-history")
+def get_boolean_search_history(job_id: str, db: Session = Depends(get_db)) -> list[dict[str, Any]]:
+    """Retrieve only the query history belonging to this exact job."""
+    raw_id = job_id.replace("job-", "").lstrip("0") or "0"
+    try:
+        j_id = int(raw_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid job ID format.")
+    rows = db.query(BooleanSearchHistory).filter(BooleanSearchHistory.job_id == j_id).order_by(BooleanSearchHistory.created_at.desc()).limit(25).all()
+    return [
+        {
+            "id": row.id,
+            "jd_version": row.jd_version,
+            "platform": row.platform,
+            "search_mode": row.search_mode,
+            "recruiter": row.recruiter,
+            "query_text": row.query_text,
+            "generation_method": row.generation_method,
+            "model_name": row.model_name,
+            "created_at": row.created_at.isoformat(),
+        }
+        for row in rows
+    ]
+
+
+@router.post("/{job_id}/boolean-search-history")
+def save_boolean_search_history(job_id: str, payload: SaveBooleanSearchSchema, db: Session = Depends(get_db)) -> dict[str, Any]:
+    """Persist a recruiter query with JD version and generation provenance."""
+    raw_id = job_id.replace("job-", "").lstrip("0") or "0"
+    try:
+        j_id = int(raw_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid job ID format.")
+    job = db.query(Job).filter(Job.id == j_id).first()
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found.")
+    intel = analyze_job_description_intelligence(db=db, job_id=j_id, force_refresh=False)
+    row = BooleanSearchHistory(
+        job_id=j_id,
+        jd_version=job.version or 1,
+        platform=payload.platform,
+        search_mode=payload.search_mode,
+        recruiter=payload.recruiter,
+        query_text=payload.query_text,
+        generation_method=intel.generation_method,
+        model_name=intel.model_used,
+    )
+    db.add(row)
+    db.commit()
+    db.refresh(row)
+    return {"id": row.id, "jd_version": row.jd_version, "platform": row.platform, "created_at": row.created_at.isoformat()}
 
 
 @router.put("/{job_id}/structured-scope")

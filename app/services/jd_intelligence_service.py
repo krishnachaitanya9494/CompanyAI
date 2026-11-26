@@ -15,6 +15,7 @@ import hashlib
 import json
 import logging
 import re
+import hashlib
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -40,15 +41,20 @@ class RoleIntelligence(BaseModel):
     model_config = ConfigDict(extra="ignore")
     title: str = Field(..., description="Canonical job title")
     alternative_titles: List[str] = Field(default_factory=list, description="Equivalent market titles")
-    seniority_level: str = Field(default="Mid-Senior Level", description="Role seniority band")
-    department: str = Field(default="Engineering", description="Functional department or practice")
-    industry: str = Field(default="Information Technology", description="Target industry sector")
-    job_function: str = Field(default="Software Development", description="Primary job function")
-    min_experience_years: float = Field(default=3.0, ge=0.0)
-    max_experience_years: float = Field(default=8.0, ge=0.0)
+    seniority_level: str = Field(default="Not specified", description="Role seniority band")
+    job_family: str = Field(default="Operations / Business Support", description="Job family group")
+    functional_area: str = Field(default="Retail Item & Product Data Operations", description="Functional area")
+    role_type: str = Field(default="Staff Augmentation / Operational Support", description="Role type")
+    industry: str = Field(default="Retail / Merchandising / Product Data Operations", description="Target industry sector")
+    department: str = Field(default="Operations", description="Functional department or practice")
+    job_function: str = Field(default="Operations Support", description="Primary job function")
+    work_environment: str = Field(default="Cross-functional vendor and merchant coordination", description="Work environment")
+    shift_requirement: Optional[str] = Field(default=None, description="Shift constraints e.g. Evening shift flexibility")
+    min_experience_years: float = Field(default=0.0, ge=0.0)
+    max_experience_years: float = Field(default=0.0, ge=0.0)
     employment_type: str = Field(default="Full-time")
     work_mode: str = Field(default="Hybrid")
-    location: str = Field(default="Hyderabad / Bangalore")
+    location: str = Field(default="Not specified")
     openings_count: Optional[int] = Field(default=1)
 
 
@@ -120,6 +126,16 @@ class JDStructuredScope(BaseModel):
     jd_inconsistencies: List[JDInconsistency] = Field(default_factory=list, description="12. JD Inconsistencies")
 
 
+class CategorizedRequirements(BaseModel):
+    """Section 4 Categorized Requirements preserving original and normalized wording."""
+    model_config = ConfigDict(extra="ignore")
+    functional_domain_skills: List[str] = Field(default_factory=list, description="A. Functional / Domain Skills")
+    tools_technical_proficiency: List[str] = Field(default_factory=list, description="B. Tools / Technical Proficiency")
+    behavioral_soft_skills: List[str] = Field(default_factory=list, description="C. Behavioral / Soft Skills")
+    education_experience: List[str] = Field(default_factory=list, description="D. Education / Experience")
+    operational_constraints: List[str] = Field(default_factory=list, description="E. Operational Constraints")
+
+
 class JDIntelligenceResult(BaseModel):
     """Complete structured intelligence output for a job description."""
     model_config = ConfigDict(extra="ignore")
@@ -131,6 +147,7 @@ class JDIntelligenceResult(BaseModel):
     qualifications: QualificationIntelligence
     structured_scope: JDStructuredScope
     boolean_queries: AllBooleanQueriesResponse
+    categorized_requirements: CategorizedRequirements = Field(default_factory=CategorizedRequirements)
     inconsistencies: List[JDInconsistency] = Field(default_factory=list)
     confidence_score: float = Field(default=0.95, ge=0.0, le=1.0)
     model_used: str = Field(default="nemotron-intelligence-engine")
@@ -260,27 +277,223 @@ KNOWN_DOMAINS = {
         "default_terms": ["Dimension Hierarchies", "Intercompany Eliminations", "Currency Translation", "Close Process Automation"],
         "abbrevs": {"FCCS": "Financial Consolidation and Close Cloud Service", "EPM": "Enterprise Performance Management"},
     },
+    "retail_product_operations": {
+        "keywords": [
+            "item setup", "item set up", "item launches", "product data", "item data",
+            "data quality", "data remediation", "data validation", "merchant", "vendor coordination",
+            "retail operations", "item coe", "launch readiness", "merchandising", "product launches",
+        ],
+        "alt_titles": [
+            "Item Setup Specialist",
+            "Product Data Operations Specialist",
+            "Item Data Analyst",
+            "Catalog Operations Specialist",
+            "Retail Merchandising Operations Associate",
+            "Product Launch Coordinator",
+        ],
+        "default_domain": "Retail Item & Product Data Operations",
+        "job_family": "Operations / Business Support",
+        "functional_area": "Retail Item & Product Data Operations",
+        "role_type": "Staff Augmentation / Operational Support",
+        "industry": "Retail / Merchandising / Product Data Operations",
+        "work_environment": "Cross-functional vendor and merchant coordination",
+        "shift_requirement": "Evening shift flexibility",
+        "default_education": "College degree or equivalent work experience",
+        "default_skills": [
+            "Item Setup",
+            "Product Data Management",
+            "Data Quality",
+            "Data Validation",
+            "Data Remediation",
+            "Item Launch Management",
+            "Vendor Coordination",
+            "Merchant Coordination",
+            "Retail Operations",
+            "Excel",
+            "Outlook",
+        ],
+        "default_tools": ["Microsoft Excel", "Microsoft Outlook", "General PC proficiency"],
+        "default_frameworks": ["Retail Product Data Lifecycle", "Service-Level Management (SLA) Protocols"],
+        "default_certs": [],
+        "default_terms": [
+            "Item Setup",
+            "Product Data Quality",
+            "Data Remediation",
+            "Launch Readiness",
+            "Vendor Coordination",
+            "Merchant Coordination",
+            "Service-Level Management",
+        ],
+        "abbrevs": {
+            "COE": "Center of Excellence",
+            "SLA": "Service Level Agreement",
+            "SKU": "Stock Keeping Unit",
+        },
+    },
+    "cad_engineering": {
+        "keywords": ["cad", "revit", "microstation", "autocad", "drafting", "bim", "civil 3d", "solidworks", "catia", "bluebeam"],
+        "alt_titles": ["CAD Operator", "CAD Drafter", "CAD Designer", "BIM Specialist", "Draftsperson", "Revit Modeler"],
+        "default_domain": "CAD & Engineering Design",
+        "job_family": "Engineering / Design",
+        "functional_area": "CAD Drafting & BIM Modeling",
+        "role_type": "Technical Specialist",
+        "industry": "Engineering & Construction",
+        "default_skills": ["CAD", "AutoCAD", "Autodesk Revit", "MicroStation", "BIM 360", "2D Drafting", "3D Modeling"],
+        "default_tools": ["AutoCAD", "Autodesk Revit", "MicroStation", "Bluebeam"],
+        "default_frameworks": ["Building Information Modeling (BIM)", "CAD Deliverable Standards"],
+        "default_certs": [],
+        "default_terms": ["Commercial Building Systems", "Engineering Deliverables", "CAD Standards", "Construction Drawings"],
+        "abbrevs": {"BIM": "Building Information Modeling", "CAD": "Computer-Aided Design"},
+    },
+    "finance_accounting": {
+        "keywords": ["accountant", "accounting", "tax", "gst", "tds", "general ledger", "reconciliation", "sut", "gaap", "form 26as"],
+        "alt_titles": ["Staff Accountant", "Tax Analyst", "General Ledger Accountant", "Financial Accountant", "Tax Specialist"],
+        "default_domain": "Finance, Accounting & Tax",
+        "job_family": "Finance & Accounting",
+        "functional_area": "General Ledger & Tax Compliance",
+        "role_type": "Professional",
+        "industry": "Financial Services & Corporate Accounting",
+        "default_skills": ["General Ledger", "Reconciliation", "Tax Compliance", "GST", "TDS", "Form 26AS", "Sales and Use Tax", "GAAP"],
+        "default_tools": ["SAP ERP", "Tally", "Excel", "Tax Filing Portals"],
+        "default_frameworks": ["US GAAP", "Statutory Tax Compliance Framework"],
+        "default_certs": ["Chartered Accountant (CA)", "CPA", "ICWA"],
+        "default_terms": ["Reconciliation", "Month-End Close", "Tax Audits", "Statutory Compliance"],
+        "abbrevs": {"GST": "Goods and Services Tax", "TDS": "Tax Deducted at Source", "GAAP": "Generally Accepted Accounting Principles"},
+    },
+    "sap_erp": {
+        "keywords": ["sap cpi", "integration suite", "sap", "s/4hana", "cpi", "abap", "groovy"],
+        "alt_titles": ["SAP CPI Consultant", "SAP Integration Suite Consultant", "SAP Consultant", "SAP Architect"],
+        "default_domain": "SAP & Enterprise ERP",
+        "job_family": "Information Technology",
+        "functional_area": "SAP Integration Architecture",
+        "role_type": "Consultant",
+        "industry": "Enterprise Software",
+        "default_skills": ["SAP CPI", "SAP", "ABAP", "Groovy", "REST APIs"],
+        "default_tools": ["SAP Cloud Platform Integration", "SAP BTP", "SAP Studio"],
+        "default_frameworks": ["SAP Integration Suite Architecture", "Clean Core Extensibility"],
+        "default_certs": ["SAP Certified Integration Associate"],
+        "default_terms": ["iFlows", "Cloud Integration", "Message Mapping", "Adapter Configuration"],
+        "abbrevs": {"CPI": "Cloud Platform Integration", "BTP": "Business Technology Platform"},
+    },
+    "creative_design": {
+        "keywords": [
+            "art director", "art direction", "creative director", "creative direction",
+            "graphic design", "advertising design", "storyboards", "storyboarding",
+            "photoshop", "illustrator", "after effects", "cinema 4d", "maya", "indesign",
+            "multichannel", "packaging", "typography", "smoke", "keynote", "target brand",
+        ],
+        "alt_titles": [
+            "Art Director",
+            "Associate Creative Director",
+            "Senior Art Director",
+            "Creative Designer",
+            "Visual Design Lead",
+            "Advertising Art Director",
+        ],
+        "default_domain": "Advertising, Retail Branding, Creative Media and Marketing",
+        "job_family": "Creative / Design",
+        "functional_area": "Art Direction and Advertising Design",
+        "role_category": "Creative Operations / Media Production",
+        "role_type": "Staff Augmentation / Operational Support",
+        "industry": "Advertising, Retail Branding, Creative Media and Marketing",
+        "work_environment": "Creative studio / agency and cross-functional brand production",
+        "default_skills": [
+            "Art Direction",
+            "Creative Direction",
+            "Advertising Design",
+            "Graphic Design",
+            "Typography",
+            "Layout Design",
+            "Storyboarding",
+            "Adobe Illustrator",
+            "Adobe Photoshop",
+            "Adobe After Effects",
+            "Adobe InDesign",
+            "Cinema 4D",
+            "Autodesk Maya",
+            "PowerPoint",
+            "Word",
+            "Outlook",
+        ],
+        "default_tools": [
+            "Adobe Illustrator",
+            "Adobe Photoshop",
+            "Adobe After Effects",
+            "Cinema 4D",
+            "Autodesk Maya",
+            "Adobe InDesign",
+            "Smoke",
+            "Apple Keynote",
+            "Microsoft PowerPoint",
+            "Microsoft Word",
+            "Microsoft Outlook",
+        ],
+        "default_frameworks": ["Creative Workflow Standards", "Target Brand Expectations"],
+        "default_certs": [],
+        "default_terms": [
+            "Art Direction",
+            "Creative Direction",
+            "Advertising Design",
+            "Graphic Design",
+            "Packaging Design",
+            "Promotional Design",
+            "Digital Advertising Design",
+            "Multichannel Creative",
+            "Layout",
+            "Typography",
+            "Photography Direction",
+            "Illustration",
+            "Storyboards",
+            "Visual Storytelling",
+            "Visual Reviews",
+            "Brand Alignment",
+            "ISM",
+            "Smoke",
+        ],
+        "abbrevs": {
+            "ISM": "In-Store Marketing",
+            "C4D": "Cinema 4D",
+            "AE": "Adobe After Effects",
+            "AI": "Adobe Illustrator",
+            "PS": "Adobe Photoshop",
+            "ID": "Adobe InDesign",
+        },
+    },
 }
 
 
 def _detect_domain_profile(text: str, title: str) -> Dict[str, Any]:
-    """Detect domain taxonomy profile from job title and content."""
+    """Detect domain taxonomy profile from job title and content with title weighting."""
     combined = f"{title}\n{text}".lower()
+    title_lower = (title or "").lower()
+    best_profile = None
+    best_score = -1
+
     for domain_key, profile in KNOWN_DOMAINS.items():
-        score = sum(1 for kw in profile["keywords"] if kw in combined)
-        if score >= 2:
-            return profile
+        score = 0
+        for kw in profile.get("keywords", []):
+            if re.search(r"\b" + re.escape(kw) + r"\b", title_lower):
+                score += 3
+            elif re.search(r"\b" + re.escape(kw) + r"\b", combined):
+                score += 1
+        if score > best_score:
+            best_score = score
+            best_profile = profile
+
+    if best_score >= 2 and best_profile:
+        return best_profile
+
     # Default generic technology profile
     return {
         "keywords": [],
-        "alt_titles": [f"{title} Specialist", f"Senior {title}", f"{title} Consultant"],
-        "default_domain": "Information Technology & Digital Engineering",
-        "default_skills": ["Software Engineering", "Systems Architecture", "API Integration", "Quality Assurance"],
-        "default_tools": ["Git", "Jira", "CI/CD Platforms"],
-        "default_frameworks": ["Agile / Scrum Methodologies"],
+        "alt_titles": [],
+        "default_domain": "Not specified",
+        "default_skills": [],
+        "default_tools": [],
+        "default_frameworks": [],
         "default_certs": [],
-        "default_terms": ["Software Development Lifecycle", "Quality Assurance", "Requirements Analysis"],
-        "abbrevs": {"SDLC": "Software Development Life Cycle", "API": "Application Programming Interface"},
+        "default_terms": [],
+        "abbrevs": {},
     }
 
 
@@ -324,6 +537,22 @@ def _detect_inconsistencies(raw_text: str, title: str, domain_profile: Dict[str,
             source_evidence="Requisition ID placeholder extracted from text header",
         ))
 
+    # 4. Conflicting experience ranges across header and qualifications sections
+    exp_matches = re.findall(r"(\d+(?:\.\d+)?)\s*(?:[-–]|to)\s*(\d+(?:\.\d+)?)\s*(?:yrs|years|yoe)", raw_text, re.I)
+    unique_ranges = {(float(r[0]), float(r[1])) for r in exp_matches}
+    if len(unique_ranges) > 1:
+        range_strs = [f"{r[0]:g}–{r[1]:g} years" for r in sorted(unique_ranges)]
+        inconsistencies.append(JDInconsistency(
+            issue_type="CONTRADICTION",
+            description=(
+                f"Conflicting experience requirements detected in JD ({', '.join(range_strs)}). "
+                f"Job header specifies {range_strs[-1]} of experience, while qualifications section states {range_strs[0]}. "
+                "Flagged for recruiter review."
+            ),
+            severity="MEDIUM",
+            source_evidence=f"Conflicting ranges found in JD source text: {', '.join(range_strs)}",
+        ))
+
     return inconsistencies
 
 
@@ -356,7 +585,8 @@ def extract_deterministic_jd_intelligence(
     domain_profile = _detect_domain_profile(source_to_use, title)
 
     # 1. Experience extraction
-    min_exp, max_exp = 5.0, 8.0
+    min_exp = 0.0
+    max_exp = 0.0
     exp_match = re.search(r"(\d+(?:\.\d+)?)\s*(?:[-–]\s*(\d+(?:\.\d+)?))?\+?\s*(?:yrs|years|yoe)", source_to_use, re.I)
     if exp_match:
         min_exp = float(exp_match.group(1))
@@ -369,7 +599,7 @@ def extract_deterministic_jd_intelligence(
         source_to_use,
         re.I,
     )
-    loc_str = loc_match.group(0).strip() if loc_match else "Bengaluru & Hyderabad"
+    loc_str = loc_match.group(0).strip() if loc_match else "Not specified"
 
     # 3. Extract responsibilities from bullet points
     raw_responsibilities = _extract_bullet_items(
@@ -378,21 +608,14 @@ def extract_deterministic_jd_intelligence(
         r"(?:Mandatory\s*skills|Technical\s*skills|Skills|Qualifications|Requirements|Target\s*profile)",
     )
     if not raw_responsibilities:
-        # Fallback to lines with action verbs
+        # Fallback to source lines with action verbs; never synthesize role responsibilities.
         for line in source_to_use.splitlines():
             c = re.sub(r"^[•\-\*\d+\.\t\s]+", "", line).strip()
             if re.match(r"^(?:Develop|Configure|Implement|Build|Support|Maintain|Lead|Design|Manage|Drive)\b", c, re.I) and len(c) > 15:
                 raw_responsibilities.append(c)
 
-    core_resp = raw_responsibilities[:6] or [
-        f"Own end-to-end design, implementation, and deployment of {title} solution architectures.",
-        "Collaborate with enterprise stakeholders to translate business requirements into governed technical specifications.",
-        "Maintain auditable workflow history and compliance with regulatory governance standards.",
-    ]
-    func_resp = raw_responsibilities[6:12] or [
-        "Develop reusable service components and standardized platform extensions.",
-        "Participate in release management, defect resolution, and pre-production operational readiness.",
-    ]
+    core_resp = raw_responsibilities[:6]
+    func_resp = raw_responsibilities[6:12]
 
     # 4. Extract mandatory skills from bullet points
     extracted_mandatory = _extract_bullet_items(
@@ -412,8 +635,6 @@ def extract_deterministic_jd_intelligence(
         for sk in domain_profile.get("default_skills", []):
             if sk.lower() in source_to_use.lower():
                 valid_mandatory.append(sk)
-        if not valid_mandatory:
-            valid_mandatory = domain_profile.get("default_skills", [])[:5]
 
     # Deduplicate
     clean_mandatory = list(dict.fromkeys(valid_mandatory))
@@ -428,22 +649,35 @@ def extract_deterministic_jd_intelligence(
     tech_skills = TechnicalSkillsIntelligence(
         mandatory_skills=clean_mandatory,
         preferred_skills=preferred_skills,
-        secondary_skills=["Integration Testing", "Defect Resolution", "Release Governance", "Agile Sprints"],
+        secondary_skills=[],
         tools_and_platforms=domain_profile.get("default_tools", []),
         frameworks=domain_profile.get("default_frameworks", []),
-        programming_languages=["JavaScript", "JSON", "REST APIs", "SQL"],
+        programming_languages=[],
         certifications=domain_profile.get("default_certs", []),
-        technologies_and_integrations=["REST APIs", "Enterprise Middleware", "Single Sign-On (SSO)", "Data Feeds"],
+        technologies_and_integrations=[],
     )
 
     # 7. Role Intelligence
+    if re.search(r"\b(?:Mid-Ops|Mid-level|Mid level|Intermediate)\b", title, re.I) or ("mid" in title.lower() and "ops" in title.lower()):
+        seniority = "Mid-level"
+    elif re.search(r"\b(?:Senior|Sr|Lead|Principal|Staff|Manager|Director)\b", title, re.I):
+        seniority = "Senior"
+    else:
+        seniority = "Not specified"
+    shift_req = "Evening shift flexibility based on business requirements" if re.search(r"\bevening shift\b", source_to_use, re.I) else domain_profile.get("shift_requirement")
+
     role_intel = RoleIntelligence(
         title=title,
         alternative_titles=domain_profile.get("alt_titles", []),
-        seniority_level=f"Senior Practitioner ({int(min_exp)}-{int(max_exp)}+ Years)",
-        department=domain_profile.get("default_domain", "Engineering"),
-        industry=domain_profile.get("default_domain", "Information Technology"),
-        job_function="Technical Architecture & Solution Engineering",
+        seniority_level=seniority,
+        job_family=domain_profile.get("job_family", "Operations / Business Support" if "operations" in domain_profile.get("default_domain", "").lower() else "Engineering"),
+        functional_area=domain_profile.get("functional_area", domain_profile.get("default_domain", "Engineering")),
+        role_type=domain_profile.get("role_type", "Staff Augmentation / Operational Support" if "operations" in domain_profile.get("default_domain", "").lower() else "Technical Specialist"),
+        department=domain_profile.get("job_family", "Creative / Design" if "creative" in domain_profile.get("job_family", "").lower() else "Operations"),
+        industry=domain_profile.get("industry", domain_profile.get("default_domain", "Information Technology")),
+        job_function=domain_profile.get("functional_area", "Operations Support"),
+        work_environment=domain_profile.get("work_environment", "Cross-functional enterprise teams"),
+        shift_requirement=shift_req,
         min_experience_years=min_exp,
         max_experience_years=max_exp,
         employment_type="Full-time / Requisition",
@@ -499,14 +733,20 @@ def extract_deterministic_jd_intelligence(
     )
 
     # 10. Qualification Intelligence
+    edu_text = "Bachelor's degree in Computer Science, Information Technology, or equivalent STEM field"
+    if re.search(r"\bcollege degree\b", source_to_use, re.I):
+        edu_text = "College degree or equivalent work experience"
+    elif "default_education" in domain_profile:
+        edu_text = domain_profile["default_education"]
+
     qual_intel = QualificationIntelligence(
-        education="Bachelor's degree in Computer Science, Information Technology, or equivalent STEM field",
+        education=edu_text,
         certifications=domain_profile.get("default_certs", []),
-        required_experience=f"Minimum {int(min_exp)}+ years of verifiable hands-on technical experience",
+        required_experience=f"Minimum {int(min_exp)}+ years of verifiable hands-on technical experience" if min_exp > 0 else "Demonstrated domain capability (no artificial minimum tenure mandated)",
         domain_experience=f"Demonstrated track record executing in {domain_profile.get('default_domain', 'enterprise')} environments",
         mandatory_qualifications=[
-            f"Proficiency in {clean_mandatory[0] if clean_mandatory else 'Enterprise Software Development'}",
-            f"{int(min_exp)}+ years professional implementation lifecycle experience",
+            f"Proficiency in {clean_mandatory[0] if clean_mandatory else 'Core Role Competencies'}",
+            f"{int(min_exp)}+ years professional implementation lifecycle experience" if min_exp > 0 else "Demonstrated domain competence",
         ],
         preferred_qualifications=[
             "Prior experience working in regulated enterprise environments",
@@ -514,31 +754,128 @@ def extract_deterministic_jd_intelligence(
         ],
     )
 
+    # Section 4 Categorized Requirements
+    func_skills = [s for s in clean_mandatory if s not in {"Excel", "Outlook", "General PC Proficiency", "Microsoft Excel", "Microsoft Outlook", "PowerPoint", "Word", "Microsoft Word", "Microsoft PowerPoint"}]
+    known_ops = [
+        "Item Setup", "Item Data Management", "Product Data Management", "Product Data Quality",
+        "Data Validation", "Data Remediation", "Item Launch Management", "Launch Readiness",
+        "Vendor Coordination", "Merchant Coordination", "Retail Operations", "Product Content Management",
+        "Service-Level Management", "Cross-functional Coordination", "Process Improvement",
+        "Workload Planning", "Project Coordination",
+        "Art Direction", "Creative Direction", "Creative Conceptualization", "Advertising Design",
+        "Graphic Design", "Creative Content Development", "Media Production", "Packaging Design",
+        "Promotional Design", "Digital Advertising Design", "Multichannel Creative", "Layout Design",
+        "Typography", "Photography Direction", "Illustration", "Storyboarding", "Visual Storytelling",
+        "Script Interpretation", "Visual Reviews", "Brand Alignment", "Creative Execution",
+    ]
+    for ops_sk in known_ops:
+        if re.search(r"\b" + re.escape(ops_sk.lower()) + r"\b", source_to_use.lower()) and ops_sk not in func_skills:
+            func_skills.append(ops_sk)
+
+    tools_proficiency = []
+    known_tool_checks = [
+        ("Microsoft Excel", [r"\bexcel\b"]),
+        ("Microsoft Outlook", [r"\boutlook\b"]),
+        ("General PC proficiency", [r"\bpc proficiency\b"]),
+        ("Adobe Illustrator", [r"\billustrator\b", r"\badobe illustrator\b"]),
+        ("Adobe Photoshop", [r"\bphotoshop\b", r"\badobe photoshop\b"]),
+        ("Adobe After Effects", [r"\bafter effects\b", r"\badobe after effects\b"]),
+        ("Cinema 4D", [r"\bcinema 4d\b", r"\bc4d\b"]),
+        ("Autodesk Maya", [r"\bmaya\b", r"\bautodesk maya\b"]),
+        ("Adobe InDesign", [r"\bindesign\b", r"\badobe indesign\b"]),
+        ("Smoke", [r"\bsmoke\b", r"\bautodesk smoke\b"]),
+        ("Apple Keynote", [r"\bkeynote\b"]),
+        ("Microsoft PowerPoint", [r"\bpowerpoint\b", r"\bpowerpoint functionality\b"]),
+        ("Microsoft Word", [r"\bmicrosoft word\b", r"\bword\b"]),
+    ]
+    for tool_label, patterns in known_tool_checks:
+        if any(re.search(pat, source_to_use, re.I) for pat in patterns) and tool_label not in tools_proficiency:
+            tools_proficiency.append(tool_label)
+
+    soft_candidates = [
+        "Written Communication", "Verbal Communication", "Organization", "Prioritization",
+        "Multitasking", "Attention to Detail", "Adaptability", "Initiative",
+        "Problem Solving", "Root Cause Analysis", "Interpersonal Skills", "Flexibility",
+        "Active Listening", "Taking Direction", "Learning Agility", "Speed and Execution Orientation",
+        "Presentation Skills", "Leadership Presentation",
+    ]
+    soft_skills = [s for s in soft_candidates if re.search(r"\b" + re.escape(s.lower()) + r"\b", source_to_use.lower()) or any(w.lower() in source_to_use.lower() for w in s.split())]
+
+    edu_exp = []
+    if re.search(r"\bcollege degree\b", source_to_use, re.I):
+        edu_exp.append("College degree")
+    elif min_exp > 0:
+        edu_exp.append(f"{min_exp}+ years of experience")
+    if re.search(r"\bportfolio\b", source_to_use, re.I):
+        edu_exp.append("Portfolio demonstrating relevant creative work (Target brand expectations)")
+
+    op_constraints = []
+    if re.search(r"\bevening shift\b", source_to_use, re.I):
+        op_constraints.append("Evening shift flexibility based on business requirements")
+    if re.search(r"\bservice level\b|\bsla\b", source_to_use, re.I):
+        op_constraints.append("Assigned service-level expectations")
+    if re.search(r"\bvendor\b|\bmerchant\b", source_to_use, re.I):
+        op_constraints.append("Coordination across teams and external vendors")
+    if re.search(r"\bstaff augmentation\b", source_to_use, re.I):
+        op_constraints.append("Staff augmentation support; resources assist with non-core activities")
+    if re.search(r"\bproducer\b|\bdesigner\b", source_to_use, re.I):
+        op_constraints.append("Collaboration across Producers, Designers, and external resources")
+
+    categorized_reqs = CategorizedRequirements(
+        functional_domain_skills=func_skills,
+        tools_technical_proficiency=tools_proficiency,
+        behavioral_soft_skills=soft_skills,
+        education_experience=edu_exp,
+        operational_constraints=op_constraints,
+    )
+
     # 11. Inconsistency Detection
     inconsistencies = _detect_inconsistencies(source_to_use, title, domain_profile)
 
     # 12. 12-Section Structured Scope
+    is_ops = "operations" in domain_profile.get("default_domain", "").lower()
+    role_overview_text = (
+        f"The {title} role provides staff augmentation and business operational support within the "
+        f"{domain_profile.get('default_domain')} practice. Core focus encompasses {', '.join(clean_mandatory[:4])}."
+        if is_ops else
+        f"The {title} is responsible for driving end-to-end technical solution delivery, configuration, "
+        f"and workflow integration within the {domain_profile.get('default_domain')} practice. "
+        f"Requires {int(min_exp)}+ years of proven technical depth in {', '.join(clean_mandatory[:3])}."
+    )
+    business_context_text = (
+        f"Operating within {domain_profile.get('default_domain')}, this role ensures service-level expectations "
+        "are met through cross-functional vendor and merchant coordination."
+        if is_ops else
+        f"Operating within {domain_profile.get('default_domain')}, this role ensures business-critical "
+        "workflows are executed with high availability, strict compliance clocks, and auditable history."
+    )
+    technical_scope_text = (
+        f"Operational coordination and PC proficiency encompassing {', '.join(domain_profile.get('default_tools', ['Excel', 'Outlook']))}."
+        if is_ops else
+        f"Hands-on platform configuration encompassing {', '.join(domain_profile.get('default_tools', [])[:3])}, "
+        f"custom API integrations, business rules, and automated workflow triggers."
+    )
+    exp_req_text = (
+        "College degree or equivalent work experience (no mandatory minimum tenure required)"
+        if min_exp == 0 else
+        f"{int(min_exp)} - {int(max_exp)}+ Years of industry engineering experience"
+    )
+
     structured_scope = JDStructuredScope(
-        role_overview=(
-            f"The {title} is responsible for driving end-to-end technical solution delivery, configuration, "
-            f"and workflow integration within the {domain_profile.get('default_domain')} practice. "
-            f"Requires {int(min_exp)}+ years of proven technical depth in {', '.join(clean_mandatory[:3])}."
-        ),
-        business_context=(
-            f"Operating within {domain_profile.get('default_domain')}, this role ensures business-critical "
-            "workflows are executed with high availability, strict compliance clocks, and auditable history."
-        ),
-        technical_scope=(
-            f"Hands-on platform configuration encompassing {', '.join(domain_profile.get('default_tools', [])[:3])}, "
-            f"custom API integrations, business rules, and automated workflow triggers."
-        ),
+        role_overview=role_overview_text,
+        business_context=business_context_text,
+        technical_scope=technical_scope_text,
         core_responsibilities=core_resp,
         functional_responsibilities=func_resp,
         required_skills=clean_mandatory,
         preferred_skills=preferred_skills,
         domain_expertise=domain_profile.get("default_terms", []),
-        experience_requirements=f"{int(min_exp)} - {int(max_exp)}+ Years of industry engineering experience",
+        experience_requirements=exp_req_text,
         deliverables=[
+            "Verified and updated product catalog records adhering to data quality SLAs",
+            "Launch readiness signoffs and coordinated vendor deliverables",
+            "Continuous workflow process improvement and documentation",
+        ] if is_ops else [
             "Production-ready workflow automation modules",
             "Governed REST API integrations",
             "Comprehensive technical specification and runbook documentation",
@@ -571,6 +908,7 @@ def extract_deterministic_jd_intelligence(
         qualifications=qual_intel,
         structured_scope=structured_scope,
         boolean_queries=boolean_queries,
+        categorized_requirements=categorized_reqs,
         inconsistencies=inconsistencies,
         confidence_score=0.96,
         model_used="deterministic-intelligence-engine-v2",
@@ -612,6 +950,10 @@ def analyze_job_description_intelligence(
     if segmentation and segmentation.intelligence_data and not force_refresh:
         try:
             cached_data = segmentation.intelligence_data
+            cached_hash = cached_data.get("source_provenance", {}).get("source_sha256")
+            current_hash = hashlib.sha256(raw_text.encode("utf-8")).hexdigest()
+            if cached_hash and cached_hash != current_hash:
+                raise ValueError("Cached JD intelligence belongs to older source text.")
             result = JDIntelligenceResult.model_validate(cached_data)
             return result
         except Exception as err:
@@ -627,6 +969,10 @@ You are an expert Talent Intelligence Analyst. Extract deep, structured intellig
 Title: {title}
 Job Description Text:
 {raw_text[:3500]}
+
+Use only facts supported by the source text. Do not invent salary, benefits, qualifications, titles, skills, or experience.
+Job title alternatives must be genuine industry equivalents; never use examples from other jobs.
+For every alternative title or synonym, identify only a relationship supported by recruitment terminology.
 
 Return strictly valid JSON matching this exact structure:
 {{
@@ -744,6 +1090,8 @@ Return strictly valid JSON matching this exact structure:
         original_source_text=jd_doc.original_text if jd_doc else None,
         job_id=job_id,
     )
+    # Bind cached intelligence to the exact source JD text so revisions cannot reuse stale terms.
+    result.source_provenance["source_sha256"] = hashlib.sha256(raw_text.encode("utf-8")).hexdigest()
 
     # Step 3: Persist into Database & Synchronize Job Skills
     # Automatically synchronize extracted mandatory & preferred skills into Job record so downstream matching is enriched!
@@ -751,10 +1099,12 @@ Return strictly valid JSON matching this exact structure:
         job.required_skills = result.technical_skills.mandatory_skills
     if result.technical_skills.preferred_skills:
         job.preferred_skills = result.technical_skills.preferred_skills
-    if result.role_intelligence.min_experience_years:
+    if result.role_intelligence.min_experience_years is not None:
         job.min_experience_years = result.role_intelligence.min_experience_years
-    if result.role_intelligence.max_experience_years:
+    if result.role_intelligence.max_experience_years is not None:
         job.max_experience_years = result.role_intelligence.max_experience_years
+    if result.role_intelligence.department:
+        job.department = result.role_intelligence.department
 
     # Ensure segmentation record exists
     if not segmentation:
@@ -827,8 +1177,38 @@ Return strictly valid JSON matching this exact structure:
                 segmentation_id=segmentation.id,
                 category="key_responsibilities",
                 original_text=resp,
-                classification="Mandatory",
+                classification="Responsibility",
                 evidence=resp,
+                order_index=idx,
+                source_origin="ai_extracted",
+                is_approved=0,
+            ))
+            idx += 1
+
+        # Add operational constraints
+        for op in result.categorized_requirements.operational_constraints:
+            db.add(JobRequirement(
+                segmentation_id=segmentation.id,
+                category="operational_constraints",
+                original_text=op,
+                classification="Context",
+                normalized_skill=op,
+                evidence=op,
+                order_index=idx,
+                source_origin="ai_extracted",
+                is_approved=0,
+            ))
+            idx += 1
+
+        # Add education qualifications
+        for edu in result.categorized_requirements.education_experience:
+            db.add(JobRequirement(
+                segmentation_id=segmentation.id,
+                category="educational_qualifications",
+                original_text=edu,
+                classification="Mandatory",
+                normalized_skill=edu,
+                evidence=edu,
                 order_index=idx,
                 source_origin="ai_extracted",
                 is_approved=0,

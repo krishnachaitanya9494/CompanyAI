@@ -95,7 +95,7 @@ def list_candidates(
     results = []
     for cand in candidates:
         # Check text search matching candidate name, skills, or summary.
-        if search and search.strip():
+        if isinstance(search, str) and search.strip():
             s = search.lower().strip()
             matches_name = cand.name and s in cand.name.lower()
             matches_skills = any(s in str(sk).lower() for sk in (cand.skills or []))
@@ -104,23 +104,23 @@ def list_candidates(
                 continue
 
         # Check location filter when supplied.
-        if location:
-            if not cand.location or location.lower() not in cand.location.lower():
+        if isinstance(location, str) and location.strip():
+            if not cand.location or location.lower().strip() not in cand.location.lower():
                 continue
 
         # Check availability filter when supplied.
-        if availability:
-            if not cand.availability or availability.lower() not in cand.availability.lower():
+        if isinstance(availability, str) and availability.strip():
+            if not cand.availability or availability.lower().strip() not in cand.availability.lower():
                 continue
 
         # Check skill filter when supplied.
-        if skill:
-            if not cand.skills or not any(skill.lower() in str(sk).lower() for sk in cand.skills):
+        if isinstance(skill, str) and skill.strip():
+            if not cand.skills or not any(skill.lower().strip() in str(sk).lower() for sk in cand.skills):
                 continue
 
         # Check pipeline stage filter when supplied.
-        if stage:
-            if not cand.stage or stage.lower() != cand.stage.lower():
+        if isinstance(stage, str) and stage.strip():
+            if not cand.stage or stage.lower().strip() != cand.stage.lower().strip():
                 continue
 
         # Retrieve candidate's linked resumes and latest interview cleanly.

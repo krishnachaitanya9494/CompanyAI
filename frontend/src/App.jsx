@@ -8,6 +8,7 @@ import { ApprovalBanner } from './components/common/ApprovalBanner';
 import { PageTransition } from './components/common/PageTransition';
 import { LatticeLoader } from './components/reactbits/LatticeLoader';
 import { ErrorBoundary } from './components/common/ErrorBoundary';
+import { BlockedGovernanceView } from './components/common/BlockedGovernanceView';
 
 // Lazy-load page modules cleanly so initial bundle stays compact while preserving named exports.
 const DashboardPage = lazy(() => import('./pages/DashboardPage').then((m) => ({ default: m.DashboardPage })));
@@ -18,7 +19,7 @@ const RequestsPage = lazy(() => import('./pages/RequestsPage').then((m) => ({ de
 const InterviewsPage = lazy(() => import('./pages/InterviewsPage').then((m) => ({ default: m.InterviewsPage })));
 const PipelineKanbanPage = lazy(() => import('./pages/PipelineKanbanPage').then((m) => ({ default: m.PipelineKanbanPage })));
 const MatchingMatrixPage = lazy(() => import('./pages/MatchingMatrixPage').then((m) => ({ default: m.MatchingMatrixPage })));
-const JDResumeComparisonPage = lazy(() => import('./pages/JDResumeComparisonPage').then((m) => ({ default: m.JDResumeComparisonPage })));
+const JDResumeComparisonPage = lazy(() => import('./components/comparison/JDResumeComparisonPage').then((m) => ({ default: m.JDResumeComparisonPage })));
 const TalentPoolPage = lazy(() => import('./pages/TalentPoolPage').then((m) => ({ default: m.TalentPoolPage })));
 const ClientsPage = lazy(() => import('./pages/ClientsPage').then((m) => ({ default: m.ClientsPage })));
 const PlacementsPage = lazy(() => import('./pages/PlacementsPage').then((m) => ({ default: m.PlacementsPage })));
@@ -60,6 +61,9 @@ const VALID_TABS = new Set([
     : []),
 ]);
 
+// Set of tabs belonging to Governance & Analytics module.
+const GOVERNANCE_TABS = new Set(['analytics', 'approvals', 'agent_activity', 'notifications']);
+
 // Import local API access and adapters for persisted recruitment records.
 import { apiRequest, toActivity, toCandidate, toJob, toRequest } from './api';
 
@@ -68,6 +72,24 @@ import { approvalApi, candidateApi } from './api/client';
 
 // Export App root component managing application views, state, and interactive customizations.
 export default function App() {
+  // Governance & Analytics blocking policy state, persisted in localStorage and default to true (blocked).
+  const [isGovernanceBlocked, setIsGovernanceBlocked] = useState(() => {
+    if (typeof window === 'undefined') return true;
+    const stored = localStorage.getItem('companyai_governance_blocked');
+    return stored === null ? true : stored === 'true';
+  });
+
+  // Handler to toggle Governance & Analytics blocking status with local storage synchronization.
+  const handleToggleGovernanceBlocked = useCallback((nextState) => {
+    setIsGovernanceBlocked((prev) => {
+      const val = typeof nextState === 'boolean' ? nextState : !prev;
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('companyai_governance_blocked', String(val));
+      }
+      return val;
+    });
+  }, []);
+
   // Active navigation tab state, supporting optional ?tab= URL parameter for direct linking & refresh persistence.
   const [activeTab, setActiveTabState] = useState(() => {
     const urlTab = typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('tab') : null;
@@ -418,6 +440,15 @@ export default function App() {
     );
   };
 
+  // Delete a JD and remove its stale UI references after the backend confirms deletion.
+  const handleDeleteJob = async (jobToDelete) => {
+    await apiRequest(`/jobs/${jobToDelete.numeric_id || jobToDelete.id}?unlink_requests=true`, {
+      method: 'DELETE',
+    });
+    setJobs((prev) => prev.filter((job) => job.id !== jobToDelete.id));
+    setFocusedJobId((prev) => prev === jobToDelete.id ? null : prev);
+  };
+
   // Handler to refresh jobs list when a new job is created via manual upload or revision.
   const handleJobCreated = (newJob) => {
     // Format new job using toJob and prepend to state.
@@ -458,16 +489,23 @@ export default function App() {
 
   // Derive topbar title and subtitle dynamically based on active tab.
   const getHeaderMeta = () => {
+    if (isGovernanceBlocked && GOVERNANCE_TABS.has(activeTab)) {
+      return {
+        title: 'Governance & Analytics (Blocked)',
+        subtitle: 'Access restricted by administrator policy. Unblock in Settings to view.',
+      };
+    }
+
     switch (activeTab) {
       case 'dashboard':
         return {
           // Explicit dashboard title matching enterprise ATS requirements.
           title: 'Dashboard',
-          subtitle: 'Talent metrics, dynamic pipeline status, and Nemotron AI activity',
+          subtitle: 'Talent metrics, dynamic pipeline status, and CompanyAI activity',
         };
       case 'assistant':
         return {
-          title: 'Nemotron AI Recruitment Assistant',
+          title: 'CompanyAI Recruitment Assistant',
           subtitle: 'Natural language candidate search, tool calling, and grounded JD matching QA',
         };
       case 'candidates':
@@ -602,6 +640,7 @@ export default function App() {
         onToggleCollapse={() => setIsSidebarCollapsed((prev) => !prev)}
         theme={theme}
         onToggleTheme={handleToggleTheme}
+        isGovernanceBlocked={isGovernanceBlocked}
       />
 
       {/* Main Content Area */}
@@ -727,7 +766,7 @@ export default function App() {
 
           {ENABLE_TALENT_INTELLIGENCE && activeTab === 'hiring_difficulty' && <HiringDifficultyPage />}
 
-          {/* Nemotron AI Assistant Tab */}
+          {/* CompanyAI Assistant Tab */}
           {activeTab === 'assistant' && (
             <AIAssistantPage
               jobs={jobs}
@@ -735,6 +774,7 @@ export default function App() {
               requests={requests}
               onSelectCandidate={handleOpenCandidateModal}
               onSelectJob={handleJumpToJob}
+              onNavigateToComparison={handleNavigateToComparison}
             />
           )}
 
@@ -760,6 +800,7 @@ export default function App() {
               onUpdateJob={handleUpdateJob}
               onUpdateCandidate={handleUpdateCandidate}
               onCreateJob={handleJobCreated}
+              onDeleteJob={handleDeleteJob}
               onRefreshApprovals={refreshApprovals}
               initialJobId={focusedJobId}
               onSelectCandidateDirect={handleOpenCandidateModal}
@@ -863,41 +904,51 @@ export default function App() {
             />
           )}
 
-          {/* Analytics & Reporting Tab */}
-          {activeTab === 'analytics' && (
-            <AnalyticsPage
-              candidates={candidates}
-              jobs={jobs}
-              requests={requests}
-              resumeDiscovery={apiState.discovery}
+          {/* Governance & Analytics Tab Guard */}
+          {isGovernanceBlocked && GOVERNANCE_TABS.has(activeTab) ? (
+            <BlockedGovernanceView
+              onGoToSettings={() => setActiveTab('settings')}
+              onGoToDashboard={() => setActiveTab('dashboard')}
             />
+          ) : (
+            <>
+              {/* Analytics & Reporting Tab */}
+              {activeTab === 'analytics' && (
+                <AnalyticsPage
+                  candidates={candidates}
+                  jobs={jobs}
+                  requests={requests}
+                  resumeDiscovery={apiState.discovery}
+                />
+              )}
+
+              {/* Governance & Action Approvals Tab */}
+              {activeTab === 'approvals' && (
+                <ApprovalsPage
+                  onApproveAction={handleApproveAction}
+                  onRejectAction={handleRejectAction}
+                  onRequestChangesAction={handleRequestChangesAction}
+                  onNavigateCandidate={handleOpenCandidateModal}
+                  onNavigateJob={handleJumpToJob}
+                />
+              )}
+
+              {/* Agent Activity Observability Tab */}
+              {activeTab === 'agent_activity' && <AgentActivityPage />}
+
+              {/* Notifications & Activity Timeline Tab */}
+              {activeTab === 'notifications' && (
+                <NotificationsPage
+                  pendingApprovals={pendingApprovals}
+                  onNavigateTab={setActiveTab}
+                  onSelectCandidate={handleOpenCandidateModal}
+                  onSelectJob={handleJumpToJob}
+                />
+              )}
+            </>
           )}
 
-          {/* Governance & Action Approvals Tab */}
-          {activeTab === 'approvals' && (
-            <ApprovalsPage
-              onApproveAction={handleApproveAction}
-              onRejectAction={handleRejectAction}
-              onRequestChangesAction={handleRequestChangesAction}
-              onNavigateCandidate={handleOpenCandidateModal}
-              onNavigateJob={handleJumpToJob}
-            />
-          )}
-
-          {/* Agent Activity Observability Tab */}
-          {activeTab === 'agent_activity' && <AgentActivityPage />}
-
-          {/* Notifications & Activity Timeline Tab */}
-          {activeTab === 'notifications' && (
-            <NotificationsPage
-              pendingApprovals={pendingApprovals}
-              onNavigateTab={setActiveTab}
-              onSelectCandidate={handleOpenCandidateModal}
-              onSelectJob={handleJumpToJob}
-            />
-          )}
-
-          {/* Settings & Administration Tab */}
+          {/* Settings & Administration Tab (Standalone & Always Accessible) */}
           {activeTab === 'settings' && (
             <SettingsPage
               theme={theme}
@@ -905,6 +956,8 @@ export default function App() {
               density={density}
               onChangeDensity={setDensity}
               resumeDiscovery={apiState.discovery}
+              isGovernanceBlocked={isGovernanceBlocked}
+              onToggleGovernanceBlocked={handleToggleGovernanceBlocked}
             />
           )}
               </Suspense>

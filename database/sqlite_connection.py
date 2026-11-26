@@ -32,6 +32,9 @@ engine = create_engine(
     DATABASE_URL,
     connect_args=SQLITE_CONNECT_ARGS,
     pool_pre_ping=True,
+    pool_size=20,
+    max_overflow=20,
+    pool_timeout=30,
 )
 
 # Enable SQLite foreign-key enforcement and busy timeout on each newly opened DBAPI connection.

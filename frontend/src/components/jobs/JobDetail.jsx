@@ -7,12 +7,15 @@ import { CustomSelect } from '../common/CustomSelect';
 
 // Import AI Intelligence panel for hiring difficulty, supply/demand & sourcing recommendations.
 import { AIIntelligencePanel } from './AIIntelligencePanel';
+// Import the dedicated approved-JD posting and distribution workspace.
+import { JobPostingWorkspace } from './JobPostingWorkspace';
 
 // Import MatchingCandidates subcomponent.
 import { MatchingCandidates } from './MatchingCandidates';
+import { InterviewKitWorkspace } from './InterviewKitWorkspace';
 
 // Import approvalApi & intelligence APIs for JD approval & AI insights.
-import { approvalApi, intelligenceApi, aiApi } from '../../api/client';
+import { approvalApi, intelligenceApi, aiApi, jobApi } from '../../api/client';
 
 // Import icons from lucide-react.
 import {
@@ -54,11 +57,17 @@ import {
   Maximize2,
   Minimize2,
   Database,
+  Send,
+  Save,
+  Loader2,
+  Download,
 } from 'lucide-react';
 
 // Sourcing Company Categories with visual styles and icons
 export const COMPANY_CATEGORIES = [
   { id: 'all', label: 'All Companies', icon: Building2 },
+  { id: 'agency', label: 'Advertising & Creative Studios', icon: Sparkles, color: 'text-pink-700 dark:text-pink-300 bg-pink-50 dark:bg-pink-950/60 border-pink-200/80 dark:border-pink-800' },
+  { id: 'retail', label: 'Retail & E-Commerce Hubs', icon: Target, color: 'text-cyan-700 dark:text-cyan-300 bg-cyan-50 dark:bg-cyan-950/60 border-cyan-200/80 dark:border-cyan-800' },
   { id: 'oem', label: 'Product & OEMs', icon: Crown, color: 'text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/60 border-emerald-200/80 dark:border-emerald-800' },
   { id: 'big4', label: 'Big 4 & Advisory', icon: Building, color: 'text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-950/60 border-blue-200/80 dark:border-blue-800' },
   { id: 'gsi', label: 'Global System Integrators', icon: Globe, color: 'text-purple-700 dark:text-purple-300 bg-purple-50 dark:bg-purple-950/60 border-purple-200/80 dark:border-purple-800' },
@@ -225,6 +234,73 @@ const STACK_COMPANY_ECOSYSTEMS = [
       { name: 'Societe Generale GSC', category: 'gcc', tier: 'Capital Markets GCC', location: 'Bangalore / Chennai', description: 'Derivatives trading IT, risk computing & Java application support' },
     ],
   },
+
+  // 8. Retail Item & Product Data Operations / Merchandising / Catalog Operations
+  {
+    keywords: ['item setup', 'item launches', 'product data', 'item data', 'data quality', 'data remediation', 'merchant', 'retail operations', 'merchandising', 'catalog operations', 'item coe', 'sku'],
+    ecosystemName: 'Retail & Merchandising Product Data Operations',
+    companies: [
+      { name: 'Target in India', category: 'gcc', tier: 'Global Retail GCC Leader', location: 'Bangalore', description: 'Core merchandising operations, item setup CoE, data quality & Minneapolis coordination' },
+      { name: 'Walmart Global Tech', category: 'gcc', tier: 'Global Retail GCC', location: 'Bangalore / Chennai', description: 'Item data management, catalog quality, and supplier integration operations' },
+      { name: 'Amazon India', category: 'gcc', tier: 'E-Commerce Tech & Ops', location: 'Bangalore / Hyderabad / Chennai', description: 'Catalog operations, item launches, vendor management & retail catalog quality' },
+      { name: 'Tesco Bengaluru (HSC)', category: 'gcc', tier: 'Retail GCC Hub', location: 'Bangalore', description: 'Commercial product data, merchandising support & supplier coordination' },
+      { name: 'Lowe\'s India', category: 'gcc', tier: 'Home Improvement Retail GCC', location: 'Bangalore', description: 'Product data management, pricing, catalog setup & vendor onboarding' },
+      { name: 'Wayfair India', category: 'gcc', tier: 'E-Commerce Retail Hub', location: 'Bangalore', description: 'Catalog data operations, supplier coordination & product launch management' },
+      { name: 'Genpact', category: 'gsi', tier: 'Retail Operations BPO', location: 'Bangalore / Gurgaon / Hyderabad', description: 'Retail merchandising operations, item master data & vendor support' },
+      { name: 'WNS Global Services', category: 'gsi', tier: 'Retail & Consumer BPO', location: 'Pune / Mumbai / Bangalore', description: 'Product data management, digital cataloging & merchandising workflows' },
+      { name: 'Infosys BPM', category: 'gsi', tier: 'Retail Services Unit', location: 'Bangalore / Pune / Hyderabad', description: 'Item setup, vendor operations & master data governance' },
+      { name: 'Accenture Operations', category: 'gsi', tier: 'Global Operations Leader', location: 'Bangalore / Mumbai / Gurgaon', description: 'Supply chain & merchandising operations support' },
+    ],
+  },
+  // 9. Creative, Advertising, Graphic Design & Media Production Ecosystem
+  {
+    keywords: ['art director', 'creative director', 'graphic design', 'advertising design', 'creative operations', 'media production', 'storyboarding', 'typography', 'adobe illustrator', 'photoshop', 'after effects', 'cinema 4d', 'autodesk maya', 'creative_design', 'in-store marketing', 'ism', 'brand storytelling'],
+    ecosystemName: 'Creative, Advertising, Graphic Design & Media Production',
+    companies: [
+      { name: 'Target in India', category: 'gcc', tier: 'Global Retail Creative CoE', location: 'Bangalore', description: 'In-store marketing (ISM), packaging, digital media design & creative operations CoE' },
+      { name: 'Ogilvy India (WPP)', category: 'agency', tier: 'Global Advertising Agency', location: 'Bangalore / Mumbai / Gurgaon', description: 'Creative direction, brand campaigns, advertising design & media execution' },
+      { name: 'Leo Burnett (Publicis)', category: 'agency', tier: 'Creative Agency Network', location: 'Bangalore / Mumbai / Gurgaon', description: 'Art direction, visual storytelling, multimedia design & brand campaigns' },
+      { name: 'WPP India', category: 'agency', tier: 'Global Media & Advertising Network', location: 'Bangalore / Mumbai / Delhi', description: 'Integrated advertising, packaging, digital production & multi-channel media' },
+      { name: 'Publicis Sapient', category: 'agency', tier: 'Digital Creative Experience', location: 'Bangalore / Gurgaon / Noida', description: 'Digital experience design, art direction, and omnichannel creative production' },
+      { name: 'Dentsu Creative', category: 'agency', tier: 'Global Creative Network', location: 'Bangalore / Mumbai / Gurgaon', description: 'Brand advertising, entertainment media, 3D motion & visual communication' },
+      { name: 'McCann Worldgroup', category: 'agency', tier: 'Global Creative Agency', location: 'Bangalore / Mumbai / Delhi', description: 'Integrated brand campaigns, art direction, packaging & advertising design' },
+      { name: 'Schbang', category: 'agency', tier: 'Integrated Creative & Digital Studio', location: 'Bangalore / Mumbai / Delhi', description: 'End-to-end creative production, graphic design, 3D motion & brand marketing' },
+      { name: 'Lowe Lintas (MullenLowe)', category: 'agency', tier: 'Brand Strategy & Creative', location: 'Bangalore / Mumbai / Delhi', description: 'Iconic consumer brand campaigns, art direction & creative leadership' },
+      { name: 'Amazon Advertising', category: 'gcc', tier: 'Creative & Media Production Hub', location: 'Bangalore / Chennai', description: 'Global ad creatives, brand storytelling, video production & motion design' },
+    ],
+  },
+  // 10. CAD, BIM, Digital Engineering & Architectural Systems
+  {
+    keywords: ['cad', 'autocad', 'microstation', 'revit', 'bim', 'bim 360', 'bluebeam', 'drafting', 'building engineered systems', 'architectural', 'store planning', 'remodel', 'digital engineering'],
+    ecosystemName: 'CAD, BIM, Digital Engineering & Architectural Systems',
+    companies: [
+      // Tier 1: Software OEMs & Dedicated Retail Hubs
+      { name: 'Autodesk India', category: 'oem', tier_level: 'Tier 1', tier: 'Tier-1 Design & CAD Software OEM', location: 'Bangalore', description: 'Platform creator of AutoCAD, Revit, and BIM 360 cloud collaboration', overlap_skills: ['AutoCAD', 'Autodesk Revit', 'BIM 360', 'Navisworks'], why_recommended: 'Platform creators with authoritative architectural modeling proficiency; primary source for lead CAD/BIM standards drafters.' },
+      { name: 'Bentley Systems', category: 'oem', tier_level: 'Tier 1', tier: 'Tier-1 Infrastructure Engineering OEM', location: 'Pune / Kolkata / Chennai', description: 'Core engineering and development center for MicroStation and ProjectWise', overlap_skills: ['MicroStation', 'ProjectWise', 'OpenBuildings', 'Plant CAD'], why_recommended: 'Direct creator of MicroStation; deepest talent pool for infrastructure drafting and precision digital building models.' },
+      { name: 'Trimble India', category: 'oem', tier_level: 'Tier 1', tier: 'Tier-1 BIM & Geospatial Tech OEM', location: 'Chennai / Pune', description: 'Building construction modeling, Tekla Structures, and BIM software engineering', overlap_skills: ['Tekla Structures', 'Trimble Connect', 'BIM Modeling', 'Revit Interoperability'], why_recommended: 'World-class building construction modeling and 3D detailing engineers with hands-on BIM implementation.' },
+      { name: 'Target India (Target GCC)', category: 'gcc', tier_level: 'Tier 1', tier: 'Tier-1 Retail Space & Remodel Hub', location: 'Bangalore', description: 'Direct in-house retail asset protection, store remodel documentation, and BIM facility planning', overlap_skills: ['Retail Store Remodel CAD', 'Commercial Space Planning', 'Revit BIM', 'Floorplan Drafting'], why_recommended: 'Dedicated retail space planning and store remodel CAD drafting team with 100% direct domain workflow overlap.' },
+      { name: 'Lowe\'s India', category: 'gcc', tier_level: 'Tier 1', tier: 'Tier-1 Retail Facility & Store CAD Hub', location: 'Bangalore', description: 'Retail store design, commercial space planning, and remodel CAD drafting operations', overlap_skills: ['Retail Store Layout CAD', 'Fixture Planning', 'Revit Commercial BIM', 'AutoCAD Drafting'], why_recommended: 'Large-scale retail space planning, store fixture layout, and architectural remodel drafting CoE.' },
+      { name: 'Walmart Global Tech', category: 'gcc', tier_level: 'Tier 1', tier: 'Tier-1 Retail Space Planning & Tech GCC', location: 'Bangalore / Chennai', description: 'Global retail facility planning, store layout CAD modeling, and digital building operations', overlap_skills: ['Global Retail Remodel CAD', 'Commercial Store Layouts', 'BIM Documentation', 'Building Systems'], why_recommended: 'Enterprise retail architectural remodel planning team maintaining global high-volume store floorplans.' },
+
+      // Tier 2: Premier Engineering Consultancies, Big 4 & GSIs
+      { name: 'L&T Technology Services (LTTS)', category: 'gsi', tier_level: 'Tier 2', tier: 'Tier-2 Premier Digital Engineering Provider', location: 'Bangalore / Vadodara / Chennai', description: 'Leading engineering design services with deep AutoCAD, Revit, and facility design practices', overlap_skills: ['AutoCAD Plant 3D', 'Revit MEP', 'Facility Engineering', 'Architectural Drafting'], why_recommended: 'Established engineering services provider with a massive bench of multi-disciplinary building drafting specialists.' },
+      { name: 'Tata Elxsi', category: 'gsi', tier_level: 'Tier 2', tier: 'Tier-2 Engineering Design Specialist', location: 'Bangalore / Pune / Trivandrum', description: 'Architectural rendering, spatial design, and digital engineering documentation', overlap_skills: ['Architectural 3D Rendering', 'Spatial Design', 'AutoCAD Drafting', 'Digital Engineering Documentation'], why_recommended: 'Design-led engineering consultancy delivering commercial space modeling and high-precision spatial layouts.' },
+      { name: 'Cyient', category: 'gsi', tier_level: 'Tier 2', tier: 'Tier-2 Geospatial & Engineering Design Leader', location: 'Hyderabad / Bangalore / Noida', description: 'Large-scale utility, facility documentation, CAD drafting, and spatial modeling CoE', overlap_skills: ['Utilities CAD', 'MicroStation Drafting', 'Large-scale Facility Documentation', 'As-Built CAD'], why_recommended: 'High-volume technical drafting center with rigorous quality checks and multi-platform CAD drafting benches.' },
+      { name: 'Quest Global', category: 'gsi', tier_level: 'Tier 2', tier: 'Tier-2 Global Engineering Services', location: 'Bangalore / Trivandrum / Pune', description: 'Mechanical, electrical, and commercial building systems engineering design', overlap_skills: ['Commercial Building Systems', 'Mechanical CAD', 'AutoCAD 2D/3D', 'Revit Documentation'], why_recommended: 'Comprehensive building engineered systems practice with strong electrical, mechanical, and architectural drafters.' },
+      { name: 'WSP India', category: 'big4', tier_level: 'Tier 2', tier: 'Tier-2 Global Engineering & Design Consultancy', location: 'Noida / Bangalore / Mumbai', description: 'Premier international building engineering, BIM modeling, and architectural drafting firm', overlap_skills: ['Revit BIM Modeling', 'Commercial Building Systems', 'Structural CAD', 'Architectural Detailing'], why_recommended: 'Premier international engineering firm working on landmark commercial structures and multi-trade BIM models.' },
+      { name: 'Jacobs India', category: 'big4', tier_level: 'Tier 2', tier: 'Tier-2 Global Technical & Infrastructure Services', location: 'Mumbai / Hyderabad / Bangalore', description: 'Comprehensive commercial building engineered systems, Revit BIM, and project drafting', overlap_skills: ['Comprehensive Building Systems', 'Revit BIM Coordination', 'AutoCAD', 'MicroStation'], why_recommended: 'Elite global architectural engineering advisory with deep expertise in commercial facilities and building systems.' },
+      { name: 'AtkinsRéalis', category: 'big4', tier_level: 'Tier 2', tier: 'Tier-2 Engineering, Design & Project Management', location: 'Bangalore / Gurgaon / Mumbai', description: 'High-end architectural modeling, MicroStation drafting, and BIM asset coordination', overlap_skills: ['MicroStation Drafting', 'Revit Asset Coordination', 'Architectural Space Planning', 'BIM Compliance'], why_recommended: 'High-rigor architectural and structural design consultancy with deep MicroStation and Revit coordination specialists.' },
+      { name: 'Neilsoft', category: 'gsi', tier_level: 'Tier 2', tier: 'Tier-2 Digital Engineering & BIM Services', location: 'Pune / Bangalore / Ahmedabad', description: 'Multi-disciplinary engineering design, BIM modeling, and architectural drafting services', overlap_skills: ['Architectural CAD Drafting', 'BIM 360', 'Revit Modeling', 'Clash Detection'], why_recommended: 'Focused digital engineering practice with specialized delivery teams in commercial architectural modeling and documentation.' },
+      { name: 'Pinnacle Infotech', category: 'oem', tier_level: 'Tier 2', tier: 'Tier-2 Global BIM Solutions Leader', location: 'Durgapur / Kolkata / Jaipur', description: 'Global building information modeling and pre-construction engineering services', overlap_skills: ['BIM Engineering', 'Revit Detailing', 'Pre-construction CAD', 'MEP Modeling'], why_recommended: 'Dedicated global BIM drafting powerhouse delivering high-speed, detailed architectural and MEP models.' },
+
+      // Tier 3: Specialized Boutique CAD Providers & Scan-to-BIM Studios
+      { name: 'Cadsys India', category: 'gsi', tier_level: 'Tier 3', tier: 'Tier-3 Utility CAD & Legacy Conversion Specialist', location: 'Hyderabad', description: 'Specialized drafting services for utility network mapping, 2D drafting, and CAD conversion', overlap_skills: ['2D AutoCAD Drafting', 'Paper-to-CAD Conversion', 'Utility Mapping', 'Floorplan Redlines'], why_recommended: 'Boutique CAD drafting vendor providing cost-effective drafters skilled in rapid redline markups and legacy drawing updates.' },
+      { name: 'Techture', category: 'gsi', tier_level: 'Tier 3', tier: 'Tier-3 BIM Coordination & Scan-to-BIM Studio', location: 'Nagpur / Indore / Pune', description: 'Boutique BIM consulting firm specializing in point-cloud to BIM and clash detection', overlap_skills: ['Scan-to-BIM', 'Point Cloud Modeling', 'Revit As-Built Documentation', 'Clash Resolution'], why_recommended: 'Specialized BIM boutique focused on existing building documentation, as-built surveys, and remodel drafting.' },
+      { name: 'Magnasoft', category: 'gsi', tier_level: 'Tier 3', tier: 'Tier-3 Geospatial & Spatial CAD Drafting', location: 'Bangalore / Hyderabad', description: 'Spatial data engineering, architectural floorplan digitization, and GIS mapping', overlap_skills: ['AutoCAD Drafting', 'Spatial Floorplan Modeling', 'GIS Mapping', 'Building CAD Assets'], why_recommended: 'Regional drafting center with skilled drafters accustomed to high-volume commercial asset mapping.' },
+      { name: 'Epitome AEC', category: 'gsi', tier_level: 'Tier 3', tier: 'Tier-3 Architectural 3D Modeling & Detailing', location: 'Noida / Delhi', description: 'AEC drafting services specializing in commercial shop drawings and interior architectural CAD', overlap_skills: ['Commercial Interior CAD', 'Architectural Detailing', 'Revit Families', 'AutoCAD Layouts'], why_recommended: 'Fast-turnaround AEC detailing studio providing agile AutoCAD and Revit drafters for architectural renovations.' },
+      { name: 'Desirazu Associates', category: 'gsi', tier_level: 'Tier 3', tier: 'Tier-3 Commercial Building & MEP CAD Design', location: 'Bangalore / Chennai', description: 'Building services consultancy providing commercial MEP, HVAC, and building drawing services', overlap_skills: ['Building Engineered Systems', 'AutoCAD MEP', 'Commercial Layout Drafting', 'Detail Drawings'], why_recommended: 'Specialist building engineering studio with experienced drafters for commercial building services.' },
+    ],
+  },
 ];
 
 // Fallback ecosystem if JD does not match specific vertical keywords
@@ -252,51 +328,6 @@ const DEFAULT_COMPANY_ECOSYSTEM = {
   ],
 };
 
-// Skill and technology adjacency knowledge catalog matching the backend taxonomy service.
-const SKILL_ADJACENCY_CATALOG = {
-  // Oracle & Enterprise EPM / ERP
-  'oracle epm': ['Oracle FCCS', 'Smart View', 'Hyperion Financial Management', 'Essbase', 'Calculation Manager', 'PBCS', 'Financial Consolidation', 'Data Integration', 'Groovy Rules', 'EPM Automate'],
-  'hyperion planning': ['Oracle EPM', 'Essbase', 'Smart View', 'Calculation Scripts', 'Dimension Hierarchies', 'PBCS', 'Financial Consolidation', 'FDMEE', 'EPM Automate'],
-  'pbcs': ['Oracle EPM', 'Hyperion Planning', 'Calculation Scripts', 'Dimension Hierarchies', 'Smart View', 'Essbase', 'Data Management', 'Business Rules'],
-  'oracle fccs': ['Oracle EPM', 'Financial Consolidation', 'Smart View', 'Hyperion Financial Management', 'HFM', 'Financial Close', 'Intercompany Eliminations'],
-  'smart view': ['Oracle EPM', 'Hyperion Planning', 'Essbase', 'Oracle FCCS', 'Financial Reporting', 'Ad-hoc Analysis'],
-  'essbase': ['Hyperion Planning', 'Calculation Scripts', 'MaxL', 'ASO / BSO', 'Smart View', 'Oracle EPM', 'Outline Load Utility'],
-
-  // Siemens & PLM
-  'siemens teamcenter': ['BMIDE', 'Active Workspace', 'AWC', 'ITK', 'Teamcenter PLM', 'CAD Integration', 'Workflow Handlers', 'Dispatcher'],
-  'teamcenter': ['BMIDE', 'Active Workspace', 'ITK', 'Teamcenter PLM', 'Siemens PLM', 'Workflow Handlers', 'Dispatcher'],
-  'bmide': ['Siemens Teamcenter', 'Active Workspace', 'ITK', 'Data Modeling', 'Schema Extension'],
-  'active workspace': ['Siemens Teamcenter', 'BMIDE', 'AWC', 'JavaScript', 'HTML5', 'Teamcenter Architecture'],
-
-  // SAP Ecosystem
-  'sap': ['SAP CPI', 'Integration Suite', 'SAP S/4HANA', 'ABAP', 'IDoc', 'BAPI', 'REST APIs', 'SAP PI/PO'],
-  'sap cpi': ['Integration Suite', 'SAP PI/PO', 'Groovy Scripts', 'XSLT', 'Cloud Platform Integration', 'SAP S/4HANA', 'OData', 'BAPI'],
-  'sap security': ['GRC Access Control', 'S/4HANA Security', 'Fiori Security', 'Role Design', 'SOD Analysis', 'PFCG'],
-
-  // Java & Backend
-  'java': ['Spring Boot', 'Microservices', 'REST APIs', 'Hibernate', 'Kafka', 'Docker', 'Kubernetes', 'SQL', 'Maven'],
-  'spring boot': ['Java', 'Microservices', 'REST APIs', 'Hibernate', 'Docker', 'Kubernetes', 'JPA', 'PostgreSQL'],
-  'microservices': ['Spring Boot', 'Docker', 'Kubernetes', 'REST APIs', 'Kafka', 'AWS', 'API Gateway'],
-
-  // .NET
-  '.net': ['C#', 'ASP.NET Core', 'SQL Server', 'Azure', 'Microservices', 'Entity Framework', 'REST APIs'],
-  'c#': ['.NET', 'ASP.NET Core', 'SQL Server', 'Azure', 'LINQ'],
-
-  // Python & AI
-  'python': ['FastAPI', 'Django', 'SQLAlchemy', 'Docker', 'Pandas', 'PostgreSQL', 'AWS', 'PyTorch'],
-  'fastapi': ['Python', 'Pydantic', 'SQLAlchemy', 'Docker', 'PostgreSQL', 'AsyncIO', 'REST APIs'],
-
-  // Testing & QA
-  'selenium': ['Automation Testing', 'Java', 'Python', 'TestNG', 'Cucumber', 'Page Object Model', 'API Testing'],
-  'automation testing': ['Selenium', 'Playwright', 'Cypress', 'API Testing', 'Java', 'Python', 'CI/CD'],
-
-  // Cloud & DevOps
-  'aws': ['Docker', 'Kubernetes', 'Terraform', 'CI/CD', 'Lambda', 'EC2', 'CloudFormation'],
-  'azure': ['Docker', 'Kubernetes', 'CI/CD', 'Azure DevOps', 'Terraform', '.NET'],
-  'docker': ['Kubernetes', 'CI/CD', 'AWS', 'Linux', 'Containers', 'Microservices'],
-  'kubernetes': ['Docker', 'Helm', 'CI/CD', 'AWS', 'EKS', 'Microservices'],
-};
-
 // Export JobDetail component for displaying deep specifications and matched applicants with customizable status.
 export const JobDetail = ({
   job,
@@ -319,6 +350,11 @@ export const JobDetail = ({
 }) => {
   const [approvalSentMsg, setApprovalSentMsg] = useState('');
   const [naukriStrictAnd, setNaukriStrictAnd] = useState(true);
+  const [searchDepth, setSearchDepth] = useState('balanced');
+  const [searchHistory, setSearchHistory] = useState([]);
+  const [generatedQueries, setGeneratedQueries] = useState(null);
+  const [booleanLoading, setBooleanLoading] = useState(false);
+  const [booleanError, setBooleanError] = useState('');
   const [includePreferredInBoolean, setIncludePreferredInBoolean] = useState(false);
   const [includeCompaniesInBoolean, setIncludeCompaniesInBoolean] = useState(false);
   const [includeLocationInBoolean, setIncludeLocationInBoolean] = useState(false);
@@ -331,6 +367,7 @@ export const JobDetail = ({
   const [selectedCompanies, setSelectedCompanies] = useState([]);
   const [excludedCompanies, setExcludedCompanies] = useState([]);
   const [companyCategoryFilter, setCompanyCategoryFilter] = useState('all'); // 'all' | 'oem' | 'big4' | 'gsi' | 'gcc'
+  const [companyTierFilter, setCompanyTierFilter] = useState('all'); // 'all' | 'tier1' | 'tier2' | 'tier3'
   const [companySearchQuery, setCompanySearchQuery] = useState('');
   const [customCompanies, setCustomCompanies] = useState([]);
   const [customCompanyInput, setCustomCompanyInput] = useState('');
@@ -344,6 +381,16 @@ export const JobDetail = ({
   const [companyViewMode, setCompanyViewMode] = useState('cards');
   // Talent Sourcing Strategy selector state
   const [sourcingStrategy, setSourcingStrategy] = useState('tier1');
+
+  // Dynamic Target Companies from backend
+  const [targetCompaniesData, setTargetCompaniesData] = useState(null);
+  const [targetCompaniesLoading, setTargetCompaniesLoading] = useState(false);
+  const [targetCompaniesError, setTargetCompaniesError] = useState('');
+
+  // Conversational Boolean Customization with AI
+  const [aiQueryInstruction, setAiQueryInstruction] = useState('');
+  const [aiQueryCustomizing, setAiQueryCustomizing] = useState(false);
+  const [aiQueryExplanation, setAiQueryExplanation] = useState('');
 
   // Custom Query Editor state
   const [isCustomMode, setIsCustomMode] = useState(false);
@@ -362,13 +409,17 @@ export const JobDetail = ({
     boolean: true, // open in Talent Sourcing
     matches: true, // open in Candidate Matching
     aiIntelligence: true, // open in AI Intelligence
+    jobPosting: true, // open in Job Posting & Distribution
   });
 
   // Scope Tab: 'structured' | 'original'
   const [scopeTab, setScopeTab] = useState('structured');
 
-  // Active view tab filter: 'specifications' | 'sourcing' | 'candidates' (Default to JD Specifications)
+  // Active view tab filter: one of the five JD workspace sections.
   const [activeViewFilter, setActiveViewFilter] = useState('specifications');
+  const scoredMatchValues = matchingCandidates
+    .map((candidate) => candidate.matchScore ?? candidate.match_score)
+    .filter((score) => score != null);
 
   const toggleSection = (key) => {
     setOpenSections((prev) => ({
@@ -389,6 +440,9 @@ export const JobDetail = ({
     }
     if (activeViewFilter === 'aiIntelligence') {
       return Boolean(openSections.aiIntelligence);
+    }
+    if (activeViewFilter === 'jobPosting') {
+      return Boolean(openSections.jobPosting);
     }
     return Object.values(openSections).every(Boolean);
   }, [openSections, activeViewFilter]);
@@ -418,6 +472,11 @@ export const JobDetail = ({
         ...prev,
         aiIntelligence: nextState,
       }));
+    } else if (activeViewFilter === 'jobPosting') {
+      setOpenSections((prev) => ({
+        ...prev,
+        jobPosting: nextState,
+      }));
     }
   };
 
@@ -439,6 +498,11 @@ export const JobDetail = ({
         ...prev,
         aiIntelligence: true,
       }));
+    } else if (filterId === 'jobPosting') {
+      setOpenSections((prev) => ({
+        ...prev,
+        jobPosting: true,
+      }));
     } else if (filterId === 'specifications') {
       setOpenSections((prev) => ({
         ...prev,
@@ -454,6 +518,7 @@ export const JobDetail = ({
     if (activeViewFilter === 'sourcing') return key === 'boolean' || key === 'companies';
     if (activeViewFilter === 'candidates') return key === 'matches';
     if (activeViewFilter === 'aiIntelligence') return key === 'aiIntelligence';
+    if (activeViewFilter === 'jobPosting') return key === 'jobPosting';
     return false;
   };
 
@@ -474,10 +539,118 @@ export const JobDetail = ({
     setIsCustomMode(false);
     setCustomQueryText('');
     setCandidateKeywordFilter('');
+    setSearchHistory([]);
+    setGeneratedQueries(null);
+    setBooleanError('');
+    setTargetCompaniesData(null);
+    setTargetCompaniesError('');
+    setAiQueryInstruction('');
+    setAiQueryExplanation('');
+
+    if (job?.id) {
+      jobApi.getBooleanSearchHistory(job.numeric_id || job.id)
+        .then((rows) => setSearchHistory(Array.isArray(rows) ? rows : []))
+        .catch(() => setSearchHistory([]));
+
+      // Fetch dynamic target company recommendations from backend catalog
+      setTargetCompaniesLoading(true);
+      jobApi.getTargetCompanies(job.numeric_id || job.id)
+        .then((data) => {
+          setTargetCompaniesData(data);
+          if (data?.primary_strategy) {
+            setSourcingStrategy(data.primary_strategy);
+          }
+        })
+        .catch((err) => {
+          setTargetCompaniesError(err?.message || 'Failed to load target companies');
+        })
+        .finally(() => {
+          setTargetCompaniesLoading(false);
+        });
+    }
   }, [job?.id]);
 
-  // Derive JD-related target sourcing companies from the job's title, department & skill stack.
+  useEffect(() => {
+    if (!job?.id || isCustomMode) return;
+    let cancelled = false;
+    setBooleanLoading(true);
+    setBooleanError('');
+    jobApi.generateBooleanQueries(job.numeric_id || job.id, {
+      search_mode: searchDepth,
+      custom_mandatory: job.requiredSkills?.length ? job.requiredSkills : null,
+      custom_preferred: job.preferredSkills?.length ? job.preferredSkills : null,
+      custom_exclusions: includeExclusionsInBoolean ? ['Intern', 'Trainee', 'Student', 'Fresher'] : [],
+      target_companies: includeCompaniesInBoolean
+        ? (selectedCompanies.length ? selectedCompanies : allCompanies.slice(0, 4).map((item) => item.name || item))
+        : [],
+    }).then((response) => {
+      if (!cancelled) setGeneratedQueries(response);
+    }).catch((error) => {
+      if (!cancelled) setBooleanError(error?.message || 'Boolean generation failed');
+    }).finally(() => {
+      if (!cancelled) setBooleanLoading(false);
+    });
+    return () => { cancelled = true; };
+  }, [
+    job?.id,
+    job?.numeric_id,
+    searchDepth,
+    isCustomMode,
+    includeExclusionsInBoolean,
+    includeCompaniesInBoolean,
+    selectedCompanies,
+  ]);
+
+  // Handle Conversational Boolean Customization with Ollama AI
+  const handleAIQueryCustomizationSubmit = async (e) => {
+    e?.preventDefault();
+    const inst = aiQueryInstruction.trim();
+    if (!inst || !job?.id) return;
+    setAiQueryCustomizing(true);
+    setAiQueryExplanation('');
+    try {
+      const res = await jobApi.customizeBooleanQueries(job.numeric_id || job.id, {
+        instruction: inst,
+        search_mode: searchDepth,
+        custom_mandatory: job.requiredSkills?.length ? job.requiredSkills : null,
+        custom_preferred: job.preferredSkills?.length ? job.preferredSkills : null,
+        custom_exclusions: includeExclusionsInBoolean ? ['Intern', 'Trainee', 'Student', 'Fresher'] : [],
+        target_companies: includeCompaniesInBoolean
+          ? (selectedCompanies.length ? selectedCompanies : allCompanies.slice(0, 4).map((item) => item.name || item))
+          : [],
+      });
+      if (res) {
+        let newQuery = '';
+        if (sourcingPlatform === 'naukri' && res.naukri?.query) {
+          newQuery = res.naukri.query;
+        } else if (sourcingPlatform === 'linkedin' && res.linkedin?.query) {
+          newQuery = res.linkedin.query;
+        } else if (sourcingPlatform === 'xray' && res.google_xray?.query) {
+          newQuery = res.google_xray.query;
+        } else if (res.customized_query) {
+          newQuery = res.customized_query;
+        } else if (res.naukri?.query) {
+          newQuery = res.naukri.query;
+        }
+        if (newQuery) {
+          setCustomQueryText(newQuery);
+          setIsCustomMode(true);
+          setAiQueryExplanation(res.customization_applied || res.explanation || 'Customization applied successfully');
+        }
+      }
+    } catch (err) {
+      console.warn('AI Boolean customization failed:', err.message);
+      setAiQueryExplanation(`Customization failed: ${err.message}`);
+    } finally {
+      setAiQueryCustomizing(false);
+    }
+  };
+
+  // Derive JD-related target sourcing companies: dynamic backend recommendations win over static fallback
   const relatedCompanyObjects = useMemo(() => {
+    if (targetCompaniesData?.companies && targetCompaniesData.companies.length > 0) {
+      return targetCompaniesData.companies;
+    }
     if (!job) return [];
     const haystack = [
       job.title || '',
@@ -507,7 +680,7 @@ export const JobDetail = ({
     }
 
     return Array.from(matchedMap.values());
-  }, [job]);
+  }, [job, targetCompaniesData]);
 
   // Combined company objects list (derived + custom added)
   const allCompanyObjects = useMemo(() => {
@@ -526,11 +699,27 @@ export const JobDetail = ({
     return allCompanyObjects.map((c) => c.name);
   }, [allCompanyObjects]);
 
-  // Filtered company objects based on active category tab & search query
+  // Filtered company objects based on active category tab, tier filter & search query
   const filteredCompanyObjects = useMemo(() => {
     let list = allCompanyObjects;
     if (companyCategoryFilter !== 'all') {
       list = list.filter((c) => c.category === companyCategoryFilter);
+    }
+    if (companyTierFilter !== 'all') {
+      list = list.filter((c) => {
+        const lvl = (c.tier_level || '').toLowerCase();
+        const tierDesc = (c.tier || '').toLowerCase();
+        if (companyTierFilter === 'tier1') {
+          return lvl === 'tier 1' || tierDesc.includes('tier 1') || tierDesc.includes('tier-1') || c.category === 'oem' || c.category === 'gcc';
+        }
+        if (companyTierFilter === 'tier2') {
+          return lvl === 'tier 2' || tierDesc.includes('tier 2') || tierDesc.includes('tier-2') || c.category === 'gsi' || c.category === 'big4';
+        }
+        if (companyTierFilter === 'tier3') {
+          return lvl === 'tier 3' || tierDesc.includes('tier 3') || tierDesc.includes('tier-3') || tierDesc.includes('boutique') || tierDesc.includes('specialist') || tierDesc.includes('regional');
+        }
+        return true;
+      });
     }
     if (companySearchQuery.trim()) {
       const q = companySearchQuery.trim().toLowerCase();
@@ -539,91 +728,12 @@ export const JobDetail = ({
           c.name.toLowerCase().includes(q) ||
           (c.location && c.location.toLowerCase().includes(q)) ||
           (c.tier && c.tier.toLowerCase().includes(q)) ||
+          (c.tier_level && c.tier_level.toLowerCase().includes(q)) ||
           (c.description && c.description.toLowerCase().includes(q))
       );
     }
     return list;
-  }, [allCompanyObjects, companyCategoryFilter, companySearchQuery]);
-
-  // Generate tailored technical interview screening questions and evaluation scorecard from JD
-  const screeningKit = useMemo(() => {
-    if (!job) return { questions: [], greenFlags: [], redFlags: [] };
-
-    const skills = job.requiredSkills || [];
-    const preferred = job.preferredSkills || [];
-    const primarySkill = skills[0] || job.title || 'Core Tech Stack';
-    const secondarySkill = skills[1] || preferred[0] || 'System Architecture';
-    const tertiarySkill = skills[2] || preferred[1] || 'Integration & Testing';
-
-    const questions = [
-      {
-        id: 'q1',
-        category: 'Architecture & Implementation',
-        question: `Can you walk through your hands-on experience designing and delivering enterprise solutions using ${primarySkill}? What was the most complex workflow, calculation, or configuration you owned end-to-end?`,
-        expectedAnswer: `Look for concrete configuration details, specific tool versions/modules used, and genuine hands-on ownership rather than high-level consulting buzzwords.`,
-        skillTag: primarySkill,
-      },
-      {
-        id: 'q2',
-        category: 'Practical Problem Solving & Tuning',
-        question: `When working with ${secondarySkill}, how do you approach performance tuning, script optimization, or resolving production discrepancies under tight deadlines?`,
-        expectedAnswer: `Candidate should outline systematic debugging methodology, log analysis, isolated test environments, and proactive root-cause prevention.`,
-        skillTag: secondarySkill,
-      },
-      {
-        id: 'q3',
-        category: 'Integration & Governance',
-        question: `In projects involving ${tertiarySkill}, how do you ensure seamless data consistency, error handling, and alignment with client/business stakeholders?`,
-        expectedAnswer: `Demonstrates end-to-end SDLC lifecycle maturity, release governance, and cross-functional team coordination.`,
-        skillTag: tertiarySkill,
-      },
-    ];
-
-    const greenFlags = [
-      `Hands-on production delivery with ${skills.slice(0, 3).join(', ') || 'the core tech stack'}`,
-      `Quantifiable project impact (e.g., performance tuning, automated business cycles, reduced errors)`,
-      `Clear, structured articulation of architectural trade-offs and configuration decisions`,
-      `Demonstrates familiarity with modern best practices, version upgrades, and integration testing`,
-    ];
-
-    const redFlags = [
-      `Generic resume buzzwords without ability to explain underlying configuration or code logic`,
-      `Claiming lead/senior seniority without hands-on scripting, debugging, or troubleshooting ownership`,
-      `Frequent short tenures without demonstrating project lifecycle completion`,
-      `Inability to explain why a specific architecture or tool was selected over alternatives`,
-    ];
-
-    return { questions, greenFlags, redFlags };
-  }, [job]);
-
-  const handleCopyInterviewKit = () => {
-    if (!screeningKit) return;
-    const text = [
-      `📋 AI INTERVIEW SCREENING KIT: ${job?.title || 'Job Position'}`,
-      `Department: ${job?.department || 'Engineering'} | Experience Level: ${job?.experience || '5-8 Years'} | Location: ${job?.location || 'Remote/Hybrid'}`,
-      `Mandatory Competencies: ${(job?.requiredSkills || []).join(', ')}`,
-      ``,
-      `==================================================`,
-      `1. CORE TECHNICAL SCREENING QUESTIONS`,
-      `==================================================`,
-      ...screeningKit.questions.map(
-        (q, idx) =>
-          `[Q${idx + 1}] (${q.category} • Target Skill: ${q.skillTag})\n${q.question}\n▶ What to look for (Expected Signals):\n${q.expectedAnswer}\n`
-      ),
-      `==================================================`,
-      `2. CANDIDATE EVALUATION SCORECARD`,
-      `==================================================`,
-      `🟢 GREEN FLAGS (Strong Match Signals):`,
-      ...screeningKit.greenFlags.map((gf) => `  ✓ ${gf}`),
-      ``,
-      `🔴 RED FLAGS (Watch-outs & Risks):`,
-      ...screeningKit.redFlags.map((rf) => `  ⚠ ${rf}`),
-    ].join('\n');
-
-    navigator.clipboard?.writeText(text);
-    setCopiedKit(true);
-    setTimeout(() => setCopiedKit(false), 2000);
-  };
+  }, [allCompanyObjects, companyCategoryFilter, companyTierFilter, companySearchQuery]);
 
   // Derive plain keywords list without Boolean operators (ideal for simple search bars, tags, and standard ATS)
   const plainKeywordsList = useMemo(() => {
@@ -703,110 +813,117 @@ export const JobDetail = ({
   const autoBooleanQuery = useMemo(() => {
     if (!job) return '';
 
-    // If pre-computed AI Boolean query exists in intelligenceData and user hasn't enabled optional modifier flags:
-    const hasModifierFlags = includePreferredInBoolean || includeCompaniesInBoolean || includeLocationInBoolean || includeNoticeInBoolean || includeSeniorityInBoolean || includeExclusionsInBoolean;
-    const aiQueries = job.intelligenceData?.boolean_queries;
-    if (aiQueries && !hasModifierFlags) {
-      if (sourcingPlatform === 'keywords') {
-        const kw = aiQueries.simple_keywords?.[keywordDelimiter] || formattedPlainKeywords;
-        if (kw) return kw;
-      } else if (sourcingPlatform === 'naukri' && aiQueries.naukri?.query) {
-        return aiQueries.naukri.query;
-      } else if (sourcingPlatform === 'linkedin' && aiQueries.linkedin?.query) {
-        return aiQueries.linkedin.query;
-      } else if (sourcingPlatform === 'xray' && aiQueries.google_xray?.query) {
-        return aiQueries.google_xray.query;
-      }
-    }
-
-    // If Plain Keywords mode is active, return formatted plain keywords string
-    if (sourcingPlatform === 'keywords') {
-      return formattedPlainKeywords;
-    }
-
     const quote = (term) => {
       const cleaned = String(term || '').trim();
       if (!cleaned) return '';
       return /\s|[\/\-+&]/.test(cleaned) ? `"${cleaned}"` : cleaned;
     };
 
-    const parts = [];
+    const aiQueries = generatedQueries;
+    const jobIdMatches = aiQueries && (
+      String(aiQueries.job_id) === String(job.numeric_id || job.id) ||
+      Number(aiQueries.job_id) === Number(job.numeric_id || job.id)
+    );
 
-    // Title / Role keywords
-    const titleWords = (job.title || '')
-      .split(/[\/,|()-]+/)
-      .map((t) => t.trim())
-      .filter((t) => t.length > 2)
-      .slice(0, 3)
-      .map(quote)
-      .filter(Boolean);
-    if (titleWords.length > 0) {
-      parts.push(`(${titleWords.join(' OR ')})`);
+    // If Plain Keywords mode is active, return formatted plain keywords string
+    if (sourcingPlatform === 'keywords') {
+      if (jobIdMatches && aiQueries.simple_keywords?.[keywordDelimiter]) {
+        return aiQueries.simple_keywords[keywordDelimiter];
+      }
+      return formattedPlainKeywords;
     }
 
-    // Seniority / Lead focus (optional)
-    if (includeSeniorityInBoolean) {
-      parts.push('("Lead" OR "Senior" OR "Staff" OR "Principal" OR "Architect")');
-    }
-
-    // Mandatory Skills
-    const mandatory = (job.requiredSkills || []).map(quote).filter(Boolean);
-    if (mandatory.length > 0) {
-      parts.push(`(${mandatory.join(naukriStrictAnd ? ' AND ' : ' OR ')})`);
-    }
-
-    // Preferred Skills (optional)
-    if (includePreferredInBoolean) {
-      const preferred = (job.preferredSkills || []).map(quote).filter(Boolean);
-      if (preferred.length > 0) {
-        parts.push(`(${preferred.join(' OR ')})`);
+    // Determine platform base query
+    let baseQuery = '';
+    if (jobIdMatches) {
+      if (sourcingPlatform === 'naukri' && aiQueries.naukri?.query) {
+        if (searchDepth === 'strict' && aiQueries.advanced_strategies?.strict_and?.query) {
+          baseQuery = aiQueries.advanced_strategies.strict_and.query;
+        } else if (searchDepth === 'broad' && aiQueries.advanced_strategies?.broad_or?.query) {
+          baseQuery = aiQueries.advanced_strategies.broad_or.query;
+        } else {
+          baseQuery = aiQueries.naukri.query;
+        }
+      } else if (sourcingPlatform === 'linkedin' && aiQueries.linkedin?.query) {
+        if (searchDepth === 'strict' && aiQueries.advanced_strategies?.strict_and?.query) {
+          baseQuery = aiQueries.advanced_strategies.strict_and.query;
+        } else if (searchDepth === 'broad' && aiQueries.advanced_strategies?.broad_or?.query) {
+          baseQuery = aiQueries.advanced_strategies.broad_or.query;
+        } else {
+          baseQuery = aiQueries.linkedin.query;
+        }
+      } else if (sourcingPlatform === 'xray' && aiQueries.google_xray?.query) {
+        if (searchDepth === 'strict' && aiQueries.advanced_strategies?.strict_and?.query) {
+          baseQuery = `site:linkedin.com/in ${aiQueries.advanced_strategies.strict_and.query}`;
+        } else if (searchDepth === 'broad' && aiQueries.advanced_strategies?.broad_or?.query) {
+          baseQuery = `site:linkedin.com/in ${aiQueries.advanced_strategies.broad_or.query}`;
+        } else {
+          baseQuery = aiQueries.google_xray.query;
+        }
       }
     }
 
-    // Target Companies (optional)
-    const activeCompanies =
-      selectedCompanies.length > 0 ? selectedCompanies : allCompanies.slice(0, 4);
+    // Deterministic fallback if API queries not yet returned
+    if (!baseQuery) {
+      const parts = [];
+      const titleWords = (job.title || '')
+        .split(/[\/,|()-]+/)
+        .map((t) => t.trim())
+        .filter((t) => t.length > 2)
+        .slice(0, 3)
+        .map(quote)
+        .filter(Boolean);
+      if (titleWords.length > 0) {
+        parts.push(`(${titleWords.join(' OR ')})`);
+      }
+      const mandatory = (job.requiredSkills || []).map(quote).filter(Boolean);
+      if (mandatory.length > 0) {
+        parts.push(`(${mandatory.join(naukriStrictAnd ? ' AND ' : ' OR ')})`);
+      }
+      baseQuery = parts.join(' AND ');
+      if (sourcingPlatform === 'xray') {
+        baseQuery = `site:linkedin.com/in ${baseQuery}`;
+      }
+    }
+
+    // Apply active modifier flags on top of base query
+    let modifiedQuery = baseQuery;
+    if (includeSeniorityInBoolean && !modifiedQuery.includes('"Senior"') && !modifiedQuery.includes('"Lead"')) {
+      modifiedQuery += ' AND ("Lead" OR "Senior" OR "Staff" OR "Principal" OR "Architect")';
+    }
+    if (includePreferredInBoolean && job.preferredSkills?.length) {
+      const preferred = job.preferredSkills.map(quote).filter(Boolean);
+      if (preferred.length && !modifiedQuery.includes(preferred[0])) {
+        modifiedQuery += ` AND (${preferred.join(' OR ')})`;
+      }
+    }
+    const activeCompanies = selectedCompanies.length > 0 ? selectedCompanies : allCompanies.slice(0, 4);
     if (includeCompaniesInBoolean && activeCompanies.length > 0) {
-      parts.push(`(${activeCompanies.map(quote).join(' OR ')})`);
-    }
-
-    // Location filter (optional)
-    if (includeLocationInBoolean && job.location) {
-      const locList = job.location
-        .split(/[\/,]+/)
-        .map((l) => l.trim())
-        .filter((l) => l && !/india/i.test(l))
-        .map(quote);
-      if (locList.length > 0) {
-        parts.push(`(${locList.join(' OR ')})`);
+      const compStr = activeCompanies.map((c) => typeof c === 'string' ? quote(c) : quote(c.name)).filter(Boolean).join(' OR ');
+      if (compStr && !modifiedQuery.includes(activeCompanies[0]?.name || activeCompanies[0])) {
+        modifiedQuery += ` AND (${compStr})`;
       }
     }
-
-    // Immediate Notice booster (optional)
-    if (includeNoticeInBoolean) {
-      parts.push('("Immediate" OR "15 Days" OR "30 Days" OR "Serving Notice")');
+    if (includeLocationInBoolean && job.location && !modifiedQuery.includes(job.location)) {
+      const locList = job.location.split(/[\/,]+/).map((l) => l.trim()).filter((l) => l && !/india/i.test(l)).map(quote);
+      if (locList.length) {
+        modifiedQuery += ` AND (${locList.join(' OR ')})`;
+      }
     }
-
-    let coreQuery = parts.join(' AND ');
-
-    // Exclusion filter: drop interns, trainees, students, freshers (optional)
-    if (includeExclusionsInBoolean) {
-      coreQuery += ' NOT ("Intern" OR "Trainee" OR "Student" OR "Fresher")';
+    if (includeNoticeInBoolean && !modifiedQuery.includes('Immediate')) {
+      modifiedQuery += ' AND ("Immediate" OR "15 Days" OR "30 Days" OR "Serving Notice")';
     }
-
-    // Excluded companies (non-poach / off-limits protection)
+    if (includeExclusionsInBoolean && !modifiedQuery.includes('Intern')) {
+      modifiedQuery += ' NOT ("Intern" OR "Trainee" OR "Student" OR "Fresher")';
+    }
     if (excludedCompanies.length > 0) {
       const excludedQuoted = excludedCompanies.map(quote).filter(Boolean);
       if (excludedQuoted.length > 0) {
-        coreQuery += ` NOT (${excludedQuoted.join(' OR ')})`;
+        modifiedQuery += ` NOT (${excludedQuoted.join(' OR ')})`;
       }
     }
 
-    if (sourcingPlatform === 'xray') {
-      return `site:linkedin.com/in ${coreQuery}`;
-    }
-
-    return coreQuery;
+    return modifiedQuery;
   }, [
     job,
     naukriStrictAnd,
@@ -820,42 +937,27 @@ export const JobDetail = ({
     selectedCompanies,
     excludedCompanies,
     allCompanies,
+    searchDepth,
     formattedPlainKeywords,
+    generatedQueries,
+    keywordDelimiter,
   ]);
 
   // Active query: user's custom edited string if in Custom Mode, otherwise AI auto-generated.
   const activeBooleanQuery = isCustomMode ? customQueryText : autoBooleanQuery;
 
-  // Derive smart keyword suggestions from catalog based on JD skills & current query tokens
+  // Derive smart keyword suggestions from backend adjacent skills pipeline
   const suggestedKeywords = useMemo(() => {
     if (!job) return [];
-    const suggestions = new Set();
     const queryLower = (activeBooleanQuery || '').toLowerCase();
+    const adjacentList = generatedQueries?.adjacent_skills || job.intelligenceData?.adjacent_skills || [];
 
-    const currentSkills = [
-      ...(job.requiredSkills || []),
-      ...(job.preferredSkills || []),
-    ];
-
-    const searchKeys = [
-      ...currentSkills.map((s) => s.toLowerCase()),
-      ...(job.title || '').toLowerCase().split(/[\s,/()]+/).filter((w) => w.length > 2),
-    ];
-
-    searchKeys.forEach((key) => {
-      Object.entries(SKILL_ADJACENCY_CATALOG).forEach(([catKey, adjList]) => {
-        if (key.includes(catKey) || catKey.includes(key)) {
-          adjList.forEach((adj) => {
-            if (!queryLower.includes(adj.toLowerCase())) {
-              suggestions.add(adj);
-            }
-          });
-        }
-      });
-    });
-
-    return Array.from(suggestions).slice(0, 10);
-  }, [job, activeBooleanQuery]);
+    return adjacentList.filter((item) => {
+      const skillName = typeof item === 'string' ? item : item.skill;
+      if (!skillName) return false;
+      return !queryLower.includes(skillName.toLowerCase());
+    }).slice(0, 10);
+  }, [job, activeBooleanQuery, generatedQueries]);
 
   // Dynamically find relatable stored JDs based on active query tokens and tech stack
   const relatableJDs = useMemo(() => {
@@ -910,8 +1012,10 @@ export const JobDetail = ({
       .slice(0, 3);
   }, [allJobs, job?.id, activeBooleanQuery]);
 
-  // Append a single recommended keyword to the query
-  const handleAddKeywordToQuery = (keyword) => {
+  // Append a single recommended keyword or structured adjacent skill to the query
+  const handleAddKeywordToQuery = (kwOrItem) => {
+    const keyword = typeof kwOrItem === 'string' ? kwOrItem : kwOrItem?.skill;
+    if (!keyword) return;
     const formatted = /\s|[\/\-+&]/.test(keyword) ? `"${keyword}"` : keyword;
     const snippet = ` AND ${formatted}`;
     if (!isCustomMode) {
@@ -926,8 +1030,13 @@ export const JobDetail = ({
   const handleAddAllSuggestedKeywords = () => {
     if (!suggestedKeywords.length) return;
     const additions = suggestedKeywords
-      .map((k) => (/\s|[\/\-+&]/.test(k) ? `"${k}"` : k))
+      .map((item) => {
+        const k = typeof item === 'string' ? item : item?.skill;
+        return /\s|[\/\-+&]/.test(k) ? `"${k}"` : k;
+      })
+      .filter(Boolean)
       .join(' AND ');
+    if (!additions) return;
     const snippet = ` AND (${additions})`;
     if (!isCustomMode) {
       setCustomQueryText(activeBooleanQuery ? `${activeBooleanQuery}${snippet}` : additions);
@@ -1094,6 +1203,267 @@ export const JobDetail = ({
     setExcludedCompanies((prev) => prev.filter((c) => c !== companyName));
   };
 
+  const handleExportCompaniesExcel = (exportOnlyFiltered = false) => {
+    const listToExport = exportOnlyFiltered ? filteredCompanyObjects : allCompanyObjects;
+    if (!listToExport || listToExport.length === 0) return;
+
+    const jobTitle = job?.title || 'Requisition';
+    const jobCode = job?.job_code || (job?.id ? `Job #${job.id}` : 'Job');
+    const jobLocation = job?.location || 'India / Remote';
+    const ecosystemName = targetCompaniesData?.ecosystem_name || (job?.title ? `${job.title} Sourcing Ecosystem` : 'Corporate Sourcing Ecosystem');
+    const strategyName = targetCompaniesData?.primary_strategy || 'Direct Industry Experience';
+    const strategyRationale = targetCompaniesData?.strategy_rationale || 'Target leading platform partners, engineering consultancies, and enterprise GCCs.';
+    const dateStr = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+
+    const categoryMap = {
+      product: 'Product & OEMs',
+      oem: 'Product & OEMs',
+      gsi: 'Global System Integrators',
+      big4: 'Big 4 & Advisory',
+      advisory: 'Big 4 & Advisory',
+      agency: 'Advertising & Creative Studios',
+      retail: 'Retail & E-Commerce Hubs',
+      gcc: 'Enterprise GCCs & Hubs',
+    };
+
+    let tableRows = '';
+    listToExport.forEach((co, idx) => {
+      let status = 'Suggested';
+      let statusBg = '#EEF2FF';
+      let statusColor = '#3730A3';
+      if (selectedCompanies.includes(co.name)) {
+        status = 'Targeted';
+        statusBg = '#DCFCE7';
+        statusColor = '#166534';
+      } else if (excludedCompanies.includes(co.name)) {
+        status = 'Off-Limits';
+        statusBg = '#FFE4E6';
+        statusColor = '#9F1239';
+      }
+
+      const catLabel = categoryMap[co.category] || co.category || 'General';
+      const tierLvl = co.tier_level || (co.tier?.toLowerCase().includes('tier 1') || co.tier?.toLowerCase().includes('tier-1') || co.category === 'oem' || co.category === 'gcc' ? 'Tier 1' : (co.tier?.toLowerCase().includes('tier 2') || co.tier?.toLowerCase().includes('tier-2') ? 'Tier 2' : 'Tier 3'));
+      const tierColor = tierLvl.includes('1') ? '#4338CA' : (tierLvl.includes('2') ? '#0284C7' : '#7C3AED');
+      let skillsStr = Array.isArray(co.overlap_skills) && co.overlap_skills.length > 0 ? co.overlap_skills.join(', ') : '';
+      if (!skillsStr && job?.requiredSkills && Array.isArray(job.requiredSkills)) {
+        skillsStr = job.requiredSkills.slice(0, 5).join(', ');
+      }
+      const reasonStr = co.why_recommended || co.recommendation_reason || co.reason || co.description || '';
+      const overviewStr = co.description || '';
+      const rowBg = idx % 2 === 0 ? '#FFFFFF' : '#F8FAFC';
+
+      tableRows += `
+        <tr style="background-color: ${rowBg}; height: 26pt;">
+          <td style="border: 1px solid #CBD5E1; text-align: center; font-weight: bold; color: #64748B; font-size: 10pt;">${idx + 1}</td>
+          <td style="border: 1px solid #CBD5E1; font-weight: bold; color: #0F172A; font-size: 10.5pt; padding: 6px 10px;">${co.name}</td>
+          <td style="border: 1px solid #CBD5E1; color: #334155; font-size: 10pt; padding: 6px 10px;">${catLabel}</td>
+          <td style="border: 1px solid #CBD5E1; text-align: center; font-weight: bold; color: ${tierColor}; font-size: 10pt; padding: 6px 8px;">${tierLvl}</td>
+          <td style="border: 1px solid #CBD5E1; color: #475569; font-size: 10pt; padding: 6px 10px;">${co.tier || 'Industry Peer'}</td>
+          <td style="border: 1px solid #CBD5E1; color: #334155; font-size: 10pt; padding: 6px 10px;">${co.location || jobLocation}</td>
+          <td style="border: 1px solid #CBD5E1; text-align: center; padding: 6px 10px;">
+            <span style="background-color: ${statusBg}; color: ${statusColor}; font-weight: bold; font-size: 9.5pt; padding: 3px 8px; border-radius: 4px;">
+              ${status}
+            </span>
+          </td>
+          <td style="border: 1px solid #CBD5E1; text-align: center; font-size: 10pt; font-weight: bold; color: #047857;">${co.confidence || 'High'}</td>
+          <td style="border: 1px solid #CBD5E1; color: #1E293B; font-size: 10pt; padding: 6px 10px;">${skillsStr}</td>
+          <td style="border: 1px solid #CBD5E1; color: #334155; font-size: 9.5pt; padding: 6px 10px; line-height: 1.35;">${reasonStr}</td>
+          <td style="border: 1px solid #CBD5E1; color: #475569; font-size: 9.5pt; padding: 6px 10px; line-height: 1.35;">${overviewStr}</td>
+        </tr>
+      `;
+    });
+
+    const htmlContent = `
+      <html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">
+      <head>
+        <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+        <!--[if gte mso 9]>
+        <xml>
+          <x:ExcelWorkbook>
+            <x:ExcelWorksheets>
+              <x:ExcelWorksheet>
+                <x:Name>Target Sourcing Pools</x:Name>
+                <x:WorksheetOptions>
+                  <x:DisplayGridlines/>
+                  <x:FreezePanes/>
+                  <x:FrozenNoSplit/>
+                  <x:SplitHorizontal>6</x:SplitHorizontal>
+                  <x:TopRowBottomPane>6</x:TopRowBottomPane>
+                  <x:ActivePane>2</x:ActivePane>
+                  <x:AutoFilter x:Range="A6:K6"/>
+                </x:WorksheetOptions>
+              </x:ExcelWorksheet>
+            </x:ExcelWorksheets>
+          </x:ExcelWorkbook>
+        </xml>
+        <![endif]-->
+        <style>
+          body { font-family: Calibri, 'Segoe UI', Arial, sans-serif; }
+          table { border-collapse: collapse; width: 100%; }
+          th { font-family: Calibri, 'Segoe UI', Arial, sans-serif; }
+          td { font-family: Calibri, 'Segoe UI', Arial, sans-serif; vertical-align: middle; }
+        </style>
+      </head>
+      <body>
+        <table>
+          <!-- 1. Executive Title Banner -->
+          <tr style="height: 34pt;">
+            <th colspan="11" style="background-color: #1E293B; color: #FFFFFF; font-size: 15pt; font-weight: bold; text-align: left; padding: 8px 14px; border: 1px solid #0F172A;">
+              TALENT SOURCING INTELLIGENCE &bull; TARGET COMPANIES SPREADSHEET
+            </th>
+          </tr>
+
+          <!-- 2. Requisition Metadata Bar -->
+          <tr style="height: 22pt;">
+            <td colspan="11" style="background-color: #F1F5F9; color: #0F172A; font-size: 11pt; font-weight: bold; padding: 5px 14px; border: 1px solid #CBD5E1;">
+              Position: <span style="color: #4338CA;">${jobTitle}</span> &nbsp;|&nbsp; 
+              Requisition Code: <span style="color: #475569;">${jobCode}</span> &nbsp;|&nbsp; 
+              Target Location: <span style="color: #475569;">${jobLocation}</span> &nbsp;|&nbsp; 
+              Export Date: <span style="color: #475569;">${dateStr}</span>
+            </td>
+          </tr>
+
+          <!-- 3. Sourcing Strategy Bar -->
+          <tr style="height: 22pt;">
+            <td colspan="11" style="background-color: #F8FAFC; color: #334155; font-size: 10.5pt; padding: 5px 14px; border: 1px solid #CBD5E1;">
+              Corporate Sourcing Ecosystem: <strong>${ecosystemName}</strong> &nbsp;|&nbsp; 
+              Recommended Headhunting Strategy: <strong>${strategyName}</strong>
+            </td>
+          </tr>
+
+          <!-- 4. Strategy Rationale -->
+          <tr style="height: 20pt;">
+            <td colspan="11" style="background-color: #FFFFFF; color: #64748B; font-size: 9.5pt; font-style: italic; padding: 4px 14px; border: 1px solid #CBD5E1;">
+              Strategy Rationale: ${strategyRationale} &nbsp;&bull;&nbsp; Total Target Companies: ${listToExport.length}
+            </td>
+          </tr>
+
+          <!-- 5. Blank Separator -->
+          <tr style="height: 6pt;"><td colspan="11" style="background-color: #FFFFFF; border: none;"></td></tr>
+
+          <!-- 6. Stylized Column Headings (Frozen at top with AutoFilter) -->
+          <tr style="background-color: #0F172A; color: #FFFFFF; height: 32pt; font-size: 11pt;" x:autofilter="all">
+            <th style="border: 1px solid #334155; padding: 8px 6px; width: 45px; text-align: center;">#</th>
+            <th style="border: 1px solid #334155; padding: 8px 12px; width: 230px; text-align: left;">Target Company</th>
+            <th style="border: 1px solid #334155; padding: 8px 12px; width: 170px; text-align: left;">Category</th>
+            <th style="border: 1px solid #334155; padding: 8px 10px; width: 100px; text-align: center;">Tier Level</th>
+            <th style="border: 1px solid #334155; padding: 8px 12px; width: 220px; text-align: left;">Tier & Focus</th>
+            <th style="border: 1px solid #334155; padding: 8px 12px; width: 180px; text-align: left;">Target Locations</th>
+            <th style="border: 1px solid #334155; padding: 8px 12px; width: 130px; text-align: center;">Sourcing Status</th>
+            <th style="border: 1px solid #334155; padding: 8px 10px; width: 100px; text-align: center;">Confidence</th>
+            <th style="border: 1px solid #334155; padding: 8px 12px; width: 250px; text-align: left;">JD Overlap Skills</th>
+            <th style="border: 1px solid #334155; padding: 8px 12px; width: 340px; text-align: left;">Why Recommended / Headhunting Strategy</th>
+            <th style="border: 1px solid #334155; padding: 8px 12px; width: 340px; text-align: left;">Company Overview</th>
+          </tr>
+
+          <!-- 7. Data Rows -->
+          ${tableRows}
+        </table>
+      </body>
+      </html>
+    `;
+
+    const blob = new Blob([htmlContent], { type: 'application/vnd.ms-excel;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    const sanitizedJobTitle = (job?.title || 'Job').replace(/[^a-zA-Z0-9_-]/g, '_');
+    const fileDate = new Date().toISOString().split('T')[0];
+    link.href = url;
+    link.setAttribute('download', `Target_Companies_${sanitizedJobTitle}_${fileDate}.xls`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
+  const handleExportCompaniesCSV = (exportOnlyFiltered = false) => {
+    const listToExport = exportOnlyFiltered ? filteredCompanyObjects : allCompanyObjects;
+    if (!listToExport || listToExport.length === 0) return;
+
+    const escapeCsv = (val) => {
+      if (val === null || val === undefined) return '""';
+      const str = String(val).replace(/"/g, '""');
+      return `"${str}"`;
+    };
+
+    const headers = [
+      '#',
+      'Company Name',
+      'Category',
+      'Tier Level',
+      'Tier & Focus',
+      'Target Locations',
+      'Sourcing Status',
+      'Confidence',
+      'JD Overlap Skills',
+      'Why Recommended / Headhunting Strategy',
+      'Company Overview',
+      'Corporate Sourcing Ecosystem',
+      'Requisition / Job Title',
+      'Job Code',
+    ];
+
+    const categoryMap = {
+      product: 'Product & OEMs',
+      oem: 'Product & OEMs',
+      gsi: 'Global System Integrators',
+      big4: 'Big 4 & Advisory',
+      advisory: 'Big 4 & Advisory',
+      agency: 'Advertising & Creative Studios',
+      retail: 'Retail & E-Commerce Hubs',
+      gcc: 'Enterprise GCCs & Hubs',
+    };
+
+    const rows = listToExport.map((co, idx) => {
+      let status = 'Suggested';
+      if (selectedCompanies.includes(co.name)) {
+        status = 'Targeted';
+      } else if (excludedCompanies.includes(co.name)) {
+        status = 'Off-Limits';
+      }
+
+      const catLabel = categoryMap[co.category] || co.category || 'General';
+      const tierLvl = co.tier_level || (co.tier?.toLowerCase().includes('tier 1') || co.tier?.toLowerCase().includes('tier-1') || co.category === 'oem' || co.category === 'gcc' ? 'Tier 1' : (co.tier?.toLowerCase().includes('tier 2') || co.tier?.toLowerCase().includes('tier-2') ? 'Tier 2' : 'Tier 3'));
+      let skillsStr = Array.isArray(co.overlap_skills) && co.overlap_skills.length > 0 ? co.overlap_skills.join(', ') : '';
+      if (!skillsStr && job?.requiredSkills && Array.isArray(job.requiredSkills)) {
+        skillsStr = job.requiredSkills.slice(0, 5).join(', ');
+      }
+      const reasonStr = co.why_recommended || co.recommendation_reason || co.reason || co.description || '';
+      const ecosystemNameStr = targetCompaniesData?.ecosystem_name || co.ecosystemName || (job?.title ? `${job.title} Sourcing Ecosystem` : 'Corporate Sourcing Ecosystem');
+
+      return [
+        escapeCsv(idx + 1),
+        escapeCsv(co.name),
+        escapeCsv(catLabel),
+        escapeCsv(tierLvl),
+        escapeCsv(co.tier || 'Industry Peer'),
+        escapeCsv(co.location || job?.location || 'India / Remote'),
+        escapeCsv(status),
+        escapeCsv(co.confidence || 'High'),
+        escapeCsv(skillsStr),
+        escapeCsv(reasonStr),
+        escapeCsv(co.description || ''),
+        escapeCsv(ecosystemNameStr),
+        escapeCsv(job?.title || 'Job Requisition'),
+        escapeCsv(job?.job_code || job?.id || ''),
+      ].join(',');
+    });
+
+    // Prepend UTF-8 BOM so Excel opens with proper character encoding
+    const csvContent = '\uFEFF' + [headers.join(','), ...rows].join('\r\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    const sanitizedJobTitle = (job?.title || 'Job').replace(/[^a-zA-Z0-9_-]/g, '_');
+    const dateStr = new Date().toISOString().split('T')[0];
+    link.href = url;
+    link.setAttribute('download', `Target_Companies_${sanitizedJobTitle}_${dateStr}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
   const handleBulkActionSelect = (actionVal) => {
     if (!actionVal) return;
     if (actionVal === 'target_tab') {
@@ -1106,6 +1476,14 @@ export const JobDetail = ({
       handleClearSelectedCompanies();
     } else if (actionVal === 'clear_excluded') {
       handleClearExcludedCompanies();
+    } else if (actionVal === 'export_excel') {
+      handleExportCompaniesExcel(false);
+    } else if (actionVal === 'export_view_excel') {
+      handleExportCompaniesExcel(true);
+    } else if (actionVal === 'export_csv') {
+      handleExportCompaniesCSV(false);
+    } else if (actionVal === 'export_view_csv') {
+      handleExportCompaniesCSV(true);
     }
   };
 
@@ -1139,6 +1517,21 @@ export const JobDetail = ({
       setTimeout(() => setCopiedBoolean(false), 2000);
     } catch {
       // Clipboard fallback omitted in restricted contexts.
+    }
+  };
+
+  const handleSaveBooleanSearch = async () => {
+    if (!job || !activeBooleanQuery) return;
+    try {
+      await jobApi.saveBooleanSearch(job.numeric_id || job.id, {
+        platform: sourcingPlatform,
+        search_mode: searchDepth,
+        query_text: activeBooleanQuery,
+      });
+      const rows = await jobApi.getBooleanSearchHistory(job.numeric_id || job.id);
+      setSearchHistory(Array.isArray(rows) ? rows : []);
+    } catch (error) {
+      setMatchError(String(error?.message || 'Failed to save Boolean search'));
     }
   };
 
@@ -1334,48 +1727,179 @@ export const JobDetail = ({
         <div className="flex flex-wrap items-center gap-2">
           <button
             onClick={() => onOpenMatrix?.(job)}
-            className="flex items-center justify-center gap-2 px-3.5 py-2 bg-brand-600 hover:bg-brand-700 text-white rounded-xl text-xs font-semibold shadow-sm transition-all"
+            className="flex items-center justify-center gap-2 px-3.5 py-2 bg-brand-600 hover:bg-brand-700 text-white rounded-xl text-xs font-semibold shadow-sm transition-all hover-lift"
           >
             <Users className="w-4 h-4 text-white" />
-            <span>Matching Workspace</span>
+            <span>Find Candidates</span>
           </button>
 
           <button
             onClick={() => onOpenSegmentation?.(job)}
-            className="flex items-center justify-center gap-2 px-3.5 py-2 bg-navy-900 dark:bg-slate-800 hover:bg-navy-950 text-white rounded-xl text-xs font-semibold shadow-sm transition-all"
+            className="flex items-center justify-center gap-2 px-3.5 py-2 bg-navy-900 dark:bg-slate-800 hover:bg-navy-950 text-white rounded-xl text-xs font-semibold shadow-sm transition-all hover-lift"
           >
             <Sparkles className="w-4 h-4 text-brand-300" />
-            <span>Requirements Workspace</span>
+            <span>Role Requirements</span>
           </button>
 
           {onOpenComparison && (
             <button
               onClick={() => onOpenComparison?.()}
-              className="flex items-center justify-center gap-2 px-3.5 py-2 bg-indigo-50 dark:bg-indigo-950/40 hover:bg-indigo-100 text-indigo-700 dark:text-indigo-300 border border-indigo-200/90 dark:border-indigo-800 rounded-xl text-xs font-semibold shadow-subtle transition-all"
+              className="flex items-center justify-center gap-2 px-3.5 py-2 bg-indigo-50 dark:bg-indigo-950/40 hover:bg-indigo-100 text-indigo-700 dark:text-indigo-300 border border-indigo-200/90 dark:border-indigo-800 rounded-xl text-xs font-semibold shadow-subtle transition-all hover-lift"
               title="Open deep side-by-side JD and Resume Comparison"
             >
               <GitCompare className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
-              <span>Compare with Resume</span>
+              <span>Match with Resume</span>
             </button>
           )}
 
           <button
             onClick={() => onAnalyzeJob(job)}
-            className="flex items-center justify-center gap-2 px-3.5 py-2 bg-brand-50 dark:bg-brand-950/40 hover:bg-brand-100 text-brand-700 dark:text-brand-300 border border-brand-200/90 dark:border-brand-800 rounded-xl text-xs font-semibold shadow-subtle transition-all"
+            className="flex items-center justify-center gap-2 px-3.5 py-2 bg-brand-50 dark:bg-brand-950/40 hover:bg-brand-100 text-brand-700 dark:text-brand-300 border border-brand-200/90 dark:border-brand-800 rounded-xl text-xs font-semibold shadow-subtle transition-all hover-lift"
           >
             <Sparkles className="w-4 h-4 text-brand-600 dark:text-brand-400" />
-            <span>Analyze Criteria</span>
+            <span>AI Review</span>
           </button>
 
           <button
             type="button"
             onClick={handleProposeJobApproval}
-            className="flex items-center justify-center gap-1.5 px-3 py-2 bg-amber-50 dark:bg-amber-950/40 hover:bg-amber-100 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-800 rounded-xl text-xs font-semibold transition-all"
+            className="flex items-center justify-center gap-1.5 px-3 py-2 bg-amber-50 dark:bg-amber-950/40 hover:bg-amber-100 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-800 rounded-xl text-xs font-semibold transition-all hover-lift"
           >
             <ShieldCheck className="w-4 h-4" />
-            <span>Submit Approval</span>
+            <span>Submit for Approval</span>
           </button>
         </div>
+      </div>
+
+      {/* 21st.dev inspired Recruiter Quick Sourcing Hub */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 animate-fadeIn">
+        {/* 1. Phone Screen Q&A */}
+        <button
+          type="button"
+          onClick={() => {
+            setActiveViewFilter('specifications');
+            setOpenSections((prev) => ({ ...prev, screeningKit: true }));
+          }}
+          className="p-3.5 rounded-2xl bg-gradient-to-br from-teal-50/90 to-white dark:from-teal-950/30 dark:to-surface-darkCard border border-teal-200/80 dark:border-teal-900/60 text-left hover-lift transition-all shadow-subtle group cursor-pointer"
+        >
+          <div className="flex items-center justify-between mb-1.5">
+            <span className="p-1.5 rounded-lg bg-teal-100 dark:bg-teal-900/50 text-teal-700 dark:text-teal-300">
+              <HelpCircle className="w-4 h-4" />
+            </span>
+            <span className="text-[11px] font-bold text-teal-700 dark:text-teal-300 bg-teal-100/70 dark:bg-teal-900/40 px-2 py-0.5 rounded-full">
+              5 Q&amp;A
+            </span>
+          </div>
+          <h5 className="text-xs font-bold text-navy-950 dark:text-slate-100 group-hover:text-teal-700 dark:group-hover:text-teal-300 transition-colors">
+            Phone Screen Kit
+          </h5>
+          <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 line-clamp-1">
+            Questions &amp; ideal answers
+          </p>
+        </button>
+
+        {/* 2. Candidate Search String */}
+        <button
+          type="button"
+          onClick={() => {
+            setActiveViewFilter('sourcing');
+            setOpenSections((prev) => ({ ...prev, boolean: true }));
+            if (activeBooleanQuery) {
+              handleCopyQuery();
+            }
+          }}
+          className="p-3.5 rounded-2xl bg-gradient-to-br from-emerald-50/90 to-white dark:from-emerald-950/30 dark:to-surface-darkCard border border-emerald-200/80 dark:border-emerald-900/60 text-left hover-lift transition-all shadow-subtle group cursor-pointer"
+        >
+          <div className="flex items-center justify-between mb-1.5">
+            <span className="p-1.5 rounded-lg bg-emerald-100 dark:bg-emerald-900/50 text-emerald-700 dark:text-emerald-300">
+              <Search className="w-4 h-4" />
+            </span>
+            <span className="text-[11px] font-bold text-emerald-700 dark:text-emerald-300 bg-emerald-100/70 dark:bg-emerald-900/40 px-2 py-0.5 rounded-full flex items-center gap-1">
+              <Copy className="w-3 h-3" />
+              1-Click Copy
+            </span>
+          </div>
+          <h5 className="text-xs font-bold text-navy-950 dark:text-slate-100 group-hover:text-emerald-700 dark:group-hover:text-emerald-300 transition-colors">
+            Search Queries
+          </h5>
+          <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 line-clamp-1">
+            LinkedIn &amp; Naukri strings
+          </p>
+        </button>
+
+        {/* 3. Target Companies */}
+        <button
+          type="button"
+          onClick={() => {
+            setActiveViewFilter('sourcing');
+            setOpenSections((prev) => ({ ...prev, companies: true }));
+          }}
+          className="p-3.5 rounded-2xl bg-gradient-to-br from-indigo-50/90 to-white dark:from-indigo-950/30 dark:to-surface-darkCard border border-indigo-200/80 dark:border-indigo-900/60 text-left hover-lift transition-all shadow-subtle group cursor-pointer"
+        >
+          <div className="flex items-center justify-between mb-1.5">
+            <span className="p-1.5 rounded-lg bg-indigo-100 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300">
+              <Building2 className="w-4 h-4" />
+            </span>
+            <span className="text-[11px] font-bold text-indigo-700 dark:text-indigo-300 bg-indigo-100/70 dark:bg-indigo-900/40 px-2 py-0.5 rounded-full">
+              {allCompanyObjects.length} Pools
+            </span>
+          </div>
+          <h5 className="text-xs font-bold text-navy-950 dark:text-slate-100 group-hover:text-indigo-700 dark:group-hover:text-indigo-300 transition-colors">
+            Target Companies
+          </h5>
+          <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 line-clamp-1">
+            Where to headhunt from
+          </p>
+        </button>
+
+        {/* 4. Candidate Matches */}
+        <button
+          type="button"
+          onClick={() => {
+            setActiveViewFilter('candidates');
+            setOpenSections((prev) => ({ ...prev, matches: true }));
+          }}
+          className="p-3.5 rounded-2xl bg-gradient-to-br from-blue-50/90 to-white dark:from-blue-950/30 dark:to-surface-darkCard border border-blue-200/80 dark:border-blue-900/60 text-left hover-lift transition-all shadow-subtle group cursor-pointer"
+        >
+          <div className="flex items-center justify-between mb-1.5">
+            <span className="p-1.5 rounded-lg bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300">
+              <Users className="w-4 h-4" />
+            </span>
+            <span className="text-[11px] font-bold text-blue-700 dark:text-blue-300 bg-blue-100/70 dark:bg-blue-900/40 px-2 py-0.5 rounded-full">
+              {matchingCandidates.length} Found
+            </span>
+          </div>
+          <h5 className="text-xs font-bold text-navy-950 dark:text-slate-100 group-hover:text-blue-700 dark:group-hover:text-blue-300 transition-colors">
+            Candidate Matches
+          </h5>
+          <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 line-clamp-1">
+            Top fit applicants ranked
+          </p>
+        </button>
+
+        {/* 5. Job Advertisements */}
+        <button
+          type="button"
+          onClick={() => {
+            setActiveViewFilter('jobPosting');
+          }}
+          className="p-3.5 rounded-2xl bg-gradient-to-br from-amber-50/90 to-white dark:from-amber-950/30 dark:to-surface-darkCard border border-amber-200/80 dark:border-amber-900/60 text-left hover-lift transition-all shadow-subtle group col-span-2 sm:col-span-1 cursor-pointer"
+        >
+          <div className="flex items-center justify-between mb-1.5">
+            <span className="p-1.5 rounded-lg bg-amber-100 dark:bg-amber-900/50 text-amber-700 dark:text-amber-300">
+              <Send className="w-4 h-4" />
+            </span>
+            <span className="text-[11px] font-bold text-amber-700 dark:text-amber-300 bg-amber-100/70 dark:bg-amber-900/40 px-2 py-0.5 rounded-full">
+              5 Channels
+            </span>
+          </div>
+          <h5 className="text-xs font-bold text-navy-950 dark:text-slate-100 group-hover:text-amber-700 dark:group-hover:text-amber-300 transition-colors">
+            Job Ads &amp; Posts
+          </h5>
+          <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 line-clamp-1">
+            LinkedIn, Indeed, Naukri
+          </p>
+        </button>
       </div>
 
       {approvalSentMsg && (
@@ -1391,10 +1915,11 @@ export const JobDetail = ({
             Section:
           </span>
           {[
-            { id: 'specifications', label: '1. JD Specifications', badge: 'Detailed Scope & Kit' },
-            { id: 'sourcing', label: '2. Talent Sourcing', badge: 'Multi-Platform Boolean' },
-            { id: 'candidates', label: '3. Candidates & Matching', badge: `${matchingCandidates.length} Evaluated` },
-            { id: 'aiIntelligence', label: '4. AI Intelligence', badge: 'Hiring Difficulty & Supply' },
+            { id: 'specifications', label: '1. Role Scope & Screening Q&A', badge: '5 Questions Ready' },
+            { id: 'sourcing', label: '2. Search Strings & Companies', badge: 'LinkedIn & Naukri' },
+            { id: 'candidates', label: '3. Candidate Matches', badge: `${matchingCandidates.length} Ranked` },
+            { id: 'aiIntelligence', label: '4. Market & Supply Insights', badge: 'Hiring Difficulty' },
+            { id: 'jobPosting', label: '5. Job Ads & Distribution', badge: 'Ready to Publish' },
           ].map((tab) => {
             const isActive = activeViewFilter === tab.id;
             return (
@@ -1480,7 +2005,7 @@ export const JobDetail = ({
               </div>
               <div className="flex items-center gap-2">
                 <h4 className="text-sm font-bold uppercase tracking-wider text-navy-950 dark:text-slate-100">
-                  Job Summary &amp; Scope
+                  Job Summary &amp; Role Scope
                 </h4>
               </div>
             </div>
@@ -1499,6 +2024,12 @@ export const JobDetail = ({
 
           {openSections.summary && (
             <div className="p-5 pt-1 border-t border-slate-100 dark:border-surface-darkBorder animate-fadeIn space-y-4">
+              {/* Recruiter Friendly Tip */}
+              <div className="recruiter-tip">
+                <FileText className="w-4 h-4 text-emerald-600 dark:text-emerald-400 flex-shrink-0 mt-0.5" />
+                <span><strong>Role Overview:</strong> Core responsibilities, required experience level, and key qualifications extracted directly from the job description.</span>
+              </div>
+
               {/* Detailed Role Specifications Grid */}
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 p-4 rounded-xl bg-slate-50 dark:bg-surface-darkBg border border-slate-200/80 dark:border-surface-darkBorder">
                 <div>
@@ -1692,7 +2223,7 @@ export const JobDetail = ({
               </div>
               <div className="flex items-center gap-2.5 flex-wrap">
                 <h4 className="text-sm font-bold uppercase tracking-wider text-navy-950 dark:text-slate-100">
-                  Required Competencies
+                  Must-Have &amp; Preferred Skills
                 </h4>
                 <span className="text-xs font-semibold text-brand-700 dark:text-brand-300 bg-brand-50 dark:bg-brand-950/60 px-2.5 py-0.5 rounded-full border border-brand-200/70 dark:border-brand-800">
                   {(job.requiredSkills || []).length} Mandatory
@@ -1710,6 +2241,12 @@ export const JobDetail = ({
 
           {openSections.competencies && (
             <div className="p-5 pt-1 border-t border-slate-100 dark:border-surface-darkBorder space-y-4 animate-fadeIn">
+              {/* Recruiter Friendly Tip */}
+              <div className="recruiter-tip">
+                <Tag className="w-4 h-4 text-emerald-600 dark:text-emerald-400 flex-shrink-0 mt-0.5" />
+                <span><strong>Screening Tip:</strong> Mandatory skills represent non-negotiable requirements for screening. Preferred skills are bonus qualifications.</span>
+              </div>
+
               <div className="space-y-3">
                 <div>
                   <span className="text-xs font-bold text-slate-600 dark:text-slate-300 block mb-2 uppercase tracking-wider">Mandatory Skills:</span>
@@ -1769,33 +2306,16 @@ export const JobDetail = ({
               </div>
               <div className="flex items-center gap-2.5 flex-wrap">
                 <h4 className="text-sm font-bold uppercase tracking-wider text-navy-950 dark:text-slate-100 flex items-center gap-1.5">
-                  AI Technical Screening &amp; Interview Kit
+                  5-Question Phone Screening Cheatsheet
                 </h4>
                 <span className="text-xs font-semibold text-teal-700 dark:text-teal-300 bg-teal-50 dark:bg-teal-950/60 px-2.5 py-0.5 rounded-full border border-teal-200/70 dark:border-teal-800">
-                  {screeningKit.questions.length} Core Questions • Scorecard
+                  5 Questions &amp; Ideal Answers Ready
                 </span>
               </div>
             </button>
 
             {/* Quick Header Actions */}
             <div className="flex items-center gap-2 flex-wrap">
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleCopyInterviewKit();
-                }}
-                className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs sm:text-sm font-semibold shadow-subtle transition-all duration-150 ${
-                  copiedKit
-                    ? 'bg-emerald-600 text-white'
-                    : 'bg-teal-700 hover:bg-teal-800 dark:bg-teal-600 dark:hover:bg-teal-700 text-white'
-                }`}
-                title="Copy complete interview questions and evaluation criteria"
-              >
-                {copiedKit ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
-                <span>{copiedKit ? 'Copied Kit!' : 'Copy Interview Kit'}</span>
-              </button>
-
               <button
                 type="button"
                 onClick={() => toggleSection('screeningKit')}
@@ -1812,97 +2332,18 @@ export const JobDetail = ({
           </div>
 
           {openSections.screeningKit && (
-            <div className="p-5 pt-1 border-t border-slate-100 dark:border-surface-darkBorder animate-fadeIn space-y-4">
-              {/* Role Alignment Summary Pill */}
-              <div className="flex items-center justify-between flex-wrap gap-2 text-xs sm:text-sm p-3 rounded-xl bg-slate-50 dark:bg-surface-darkBg border border-slate-200/80 dark:border-surface-darkBorder">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <span className="text-slate-500 dark:text-slate-400 font-semibold">Screening Target:</span>
-                  <span className="font-bold text-navy-900 dark:text-slate-100">{job.title || 'Technical Role'}</span>
-                  <span className="text-slate-300 dark:text-slate-700">•</span>
-                  <span className="text-slate-600 dark:text-slate-300 font-medium">{job.experience || '5-8 Years Exp'}</span>
-                </div>
-                <div className="flex items-center gap-1.5 text-xs text-teal-700 dark:text-teal-400 font-semibold">
-                  <Sparkles className="w-4 h-4" />
-                  <span>Derived from JD technical stack</span>
-                </div>
+            <div className="p-5 pt-1 border-t border-slate-100 dark:border-surface-darkBorder animate-fadeIn">
+              {/* Recruiter Friendly Tip */}
+              <div className="recruiter-tip mb-3">
+                <HelpCircle className="w-4 h-4 text-teal-600 dark:text-teal-400 flex-shrink-0 mt-0.5" />
+                <span><strong>Phone Screening Guide:</strong> Ask these 5 quick questions during your 15-minute introductory call to check candidate competency immediately without technical guesswork.</span>
               </div>
 
-              {/* Technical Screening Questions */}
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs sm:text-sm font-bold uppercase tracking-wider text-navy-950 dark:text-slate-100 flex items-center gap-1.5">
-                    <span>Technical Screening Questions &amp; Evaluation Signals</span>
-                  </span>
-                  <span className="text-xs text-slate-400 hidden sm:inline">Ask during recruiter/hiring manager phone screens</span>
-                </div>
-
-                <div className="space-y-3">
-                  {screeningKit.questions.map((q, idx) => (
-                    <div
-                      key={q.id || idx}
-                      className="p-4 rounded-xl bg-white dark:bg-surface-darkBg border border-slate-200/80 dark:border-surface-darkBorder space-y-2.5 shadow-sm"
-                    >
-                      <div className="flex items-start justify-between gap-2 flex-wrap">
-                        <div className="flex items-center gap-2">
-                          <span className="w-6 h-6 rounded-lg bg-teal-100 dark:bg-teal-950/80 text-teal-800 dark:text-teal-300 font-bold text-xs flex items-center justify-center flex-shrink-0">
-                            {idx + 1}
-                          </span>
-                          <span className="text-sm font-bold text-navy-900 dark:text-slate-100">
-                            {q.category}
-                          </span>
-                        </div>
-                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-lg text-xs font-semibold bg-brand-50 dark:bg-brand-950/60 text-brand-700 dark:text-brand-300 border border-brand-200 dark:border-brand-800">
-                          {q.skillTag}
-                        </span>
-                      </div>
-
-                      <p className="text-sm text-navy-950 dark:text-slate-100 font-semibold leading-relaxed pl-8">
-                        "{q.question}"
-                      </p>
-
-                      <div className="pl-8 pt-1 text-xs sm:text-sm text-slate-600 dark:text-slate-300 flex items-start gap-2">
-                        <CheckCircle2 className="w-4 h-4 text-teal-600 dark:text-teal-400 mt-0.5 flex-shrink-0" />
-                        <span className="leading-relaxed">
-                          <strong className="text-slate-800 dark:text-slate-200">Expected Signals:</strong> {q.expectedAnswer}
-                        </span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Candidate Evaluation Scorecard: Green Flags vs Red Flags */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-1">
-                {/* Green Flags */}
-                <div className="p-4 rounded-xl bg-emerald-50/50 dark:bg-emerald-950/30 border border-emerald-200/80 dark:border-emerald-900/60 space-y-2.5">
-                  <div className="flex items-center gap-2 text-xs sm:text-sm font-bold text-emerald-800 dark:text-emerald-300 uppercase tracking-wider">
-                    <span>🟢 Green Flags (Strong Positive Signals)</span>
-                  </div>
-                  <ul className="space-y-2 text-xs sm:text-sm text-slate-700 dark:text-slate-200">
-                    {screeningKit.greenFlags.map((flag, idx) => (
-                      <li key={idx} className="flex items-start gap-2">
-                        <Check className="w-4 h-4 text-emerald-600 dark:text-emerald-400 mt-0.5 flex-shrink-0" />
-                        <span className="leading-relaxed">{flag}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-
-                {/* Red Flags */}
-                <div className="p-4 rounded-xl bg-rose-50/50 dark:bg-rose-950/30 border border-rose-200/80 dark:border-rose-900/60 space-y-2.5">
-                  <div className="flex items-center gap-2 text-xs sm:text-sm font-bold text-rose-800 dark:text-rose-300 uppercase tracking-wider">
-                    <span>🔴 Red Flags (Watch-outs &amp; Risks)</span>
-                  </div>
-                  <ul className="space-y-2 text-xs sm:text-sm text-slate-700 dark:text-slate-200">
-                    {screeningKit.redFlags.map((flag, idx) => (
-                      <li key={idx} className="flex items-start gap-2">
-                        <X className="w-4 h-4 text-rose-500 dark:text-rose-400 mt-0.5 flex-shrink-0" />
-                        <span className="leading-relaxed">{flag}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              </div>
+              <InterviewKitWorkspace
+                job={job}
+                candidates={filteredMatchingCandidates || matchingCandidates || []}
+                onCandidateSelect={onSelectCandidate}
+              />
             </div>
           )}
         </div>
@@ -1923,7 +2364,7 @@ export const JobDetail = ({
               </div>
               <div className="flex items-center gap-2 flex-wrap">
                 <h4 className="text-sm font-bold uppercase tracking-wider text-navy-900 dark:text-slate-100">
-                  Job Description Related Companies &amp; Sourcing Ecosystem
+                  Target Companies to Source Candidates From
                 </h4>
                 <span className="text-xs font-semibold text-indigo-700 dark:text-indigo-300 bg-indigo-50 dark:bg-indigo-950/60 px-2.5 py-0.5 rounded-full border border-indigo-200/70 dark:border-indigo-800">
                   {allCompanyObjects.length} suggested
@@ -1981,6 +2422,18 @@ export const JobDetail = ({
                   >
                     Target All ({allCompanies.length})
                   </button>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleExportCompaniesExcel(false);
+                    }}
+                    className="inline-flex items-center gap-1.5 text-xs text-emerald-700 dark:text-emerald-300 hover:text-emerald-800 font-semibold px-2.5 py-1 rounded-lg bg-emerald-50 dark:bg-emerald-950/40 hover:bg-emerald-100 dark:hover:bg-emerald-900/50 border border-emerald-200/80 dark:border-emerald-800/80 transition-colors"
+                    title="Download beautified Excel spreadsheet with styled headings for recruiters"
+                  >
+                    <Download className="w-3.5 h-3.5" />
+                    <span>Download Excel</span>
+                  </button>
                 </>
               )}
               <button
@@ -2000,18 +2453,27 @@ export const JobDetail = ({
 
           {openSections.companies && (
             <div className="p-5 pt-2 border-t border-slate-100 dark:border-surface-darkBorder animate-fadeIn space-y-4">
+              {/* Recruiter Friendly Tip */}
+              <div className="recruiter-tip">
+                <Building2 className="w-4 h-4 text-indigo-600 dark:text-indigo-400 flex-shrink-0 mt-0.5" />
+                <span><strong>Headhunting Pools:</strong> Candidates currently working at these companies possess directly transferable tools and domain experience. Target them on LinkedIn or job boards.</span>
+              </div>
+
               {/* Target Hiring Client Callout & Non-Poach Sourcing Advisory */}
-              <div className="flex items-center justify-between flex-wrap gap-2.5 p-3 rounded-xl bg-slate-50 dark:bg-surface-darkBg border border-slate-200/80 dark:border-surface-darkBorder">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <span className="text-xs sm:text-sm font-semibold text-slate-500 dark:text-slate-400">
-                    {job.client || job.client_name ? 'Target Hiring Client:' : 'Talent Sourcing Strategy:'}
-                  </span>
-                  {(job.client || job.client_name) ? (
-                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs sm:text-sm font-bold bg-brand-50 dark:bg-brand-950/60 text-brand-700 dark:text-brand-300 border border-brand-200 dark:border-brand-800">
-                      <Building2 className="w-3.5 h-3.5" />
-                      {job.client || job.client_name}
+              <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-surface-darkBg border border-slate-200/80 dark:border-surface-darkBorder space-y-2">
+                <div className="flex items-center justify-between flex-wrap gap-2.5">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-xs sm:text-sm font-semibold text-slate-500 dark:text-slate-400">
+                      Corporate Sourcing Ecosystem:
                     </span>
-                  ) : (
+                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs sm:text-sm font-bold bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800">
+                      <Building2 className="w-3.5 h-3.5" />
+                      {targetCompaniesData?.ecosystem_name || 'Industry Corporate Sourcing Ecosystem'}
+                    </span>
+                    <span className="text-xs text-slate-400 dark:text-slate-500 hidden sm:inline">•</span>
+                    <span className="text-xs sm:text-sm font-semibold text-slate-500 dark:text-slate-400">
+                      Strategy:
+                    </span>
                     <div className="inline-flex items-center gap-1.5">
                       <select
                         value={sourcingStrategy}
@@ -2033,17 +2495,17 @@ export const JobDetail = ({
                         ))}
                       </select>
                     </div>
-                  )}
-                  <span className="text-xs text-slate-400 dark:text-slate-500 hidden sm:inline">•</span>
-                  <span className="text-xs text-slate-500 dark:text-slate-400">
-                    {SOURCING_STRATEGIES.find((s) => s.id === sourcingStrategy)?.desc ||
-                      'Categorized by Product OEMs, Big 4 Advisory, GSIs & Tech GCCs'}
-                  </span>
+                  </div>
+                  <div className="text-[11px] font-semibold text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 px-2 py-0.5 rounded-full flex items-center gap-1">
+                    <CheckCircle2 className="w-3.5 h-3.5" />
+                    <span>Ecosystem Matching: Deterministic Catalog Matching</span>
+                  </div>
                 </div>
-                <div className="text-xs text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
-                  <Ban className="w-3.5 h-3.5 text-rose-500" />
-                  <span>Mark companies as <b>⛔ Off-Limits</b> to prevent non-poach breaches</span>
-                </div>
+                {targetCompaniesData?.strategy_rationale && (
+                  <div className="text-xs text-slate-600 dark:text-slate-300 italic pt-1 border-t border-slate-200/60 dark:border-surface-darkBorder/60">
+                    💡 <strong>Strategy Rationale:</strong> {targetCompaniesData.strategy_rationale}
+                  </div>
+                )}
               </div>
 
               {/* Industry Ecosystem Category Filter & Toolbar Controls */}
@@ -2099,11 +2561,54 @@ export const JobDetail = ({
                           value: 'clear_excluded',
                           label: `Clear Off-Limits (${excludedCompanies.length})`,
                         },
+                        {
+                          value: 'export_excel',
+                          label: `Download Beautified Excel (${allCompanyObjects.length})`,
+                        },
+                        {
+                          value: 'export_view_excel',
+                          label: `Download Current View as Excel (${filteredCompanyObjects.length})`,
+                        },
+                        {
+                          value: 'export_csv',
+                          label: `Download Plain CSV (${allCompanyObjects.length})`,
+                        },
+                        {
+                          value: 'export_view_csv',
+                          label: `Download Current View as CSV (${filteredCompanyObjects.length})`,
+                        },
                       ]}
                       icon={SlidersHorizontal}
                       size="sm"
                       placeholder="Sourcing Actions ▾"
                       ariaLabel="Sourcing bulk actions"
+                    />
+                  </div>
+
+                  {/* Tier Filter Dropdown */}
+                  <div className="min-w-[130px]">
+                    <CustomSelect
+                      value={companyTierFilter}
+                      onChange={(val) => setCompanyTierFilter(val)}
+                      options={[
+                        { value: 'all', label: `All Tiers (${allCompanyObjects.length})` },
+                        {
+                          value: 'tier1',
+                          label: `Tier 1: Core / OEMs (${allCompanyObjects.filter((c) => (c.tier_level || c.tier || '').toLowerCase().includes('tier 1') || (c.tier_level || c.tier || '').toLowerCase().includes('tier-1') || c.category === 'oem' || c.category === 'gcc').length})`,
+                        },
+                        {
+                          value: 'tier2',
+                          label: `Tier 2: GSIs & Advisory (${allCompanyObjects.filter((c) => (c.tier_level || c.tier || '').toLowerCase().includes('tier 2') || (c.tier_level || c.tier || '').toLowerCase().includes('tier-2') || c.category === 'gsi' || c.category === 'big4').length})`,
+                        },
+                        {
+                          value: 'tier3',
+                          label: `Tier 3: Boutique & Regional (${allCompanyObjects.filter((c) => (c.tier_level || c.tier || '').toLowerCase().includes('tier 3') || (c.tier_level || c.tier || '').toLowerCase().includes('tier-3')).length})`,
+                        },
+                      ]}
+                      icon={Layers}
+                      size="sm"
+                      placeholder="Filter Tier"
+                      ariaLabel="Filter companies by sourcing tier"
                     />
                   </div>
 
@@ -2141,6 +2646,17 @@ export const JobDetail = ({
                   >
                     <Plus className="w-3.5 h-3.5" />
                     <span>{showAddCompanyInput ? 'Close Form' : 'Add Custom Company'}</span>
+                  </button>
+
+                  {/* Download Beautified Excel Button */}
+                  <button
+                    type="button"
+                    onClick={() => handleExportCompaniesExcel(false)}
+                    className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-semibold bg-emerald-600 hover:bg-emerald-700 text-white border border-emerald-600 hover:border-emerald-700 transition-all shadow-subtle cursor-pointer"
+                    title="Download beautified Excel spreadsheet with styled headings, colors, and formatting"
+                  >
+                    <Download className="w-3.5 h-3.5" />
+                    <span>Download Excel</span>
                   </button>
 
                   {/* View Mode Toggle: Cards vs Tags */}
@@ -2365,18 +2881,32 @@ export const JobDetail = ({
                             : 'border-slate-200/90 dark:border-surface-darkBorder bg-white dark:bg-surface-darkBg hover:border-slate-300 dark:hover:border-slate-700 hover:shadow-subtle'
                         }`}
                       >
-                        {/* Card Top: Category Badge & External LinkedIn Search */}
+                        {/* Card Top: Category Badge, Tier Badge & External LinkedIn Search */}
                         <div>
                           <div className="flex items-center justify-between gap-1 mb-2">
-                            <span
-                              className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[10px] font-bold border uppercase tracking-wider ${
-                                catMeta.color ||
-                                'text-slate-600 bg-slate-50 border-slate-200'
-                              }`}
-                            >
-                              <CatIcon className="w-3 h-3" />
-                              <span>{catMeta.label.split(' ')[0]}</span>
-                            </span>
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <span
+                                className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[10px] font-bold border uppercase tracking-wider ${
+                                  catMeta.color ||
+                                  'text-slate-600 bg-slate-50 border-slate-200'
+                                }`}
+                              >
+                                <CatIcon className="w-3 h-3" />
+                                <span>{catMeta.label.split(' ')[0]}</span>
+                              </span>
+
+                              <span
+                                className={`px-2 py-0.5 rounded-lg text-[10px] font-bold border ${
+                                  (company.tier_level || '').includes('1') || (company.tier || '').toLowerCase().includes('tier-1') || (company.tier || '').toLowerCase().includes('tier 1')
+                                    ? 'bg-indigo-50 dark:bg-indigo-950/50 text-indigo-700 dark:text-indigo-300 border-indigo-200 dark:border-indigo-800'
+                                    : (company.tier_level || '').includes('2') || (company.tier || '').toLowerCase().includes('tier-2') || (company.tier || '').toLowerCase().includes('tier 2')
+                                    ? 'bg-sky-50 dark:bg-sky-950/50 text-sky-700 dark:text-sky-300 border-sky-200 dark:border-sky-800'
+                                    : 'bg-purple-50 dark:bg-purple-950/50 text-purple-700 dark:text-purple-300 border-purple-200 dark:border-purple-800'
+                                }`}
+                              >
+                                {company.tier_level || (company.tier?.toLowerCase().includes('tier') ? company.tier.split(' ')[0] : 'Tier 1')}
+                              </span>
+                            </div>
 
                             <div className="flex items-center gap-1">
                               {/* LinkedIn Candidate Search Shortcut */}
@@ -2429,6 +2959,38 @@ export const JobDetail = ({
                             <p className="text-[11px] text-slate-600 dark:text-slate-300 leading-relaxed line-clamp-2 mb-2">
                               {company.description}
                             </p>
+                          )}
+
+                          {/* Grounded Recommendation Reason & Overlap Skills */}
+                          {company.recommendation_reason && (
+                            <div className="mt-2 p-2 rounded-xl bg-slate-50 dark:bg-surface-darkCard/60 border border-slate-200/70 dark:border-surface-darkBorder/60 text-[10.5px] text-slate-600 dark:text-slate-300 space-y-1">
+                              <div className="flex items-center justify-between">
+                                <span className="font-bold text-navy-900 dark:text-slate-200 flex items-center gap-1">
+                                  <Sparkles className="w-3 h-3 text-brand-500" />
+                                  Why Recommended:
+                                </span>
+                                {company.confidence && (
+                                  <span className={`px-1.5 py-0.2 rounded font-bold uppercase text-[9px] ${
+                                    company.confidence === 'High'
+                                      ? 'bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300'
+                                      : 'bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300'
+                                  }`}>
+                                    {company.confidence} Fit
+                                  </span>
+                                )}
+                              </div>
+                              <p className="leading-relaxed">{company.recommendation_reason}</p>
+                              {company.overlap_skills && company.overlap_skills.length > 0 && (
+                                <div className="flex flex-wrap gap-1 pt-0.5">
+                                  <span className="font-semibold text-slate-400">Skill overlap:</span>
+                                  {company.overlap_skills.map((s, idx) => (
+                                    <span key={idx} className="px-1.5 py-0.2 rounded bg-indigo-50 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-300 font-medium">
+                                      {s}
+                                    </span>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
                           )}
                         </div>
 
@@ -2578,7 +3140,7 @@ export const JobDetail = ({
               </div>
               <div className="flex items-center gap-2.5 flex-wrap">
                 <h4 className="text-sm font-bold uppercase tracking-wider text-navy-900 dark:text-slate-100">
-                  Boolean Search Query Generator
+                  Candidate Search Strings (LinkedIn, Naukri, Indeed)
                 </h4>
                 <span className="text-xs font-semibold text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/60 px-2.5 py-0.5 rounded-full border border-emerald-200/70 dark:border-emerald-800">
                   {sourcingPlatform === 'keywords' ? 'Plain Keywords' : sourcingPlatform === 'naukri' ? 'Naukri Resdex' : sourcingPlatform === 'linkedin' ? 'LinkedIn Recruiter' : 'Google X-Ray'} • {(activeBooleanQuery || '').length} chars
@@ -2627,6 +3189,15 @@ export const JobDetail = ({
 
               <button
                 type="button"
+                onClick={handleSaveBooleanSearch}
+                className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl border border-slate-200 dark:border-surface-darkBorder text-xs sm:text-sm font-semibold text-slate-700 dark:text-slate-200 bg-white dark:bg-surface-darkCard hover:bg-slate-50 dark:hover:bg-slate-800"
+              >
+                <Save className="w-4 h-4 text-brand-600 dark:text-brand-400" />
+                <span>Save Search</span>
+              </button>
+
+              <button
+                type="button"
                 onClick={() => toggleSection('boolean')}
                 className="p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
                 aria-label="Toggle boolean search section"
@@ -2642,7 +3213,13 @@ export const JobDetail = ({
 
           {openSections.boolean && (
             <div className="p-4 pt-1 border-t border-slate-100 dark:border-surface-darkBorder animate-fadeIn space-y-4">
-          {/* Sourcing Platform Selector Tabs & Mode Status */}
+              {/* Recruiter Friendly Tip */}
+              <div className="recruiter-tip">
+                <Search className="w-4 h-4 text-emerald-600 dark:text-emerald-400 flex-shrink-0 mt-0.5" />
+                <span><strong>One-Click Search:</strong> Copy these search strings directly into LinkedIn Recruiter, Naukri Resdex, or Google to find qualified candidates immediately.</span>
+              </div>
+
+              {/* Sourcing Platform Selector Tabs & Mode Status */}
           <div className="flex items-center justify-between flex-wrap gap-2 pb-3 border-b border-slate-100 dark:border-surface-darkBorder">
             <div className="flex items-center gap-1 p-1 bg-slate-100 dark:bg-surface-darkBg rounded-xl border border-slate-200/70 dark:border-surface-darkBorder flex-wrap">
               <button
@@ -2704,6 +3281,27 @@ export const JobDetail = ({
               </button>
             </div>
 
+            <div className="flex items-center gap-1 p-1 bg-slate-50 dark:bg-surface-darkBg rounded-xl border border-slate-200/70 dark:border-surface-darkBorder">
+              {['broad', 'balanced', 'strict'].map((mode) => (
+                <button
+                  key={mode}
+                  type="button"
+                  onClick={() => {
+                    setSearchDepth(mode);
+                    setNaukriStrictAnd(mode !== 'broad');
+                    if (isCustomMode) setIsCustomMode(false);
+                  }}
+                  className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold capitalize ${
+                    searchDepth === mode
+                      ? 'bg-navy-900 text-white dark:bg-brand-600'
+                      : 'text-slate-600 dark:text-slate-400'
+                  }`}
+                >
+                  {mode}
+                </button>
+              ))}
+            </div>
+
             {/* Mode & Character Length & Syntax Validity badge */}
             <div className="flex items-center gap-2 text-xs flex-wrap">
               {isCustomMode ? (
@@ -2714,7 +3312,7 @@ export const JobDetail = ({
               ) : (
                 <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-slate-600 dark:text-slate-400 bg-slate-100 dark:bg-surface-darkBg px-2.5 py-0.5 rounded-full border border-slate-200 dark:border-surface-darkBorder">
                   <Sparkles className="w-3 h-3 text-brand-500" />
-                  AI Auto-Generated
+                  {booleanLoading ? 'Generating...' : generatedQueries ? 'Generation Result' : 'Deterministic Fallback'}
                 </span>
               )}
 
@@ -2728,6 +3326,12 @@ export const JobDetail = ({
               </span>
             </div>
           </div>
+
+          {booleanError && (
+            <div role="alert" className="rounded-xl border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-950/40 px-3 py-2 text-xs text-red-700 dark:text-red-300">
+              Boolean generation failed: {booleanError}. No AI-generated result is being shown.
+            </div>
+          )}
 
           {/* Format Options Toolbar when in Just Keywords mode */}
           {sourcingPlatform === 'keywords' && (
@@ -2883,6 +3487,25 @@ export const JobDetail = ({
             </button>
           </div>
 
+          {searchHistory.length > 0 && (
+            <div className="flex items-center gap-2 overflow-x-auto pb-1">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 whitespace-nowrap">Saved searches</span>
+              {searchHistory.slice(0, 6).map((row) => (
+                <button
+                  key={row.id}
+                  type="button"
+                  onClick={() => {
+                    setIsCustomMode(true);
+                    setCustomQueryText(row.query_text);
+                  }}
+                  className="px-2.5 py-1 rounded-lg border border-slate-200 dark:border-surface-darkBorder text-[11px] text-slate-700 dark:text-slate-300 whitespace-nowrap"
+                >
+                  {row.platform} · {row.search_mode}
+                </button>
+              ))}
+            </div>
+          )}
+
           {/* Quick Syntax Insertion Toolbar when in Custom Mode */}
           {isCustomMode && (
             <div className="flex flex-wrap items-center justify-between gap-2 p-2.5 bg-slate-100 dark:bg-surface-darkBg rounded-xl border border-slate-200/80 dark:border-surface-darkBorder animate-fadeIn">
@@ -2935,6 +3558,48 @@ export const JobDetail = ({
               </button>
             </div>
           )}
+
+          {/* Conversational Boolean Customizer with local Ollama */}
+          <div className="p-3.5 rounded-xl bg-gradient-to-r from-brand-50/60 via-slate-50 to-teal-50/60 dark:from-surface-darkBg dark:via-surface-darkCard dark:to-surface-darkBg border border-brand-200/80 dark:border-surface-darkBorder space-y-2">
+            <div className="flex items-center justify-between flex-wrap gap-1">
+              <span className="text-xs font-bold text-navy-900 dark:text-slate-100 flex items-center gap-1.5 uppercase tracking-wider">
+                <Sparkles className="w-3.5 h-3.5 text-brand-500" />
+                Customize Query with Local AI (Ollama)
+              </span>
+              {aiQueryExplanation && (
+                <span className="text-[11px] text-teal-700 dark:text-teal-300 font-semibold truncate max-w-md">
+                  ✨ {aiQueryExplanation}
+                </span>
+              )}
+            </div>
+            <form onSubmit={handleAIQueryCustomizationSubmit} className="flex items-center gap-2">
+              <input
+                type="text"
+                value={aiQueryInstruction}
+                onChange={(e) => setAiQueryInstruction(e.target.value)}
+                placeholder="e.g. 'Focus on creative advertising agencies', 'Exclude interns & freshers', 'Include packaging design', 'Make broader'..."
+                disabled={aiQueryCustomizing}
+                className="flex-1 px-3 py-1.5 text-xs rounded-xl border border-slate-200 dark:border-surface-darkBorder bg-white dark:bg-surface-darkBg text-navy-900 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-500/30"
+              />
+              <button
+                type="submit"
+                disabled={aiQueryCustomizing || !aiQueryInstruction.trim()}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-brand-600 hover:bg-brand-700 disabled:opacity-50 text-white text-xs font-semibold shadow-xs transition-colors shrink-0"
+              >
+                {aiQueryCustomizing ? (
+                  <>
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    <span>Applying...</span>
+                  </>
+                ) : (
+                  <>
+                    <Zap className="w-3.5 h-3.5" />
+                    <span>Apply AI Instruction</span>
+                  </>
+                )}
+              </button>
+            </form>
+          </div>
 
           {/* Generated or Custom Boolean Code Box */}
           <div className="relative group">
@@ -3086,18 +3751,33 @@ export const JobDetail = ({
               {suggestedKeywords.length === 0 ? (
                 <span className="text-sm text-slate-400 italic">All suggested keywords are already included in your query.</span>
               ) : (
-                suggestedKeywords.map((kw) => (
-                  <button
-                    key={kw}
-                    type="button"
-                    onClick={() => handleAddKeywordToQuery(kw)}
-                    className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs sm:text-sm font-semibold bg-emerald-50 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-300 border border-emerald-200/90 dark:border-emerald-800 hover:bg-emerald-100 hover:border-emerald-300 dark:hover:bg-emerald-900/50 transition-all shadow-2xs active:scale-95"
-                    title={`Click to add "${kw}" to Boolean query`}
-                  >
-                    <Plus className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
-                    <span>{kw}</span>
-                  </button>
-                ))
+                suggestedKeywords.map((item, idx) => {
+                  const kw = typeof item === 'string' ? item : item.skill;
+                  const relType = item.relationship_type || 'related_adjacent';
+                  const note = item.note || `Suggested adjacent skill for ${job.title}`;
+                  const provLabel = relType === 'explicit_jd' ? 'Explicit JD' : relType === 'alias_equivalent' ? 'Equivalent' : 'Adjacent';
+                  const provColor = relType === 'explicit_jd'
+                    ? 'bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300'
+                    : relType === 'alias_equivalent'
+                    ? 'bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-300'
+                    : 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300';
+
+                  return (
+                    <button
+                      key={kw || idx}
+                      type="button"
+                      onClick={() => handleAddKeywordToQuery(item)}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs sm:text-sm font-semibold bg-emerald-50 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-300 border border-emerald-200/90 dark:border-emerald-800 hover:bg-emerald-100 hover:border-emerald-300 dark:hover:bg-emerald-900/50 transition-all shadow-2xs active:scale-95"
+                      title={note}
+                    >
+                      <Plus className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                      <span>{kw}</span>
+                      <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-medium ${provColor}`}>
+                        {provLabel}
+                      </span>
+                    </button>
+                  );
+                })
               )}
             </div>
           </div>
@@ -3245,6 +3925,33 @@ export const JobDetail = ({
         </div>
       )}
 
+      {/* 5. Job Posting & Distribution Workspace */}
+      {shouldShowSection('jobPosting') && (
+        <div className="rounded-2xl border border-slate-200/90 dark:border-surface-darkBorder bg-white dark:bg-surface-darkCard shadow-subtle overflow-hidden">
+          <button
+            type="button"
+            onClick={() => toggleSection('jobPosting')}
+            className="w-full flex items-center justify-between p-4 hover:bg-slate-50/70 dark:hover:bg-slate-800/50 transition-colors text-left"
+          >
+            <span className="flex items-center gap-3">
+              <span className="w-8 h-8 rounded-xl bg-emerald-50 border border-emerald-200 flex items-center justify-center text-emerald-700">
+                <Send className="w-4 h-4" />
+              </span>
+              <span>
+                <span className="block text-sm font-bold uppercase tracking-wider text-navy-900 dark:text-slate-100">
+                  Ready-to-Publish Job Advertisements
+                </span>
+                <span className="block text-xs text-slate-500">Formatted for LinkedIn, Indeed, Naukri &amp; Company Careers</span>
+              </span>
+            </span>
+            <ChevronDown className={`w-4 h-4 transition-transform ${openSections.jobPosting ? 'rotate-180' : ''}`} />
+          </button>
+          {openSections.jobPosting && (
+            <JobPostingWorkspace job={job} />
+          )}
+        </div>
+      )}
+
       {/* 6. Matching Candidates Section */}
       {shouldShowSection('matches') && (
         <div className="rounded-2xl border border-slate-200/90 dark:border-surface-darkBorder bg-white dark:bg-surface-darkCard shadow-subtle overflow-hidden transition-all">
@@ -3259,7 +3966,7 @@ export const JobDetail = ({
               </div>
               <div className="flex items-center gap-2.5 flex-wrap">
                 <h4 className="text-sm font-bold uppercase tracking-wider text-navy-900 dark:text-slate-100">
-                  Recruiter Semantic Matching Results
+                  Best Matched Candidates from Database
                 </h4>
                 {matchingCandidates.length > 0 && (
                   <span className="text-xs font-semibold text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/60 px-2.5 py-0.5 rounded-full border border-emerald-200/70 dark:border-emerald-800">
@@ -3299,8 +4006,14 @@ export const JobDetail = ({
 
           {openSections.matches && (
             <div className="p-5 pt-1 border-t border-slate-100 dark:border-surface-darkBorder animate-fadeIn space-y-4">
+              {/* Recruiter Friendly Tip */}
+              <div className="recruiter-tip">
+                <Users className="w-4 h-4 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
+                <span><strong>Matching Guide:</strong> Candidates with scores &ge; 75% are strong fits for immediate phone screening. Click on any profile to review detailed skill comparisons.</span>
+              </div>
+
               <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400">
-                Ranked using active approved JD embeddings and candidate resume vectors.
+                Candidates automatically evaluated and ranked by overall skills match, experience level, and role requirements.
               </p>
 
               {/* Matching KPIs Header Summary Cards */}
@@ -3314,24 +4027,23 @@ export const JobDetail = ({
                   <div className="p-3.5 bg-emerald-50/60 dark:bg-surface-darkBg border border-emerald-200/60 dark:border-emerald-900/60 rounded-xl">
                     <span className="text-xs uppercase font-bold text-emerald-700 dark:text-emerald-400 block tracking-wider mb-1">Top Matches</span>
                     <span className="text-xl font-extrabold text-emerald-800 dark:text-emerald-300">
-                      {matchingCandidates.filter((c) => (c.matchScore || c.match_score || 0) >= 75).length}
+                      {scoredMatchValues.filter((score) => score >= 75).length}
                     </span>
                     <span className="text-xs text-emerald-600 dark:text-emerald-400/80 block mt-0.5">score &ge; 75%</span>
                   </div>
                   <div className="p-3.5 bg-brand-50/60 dark:bg-surface-darkBg border border-brand-200/60 dark:border-brand-900/60 rounded-xl">
                     <span className="text-xs uppercase font-bold text-brand-700 dark:text-brand-400 block tracking-wider mb-1">Average Fit</span>
                     <span className="text-xl font-extrabold text-brand-900 dark:text-brand-300">
-                      {Math.round(
-                        matchingCandidates.reduce((acc, c) => acc + (c.matchScore || c.match_score || 0), 0) /
-                          matchingCandidates.length
-                      )}%
+                      {scoredMatchValues.length
+                        ? `${Math.round(scoredMatchValues.reduce((sum, score) => sum + score, 0) / scoredMatchValues.length)}%`
+                        : 'Insufficient Evidence'}
                     </span>
                     <span className="text-xs text-brand-600 dark:text-brand-400/80 block mt-0.5">across pool</span>
                   </div>
                   <div className="p-3.5 bg-blue-50/60 dark:bg-surface-darkBg border border-blue-200/60 dark:border-blue-900/60 rounded-xl">
                     <span className="text-xs uppercase font-bold text-blue-700 dark:text-blue-400 block tracking-wider mb-1">Top Score</span>
                     <span className="text-xl font-extrabold text-blue-900 dark:text-blue-300">
-                      {Math.max(...matchingCandidates.map((c) => c.matchScore || c.match_score || 0))}%
+                      {scoredMatchValues.length ? `${Math.max(...scoredMatchValues)}%` : 'Insufficient Evidence'}
                     </span>
                     <span className="text-xs text-blue-600 dark:text-blue-400/80 block mt-0.5">highest rank</span>
                   </div>

@@ -2,8 +2,9 @@
 import React, { useState, useMemo, useEffect } from 'react';
 
 // Import icons from lucide-react.
-import { Briefcase, MapPin, Sparkles, ChevronRight, ChevronDown, ChevronUp, Search, X } from 'lucide-react';
+import { Briefcase, MapPin, Sparkles, ChevronRight, ChevronDown, ChevronUp, Search, X, Trash2 } from 'lucide-react';
 import { CustomSelect } from '../common/CustomSelect';
+import { Modal } from '../common/Modal';
 
 // Number of job descriptions shown by default and added per expansion step.
 const JOBS_DEFAULT_VISIBLE = 5;
@@ -16,12 +17,15 @@ export const JobList = ({
   onSelectJob,
   onAnalyzeJob,
   onUpdateJob,
+  onDeleteJob,
 }) => {
   // Progressive disclosure limit: starts at 5, increments by 5 per click.
   const [visibleLimit, setVisibleLimit] = useState(JOBS_DEFAULT_VISIBLE);
   // Local quick-filter search & status filter (never restricts backend collection).
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('All');
+  const [deleteTarget, setDeleteTarget] = useState(null);
+  const [deleting, setDeleting] = useState(false);
 
   // Reset limit back to initial 5 when user searches or filters.
   useEffect(() => {
@@ -202,6 +206,16 @@ export const JobList = ({
                   </button>
 
                   <button
+                    type="button"
+                    onClick={() => setDeleteTarget(job)}
+                    className="flex items-center gap-1.5 px-3 py-1 bg-red-50 dark:bg-red-950/30 hover:bg-red-100 dark:hover:bg-red-900/50 text-red-700 dark:text-red-300 border border-red-200/80 dark:border-red-800 rounded-xl text-xs font-medium transition-colors"
+                    aria-label={`Delete ${job.title}`}
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                    <span>Delete JD</span>
+                  </button>
+
+                  <button
                     onClick={() => onSelectJob(job.id)}
                     aria-label={`Select ${job.title}`}
                     className="p-1 text-slate-400 hover:text-navy-900 dark:hover:text-white transition-colors"
@@ -245,6 +259,48 @@ export const JobList = ({
           </div>
         </div>
       )}
+
+      <Modal
+        isOpen={Boolean(deleteTarget)}
+        onClose={() => !deleting && setDeleteTarget(null)}
+        title="Delete Job Description"
+        subtitle={deleteTarget ? `${deleteTarget.jdCode || deleteTarget.code} - ${deleteTarget.title}` : ''}
+        maxWidth="max-w-md"
+      >
+        <div className="space-y-4">
+          <p className="text-sm leading-6 text-slate-700 dark:text-slate-300">
+            This permanently deletes the JD and its derived analysis, segmentation, posting versions, and metrics.
+            Linked recruitment requests will remain, but lose the deleted JD link.
+          </p>
+          <div className="flex justify-end gap-2">
+            <button
+              type="button"
+              disabled={deleting}
+              onClick={() => setDeleteTarget(null)}
+              className="px-3 py-2 rounded-xl border border-slate-200 dark:border-surface-darkBorder text-sm font-semibold"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              disabled={deleting}
+              onClick={async () => {
+                if (!deleteTarget || !onDeleteJob) return;
+                setDeleting(true);
+                try {
+                  await onDeleteJob(deleteTarget);
+                  setDeleteTarget(null);
+                } finally {
+                  setDeleting(false);
+                }
+              }}
+              className="px-3 py-2 rounded-xl bg-red-600 hover:bg-red-700 text-white text-sm font-semibold disabled:opacity-60"
+            >
+              {deleting ? 'Deleting...' : 'Delete JD'}
+            </button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 };

@@ -7,7 +7,7 @@ from datetime import date, datetime, timezone
 from typing import Any
 
 # Import SQLAlchemy column types, index constructs, raw SQL text, and foreign-key support.
-from sqlalchemy import Date, DateTime, Float, ForeignKey, Index, Integer, JSON, String, Text, text
+from sqlalchemy import Boolean, Date, DateTime, Float, ForeignKey, Index, Integer, JSON, String, Text, text
 
 # Import SQLAlchemy 2.x typed column and relationship declarations.
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -687,14 +687,14 @@ class JobEmbedding(Base):
     # SHA-256 digest of the exact normalized text embedded for idempotent deduplication.
     input_hash: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
 
-    # OpenRouter embedding model identifier used to produce the vector.
-    model_name: Mapped[str] = mapped_column(String(255), default="nvidia/nemotron-3-embed-1b:free", nullable=False)
+    # Local Ollama embedding model identifier used to produce the vector.
+    model_name: Mapped[str] = mapped_column(String(255), default="nomic-embed-text", nullable=False)
 
-    # Vector dimension length explicitly validated to 2048 coordinates.
-    dimensions: Mapped[int] = mapped_column(Integer, default=2048, nullable=False)
+    # Vector dimension length explicitly validated to 768 coordinates.
+    dimensions: Mapped[int] = mapped_column(Integer, default=768, nullable=False)
 
-    # Track generation method ('nemotron_api', 'provenance_unknown', 'synthetic_fallback', 'pending_regeneration').
-    generation_method: Mapped[str] = mapped_column(String(64), default="provenance_unknown", server_default="provenance_unknown", nullable=False)
+    # Track generation method ('ollama', 'nemotron_api', 'provenance_unknown', 'synthetic_fallback', 'pending_regeneration').
+    generation_method: Mapped[str] = mapped_column(String(64), default="ollama", server_default="ollama", nullable=False)
 
     # Dense numeric embedding vector stored as JSON array of floats.
     embedding_vector: Mapped[list[float]] = mapped_column(JSON, nullable=False)
@@ -801,6 +801,22 @@ class RecruitmentRequest(Base):
     job: Mapped[Job | None] = relationship(back_populates="requests")
 
 
+# Store recruiter Boolean searches with job and JD version provenance.
+class BooleanSearchHistory(Base):
+    __tablename__ = "boolean_search_history"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    job_id: Mapped[int] = mapped_column(ForeignKey("job.id", ondelete="CASCADE"), nullable=False, index=True)
+    jd_version: Mapped[int] = mapped_column(Integer, nullable=False)
+    platform: Mapped[str] = mapped_column(String(32), nullable=False, index=True)
+    search_mode: Mapped[str] = mapped_column(String(32), nullable=False)
+    recruiter: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    query_text: Mapped[str] = mapped_column(Text, nullable=False)
+    generation_method: Mapped[str] = mapped_column(String(64), nullable=False)
+    model_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False)
+
+
 # Record privacy-safe activity events for dashboard timelines.
 class ActivityEvent(Base):
     # Keep dashboard events in SQLite rather than frontend-only mock state.
@@ -873,6 +889,54 @@ class Interview(Base):
     )
 
 
+# Store dynamically generated AI interview screening kits, question sets, and evaluation scorecards.
+class InterviewKit(Base):
+    """Store dynamically generated AI interview screening kits, question sets, and evaluation scorecards."""
+
+    __tablename__ = "interview_kit"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    job_id: Mapped[int] = mapped_column(
+        ForeignKey("job.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    jd_version: Mapped[int] = mapped_column(Integer, default=1, nullable=False)
+    candidate_id: Mapped[int | None] = mapped_column(
+        ForeignKey("candidate.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+    kit_version: Mapped[int] = mapped_column(Integer, default=1, nullable=False)
+    status: Mapped[str] = mapped_column(String(40), default="active", nullable=False)
+
+    role_title: Mapped[str] = mapped_column(String(255), nullable=False)
+    seniority: Mapped[str] = mapped_column(String(80), default="Mid-Level", nullable=False)
+    experience_level: Mapped[str] = mapped_column(String(80), default="5-8 Years", nullable=False)
+    role_domain: Mapped[str] = mapped_column(String(120), default="General", nullable=False)
+
+    question_count: Mapped[int] = mapped_column(Integer, default=8, nullable=False)
+    questions: Mapped[list[dict[str, Any]]] = mapped_column(JSON, default=list, nullable=False)
+    coverage_matrix: Mapped[list[dict[str, Any]]] = mapped_column(JSON, default=list, nullable=False)
+    overall_scorecard: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict, nullable=False)
+
+    provenance: Mapped[str] = mapped_column(String(60), default="nemotron_chat", nullable=False)
+    model_name: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    content_hash: Mapped[str | None] = mapped_column(String(64), nullable=True)
+
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        nullable=False,
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
+        nullable=False,
+    )
+
+
 # Store pending and resolved human approvals for sensitive AI and recruiter actions.
 class ApprovalRequest(Base):
     """Store sensitive operations requiring human confirmation before execution."""
@@ -915,6 +979,65 @@ class ApprovalRequest(Base):
     resolved_by: Mapped[str | None] = mapped_column(String(255), nullable=True)
 
 
+ # Store external advertisement and publishing lifecycle linked to one approved internal job.
+class JobPosting(Base):
+    __tablename__ = "job_posting"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    job_id: Mapped[int] = mapped_column(ForeignKey("job.id", ondelete="CASCADE"), nullable=False, index=True)
+    status: Mapped[str] = mapped_column(String(32), default="Draft", nullable=False, index=True)
+    posting_owner: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    strategy: Mapped[dict[str, Any] | None] = mapped_column(JSON, nullable=True)
+    supplementary_info: Mapped[dict[str, Any] | None] = mapped_column(JSON, default=dict, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc), nullable=False)
+
+
+ # Store platform-specific advertisements without modifying the approved JD.
+class JobPostingVersion(Base):
+    __tablename__ = "job_posting_version"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    posting_id: Mapped[int] = mapped_column(ForeignKey("job_posting.id", ondelete="CASCADE"), nullable=False, index=True)
+    platform: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    title: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    content: Mapped[str] = mapped_column(Text, nullable=False)
+    status: Mapped[str] = mapped_column(String(32), default="AI Generated", nullable=False)
+    approval_timestamp: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    publication_timestamp: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    external_posting_url: Mapped[str | None] = mapped_column(Text, nullable=True)
+    job_id_external: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    ai_generated: Mapped[int] = mapped_column(Integer, default=1, nullable=False)
+    model_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    generation_method: Mapped[str] = mapped_column(String(64), default="deterministic_fallback", nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc), nullable=False)
+
+
+ # Store only manually entered or genuinely integrated platform metrics.
+class JobPostingMetrics(Base):
+    __tablename__ = "job_posting_metrics"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    posting_id: Mapped[int] = mapped_column(ForeignKey("job_posting.id", ondelete="CASCADE"), nullable=False, index=True)
+    platform: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    metrics: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict, nullable=False)
+    source: Mapped[str] = mapped_column(String(64), default="manual", nullable=False)
+    recorded_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False)
+
+
+ # Store posting lifecycle and edit history as audit trail.
+class JobPostingActivity(Base):
+    __tablename__ = "job_posting_activity"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    posting_id: Mapped[int] = mapped_column(ForeignKey("job_posting.id", ondelete="CASCADE"), nullable=False, index=True)
+    action: Mapped[str] = mapped_column(String(64), nullable=False)
+    details: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False)
+
+
 # Store agent execution traces for observability, tool inspection, and latency metrics.
 class AgentTrace(Base):
     """Store agent tool execution traces, model latency, and token usage."""
@@ -955,5 +1078,42 @@ class AgentTrace(Base):
         default=lambda: datetime.now(timezone.utc),
         nullable=False,
         index=True,
+    )
+
+
+# Append-only snapshots preserve each distinct source version evaluated for a candidate and job.
+class CandidateJobMatchResult(Base):
+    __tablename__ = "candidate_job_match_result"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    candidate_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
+    job_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
+    resume_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    resume_content_hash: Mapped[str] = mapped_column(String(64), default="", nullable=False)
+    candidate_profile_hash: Mapped[str] = mapped_column(String(64), default="", nullable=False)
+    scoring_weights_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+    jd_version_id: Mapped[int] = mapped_column(Integer, nullable=False)
+    jd_content_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+    matching_engine_version: Mapped[str] = mapped_column(String(32), nullable=False)
+    scoring_configuration_version: Mapped[str] = mapped_column(String(64), nullable=False)
+    overall_score: Mapped[int] = mapped_column(Integer, nullable=False)
+    score_available: Mapped[bool] = mapped_column(Boolean, default=True, server_default=text("1"), nullable=False)
+    classification: Mapped[str] = mapped_column(String(64), nullable=False)
+    component_scores: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False)
+    evidence: Mapped[list[dict[str, Any]]] = mapped_column(JSON, nullable=False)
+    provenance: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False)
+    is_current: Mapped[bool] = mapped_column(default=True, nullable=False, index=True)
+    calculated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False, index=True
+    )
+
+    # One record per distinct candidate/job source and scorer version; older records remain queryable.
+    __table_args__ = (
+        Index(
+            "uq_candidate_job_match_source_version",
+            "candidate_id", "job_id", "jd_version_id", "jd_content_hash", "resume_content_hash",
+            "candidate_profile_hash", "matching_engine_version", "scoring_configuration_version", "scoring_weights_hash",
+            unique=True,
+        ),
     )
 

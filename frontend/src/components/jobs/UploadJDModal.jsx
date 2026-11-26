@@ -35,7 +35,7 @@ export function extractMetadataFromText(text, fallbackFilename = '') {
   // 2. Job Title
   // Look for patterns like "Design Verification Engineer", "Senior Cloud Architect", "Hyperion Planning Consultant"
   const roleKeywords =
-    '(?:Engineer|Consultant|Developer|Architect|Manager|Lead|Analyst|Specialist|Administrator|Director|Officer|Scientist|Designer|Tester|Associate|Coordinator|Programmer|Technician)';
+    '(?:Engineer|Consultant|Developer|Architect|Manager|Lead|Analyst|Specialist|Administrator|Director|Officer|Scientist|Designer|Artist|Producer|Tester|Associate|Coordinator|Programmer|Technician|Operator|Support|Representative)';
 
   // Try pattern with explicit prefix first: Title: ..., Role: ...
   const explicitPrefixMatch = text.match(
@@ -94,51 +94,6 @@ export function extractMetadataFromText(text, fallbackFilename = '') {
     meta.location = locMatch[0].trim();
   }
 
-  // 5. Common Technical Competencies / Skills
-  const commonTech = [
-    'Verilog',
-    'SystemVerilog',
-    'UVM',
-    'VHDL',
-    'FPGA',
-    'SVA',
-    'DO-254',
-    'AXI',
-    'APB',
-    'AHB',
-    'Python',
-    'Perl',
-    'Tcl',
-    'Shell',
-    'ASIC',
-    'C++',
-    'Java',
-    'Oracle EPM',
-    'Hyperion',
-    'PBCS',
-    'FCCS',
-    'Calculation Scripts',
-    'Dimension Hierarchies',
-    'Smart View',
-    'Essbase',
-    'Financial Consolidation',
-    'Kubernetes',
-    'Docker',
-    'AWS',
-    'Azure',
-    'GCP',
-    'React',
-    'Node.js',
-    'SQL',
-    'PostgreSQL',
-  ];
-  const foundSkills = commonTech.filter((tech) =>
-    new RegExp(`\\b${tech.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i').test(text)
-  );
-  if (foundSkills.length > 0) {
-    meta.required_skills = foundSkills.slice(0, 8).join(', ');
-  }
-
   return meta;
 }
 
@@ -159,7 +114,7 @@ export function tuneJobDescriptionText(rawText, metadata = {}) {
   const expMatch = text.match(/(\d+)\+?\s*(?:yrs|years|yr|yoe)/i);
   const expStr = expMatch
     ? expMatch[1] + '+ Years'
-    : (metadata.min_experience_years ? metadata.min_experience_years + '+ Years' : '5+ Years');
+    : (metadata.min_experience_years ? metadata.min_experience_years + '+ Years' : 'Not specified');
 
   const locMatch = text.match(
     /\b(Bengaluru|Bangalore|Hyderabad|Pune|Mumbai|Chennai|Delhi|Noida|Gurgaon|Gurugram|Kolkata|Ahmedabad|Remote|Hybrid)(?:\s*(?:&|\/|,|and)\s*(Bengaluru|Bangalore|Hyderabad|Pune|Mumbai|Chennai|Delhi|Noida|Gurgaon|Gurugram|Kolkata|Ahmedabad|Remote|Hybrid))?\b/i
@@ -175,7 +130,7 @@ export function tuneJobDescriptionText(rawText, metadata = {}) {
   // Detect clean job title
   let title = metadata.title || '';
   const roleKeywords =
-    '(?:Engineer|Consultant|Developer|Architect|Manager|Lead|Analyst|Specialist|Administrator|Director|Officer|Scientist|Designer|Tester|Associate|Coordinator)';
+    '(?:Engineer|Consultant|Developer|Architect|Manager|Lead|Analyst|Specialist|Administrator|Director|Officer|Scientist|Designer|Artist|Producer|Tester|Associate|Coordinator|Operator|Support|Representative)';
   if (!title) {
     const titleMatch = body.match(new RegExp('\\b([A-Z][a-zA-Z0-9/&\\s-]{2,45}\\s+' + roleKeywords + ')\\b', 'i'));
     if (titleMatch) {

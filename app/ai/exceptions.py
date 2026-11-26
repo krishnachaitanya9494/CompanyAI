@@ -21,6 +21,11 @@ class AIAuthenticationError(AIProviderError):
     pass
 
 
+class AIOllamaUnavailableError(AIProviderError):
+    """Raised when the local Ollama server is unreachable or offline."""
+    pass
+
+
 class AIEmbeddingError(AIPlatformError):
     """Raised when embedding generation, formatting, or dimensionality validation fails."""
     pass

@@ -42,7 +42,8 @@ def chat_with_agent(
             "model": result["model_name"],
             "latency_ms": result["latency_ms"],
             "tools_called": result["tools_called"],
-        }
+        },
+        "follow_up_suggestions": result.get("follow_up_suggestions", []),
     }
 
 

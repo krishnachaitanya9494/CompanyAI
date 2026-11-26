@@ -3,7 +3,7 @@ from sqlalchemy import create_engine, inspect, text
 # Import URL to build a platform-safe temporary SQLite database URL.
 from sqlalchemy.engine import URL
 # Import the idempotent migration function for older resume_embedding tables.
-from database.sqlite_migrations import migrate_candidate_profile_columns, migrate_resume_embedding_storage, migrate_resume_ingestion_stage_columns
+from database.sqlite_migrations import migrate_candidate_match_score_availability, migrate_candidate_profile_columns, migrate_resume_embedding_storage, migrate_resume_ingestion_stage_columns
 
 
 # Verify the migration adds nullable columns without discarding legacy references.
@@ -132,4 +132,18 @@ def test_candidate_profile_migration_preserves_existing_candidates(tmp_path):
         preserved = connection.execute(text("SELECT name, email, skills, stage FROM candidate WHERE id = 1")).one()
     assert preserved == ("Synthetic", "synthetic@example.test", '["Python"]', "New")
     # Close the isolated migration database after its preservation checks.
+    engine.dispose()
+
+
+def test_match_score_availability_migration_preserves_history_and_is_idempotent(tmp_path):
+    """Test the additive score flag only in a synthetic temporary database copy."""
+    engine = create_engine(URL.create("sqlite", database=str(tmp_path / "legacy-match-history.db")))
+    with engine.begin() as connection:
+        connection.execute(text("CREATE TABLE candidate_job_match_result (id INTEGER PRIMARY KEY, overall_score INTEGER NOT NULL)"))
+        connection.execute(text("INSERT INTO candidate_job_match_result (id, overall_score) VALUES (41, 73)"))
+        assert migrate_candidate_match_score_availability(connection) == ("score_available",)
+    with engine.begin() as connection:
+        row = connection.execute(text("SELECT id, overall_score, score_available FROM candidate_job_match_result WHERE id = 41")).one()
+        assert tuple(row) == (41, 73, 1)
+        assert migrate_candidate_match_score_availability(connection) == ()
     engine.dispose()

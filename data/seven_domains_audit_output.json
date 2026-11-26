@@ -1,0 +1,884 @@
+{
+  "37": {
+    "job_id": 37,
+    "target_domain": "finance_accounting",
+    "target_label": "Finance / Accounting",
+    "job_title": "Staff Accountant-Mid-Ops",
+    "detected_domain": "finance_accounting",
+    "domain_label": "Finance, Accounting & Tax",
+    "extraction_method_ai": "deterministic_source_rules",
+    "model_used_ai": "deterministic-taxonomy-pipeline",
+    "extraction_method_det": "deterministic_source_rules",
+    "model_used_det": "deterministic-taxonomy-pipeline",
+    "mandatory_skills": [
+      "SAP",
+      "General Ledger",
+      "Tax Compliance",
+      "GST",
+      "TDS",
+      "Form 26AS",
+      "Sales and Use Tax"
+    ],
+    "preferred_skills": [],
+    "adjacent_skills": [
+      {
+        "skill": "SAP CPI",
+        "category": "Enterprise EPM & ERP",
+        "relationship_type": "related_adjacent",
+        "derived_from": "SAP",
+        "note": "Related adjacent technology based on SAP; not an explicit JD requirement."
+      },
+      {
+        "skill": "ABAP",
+        "category": "Enterprise EPM & ERP",
+        "relationship_type": "related_adjacent",
+        "derived_from": "SAP",
+        "note": "Related adjacent technology based on SAP; not an explicit JD requirement."
+      },
+      {
+        "skill": "Reconciliation",
+        "category": "Finance, Accounting & Tax",
+        "relationship_type": "related_adjacent",
+        "derived_from": "General Ledger",
+        "note": "Related adjacent technology based on General Ledger; not an explicit JD requirement."
+      },
+      {
+        "skill": "Month-End Close",
+        "category": "Finance, Accounting & Tax",
+        "relationship_type": "related_adjacent",
+        "derived_from": "General Ledger",
+        "note": "Related adjacent technology based on General Ledger; not an explicit JD requirement."
+      },
+      {
+        "skill": "Balance Sheet",
+        "category": "Finance, Accounting & Tax",
+        "relationship_type": "related_adjacent",
+        "derived_from": "General Ledger",
+        "note": "Related adjacent technology based on General Ledger; not an explicit JD requirement."
+      },
+      {
+        "skill": "Journal Entries",
+        "category": "Finance, Accounting & Tax",
+        "relationship_type": "related_adjacent",
+        "derived_from": "General Ledger",
+        "note": "Related adjacent technology based on General Ledger; not an explicit JD requirement."
+      },
+      {
+        "skill": "Tax Audits",
+        "category": "Finance, Accounting & Tax",
+        "relationship_type": "related_adjacent",
+        "derived_from": "Tax Compliance",
+        "note": "Related adjacent technology based on Tax Compliance; not an explicit JD requirement."
+      },
+      {
+        "skill": "Tax Reconciliation",
+        "category": "Finance, Accounting & Tax",
+        "relationship_type": "related_adjacent",
+        "derived_from": "GST",
+        "note": "Related adjacent technology based on GST; not an explicit JD requirement."
+      },
+      {
+        "skill": "Income Tax",
+        "category": "Finance, Accounting & Tax",
+        "relationship_type": "related_adjacent",
+        "derived_from": "TDS",
+        "note": "Related adjacent technology based on TDS; not an explicit JD requirement."
+      },
+      {
+        "skill": "Indirect Tax",
+        "category": "Finance, Accounting & Tax",
+        "relationship_type": "related_adjacent",
+        "derived_from": "Sales and Use Tax",
+        "note": "Related adjacent technology based on Sales and Use Tax; not an explicit JD requirement."
+      }
+    ],
+    "term_provenance": {
+      "SAP": "Explicitly stated in JD requirements",
+      "General Ledger": "Explicitly stated in JD requirements",
+      "Tax Compliance": "Explicitly stated in JD requirements",
+      "GST": "Explicitly stated in JD requirements",
+      "TDS": "Explicitly stated in JD requirements",
+      "Form 26AS": "Explicitly stated in JD requirements",
+      "Sales and Use Tax": "Explicitly stated in JD requirements"
+    },
+    "term_explanations": {
+      "SAP": "SAP: Explicitly stated in JD requirements",
+      "General Ledger": "General Ledger: Explicitly stated in JD requirements",
+      "Tax Compliance": "Tax Compliance: Explicitly stated in JD requirements",
+      "GST": "GST: Explicitly stated in JD requirements",
+      "TDS": "TDS: Explicitly stated in JD requirements",
+      "Form 26AS": "Form 26AS: Explicitly stated in JD requirements",
+      "Sales and Use Tax": "Sales and Use Tax: Explicitly stated in JD requirements",
+      "SAP CPI": "Related adjacent technology based on SAP; not an explicit JD requirement.",
+      "ABAP": "Related adjacent technology based on SAP; not an explicit JD requirement.",
+      "Reconciliation": "Related adjacent technology based on General Ledger; not an explicit JD requirement.",
+      "Month-End Close": "Related adjacent technology based on General Ledger; not an explicit JD requirement.",
+      "Balance Sheet": "Related adjacent technology based on General Ledger; not an explicit JD requirement.",
+      "Journal Entries": "Related adjacent technology based on General Ledger; not an explicit JD requirement.",
+      "Tax Audits": "Related adjacent technology based on Tax Compliance; not an explicit JD requirement.",
+      "Tax Reconciliation": "Related adjacent technology based on GST; not an explicit JD requirement.",
+      "Income Tax": "Related adjacent technology based on TDS; not an explicit JD requirement.",
+      "Indirect Tax": "Related adjacent technology based on Sales and Use Tax; not an explicit JD requirement.",
+      "State Tax": "Related adjacent technology based on Sales and Use Tax; not an explicit JD requirement."
+    },
+    "queries": {
+      "balanced": {
+        "naukri": "(\"Staff Accountant-Mid-Ops\" OR \"Accountant-Mid-Ops\" OR \"Staff Accountant\") AND (SAP) AND (\"General Ledger\") AND (\"Tax Compliance\" OR GST OR TDS OR \"Form 26AS\") AND (\"General Ledger\" OR Reconciliation) AND NOT (Intern OR Trainee OR Student OR Fresher)",
+        "linkedin": "(\"Staff Accountant-Mid-Ops\" OR \"Accountant-Mid-Ops\" OR \"Staff Accountant\" OR Accountant) (SAP) (\"General Ledger\") (\"Tax Compliance\" OR GST OR TDS OR \"Form 26AS\")",
+        "google_xray": "site:linkedin.com/in (\"Staff Accountant-Mid-Ops\" OR \"Accountant-Mid-Ops\") (SAP) (\"General Ledger\") BANGALORE -intitle:\"profiles\" -inurl:\"dir/\"",
+        "naukri_len": 250,
+        "naukri_valid": true
+      },
+      "strict": {
+        "naukri": "(\"Staff Accountant-Mid-Ops\") AND (SAP) AND (\"General Ledger\") AND (\"Tax Compliance\") AND NOT (Intern OR Trainee OR Student OR Fresher)",
+        "linkedin": "(\"Staff Accountant-Mid-Ops\") (SAP) (\"General Ledger\") (\"Tax Compliance\")",
+        "google_xray": "site:linkedin.com/in (\"Staff Accountant-Mid-Ops\" OR \"Accountant-Mid-Ops\") SAP \"General Ledger\" BANGALORE -intitle:\"profiles\" -inurl:\"dir/\"",
+        "naukri_len": 134,
+        "naukri_valid": true
+      },
+      "broad": {
+        "naukri": "(\"Staff Accountant-Mid-Ops\" OR \"Accountant-Mid-Ops\" OR SAP OR \"General Ledger\" OR \"Tax Compliance\" OR GST OR TDS)",
+        "linkedin": "(\"Staff Accountant-Mid-Ops\" OR \"Accountant-Mid-Ops\" OR \"Staff Accountant\" OR SAP OR \"General Ledger\" OR \"Tax Compliance\" OR GST OR TDS OR \"Form 26AS\")",
+        "google_xray": "site:linkedin.com/in ((\"Staff Accountant-Mid-Ops\" OR \"Accountant-Mid-Ops\") OR SAP OR \"General Ledger\" OR \"Tax Compliance\" OR GST) BANGALORE -intitle:\"profiles\" -inurl:\"dir/\"",
+        "naukri_len": 113,
+        "naukri_valid": true
+      }
+    }
+  },
+  "39": {
+    "job_id": 39,
+    "target_domain": "cad_engineering",
+    "target_label": "CAD / Engineering",
+    "job_title": "CAD Entry Ops",
+    "detected_domain": "cad_engineering",
+    "domain_label": "CAD & Engineering Design",
+    "extraction_method_ai": "deterministic_source_rules",
+    "model_used_ai": "deterministic-taxonomy-pipeline",
+    "extraction_method_det": "deterministic_source_rules",
+    "model_used_det": "deterministic-taxonomy-pipeline",
+    "mandatory_skills": [
+      "CAD",
+      "Autodesk Revit",
+      "MicroStation",
+      "Excel"
+    ],
+    "preferred_skills": [],
+    "adjacent_skills": [
+      {
+        "skill": "AutoCAD",
+        "category": "Engineering & Design",
+        "relationship_type": "related_adjacent",
+        "derived_from": "CAD",
+        "note": "Related adjacent technology based on CAD; not an explicit JD requirement."
+      },
+      {
+        "skill": "SolidWorks",
+        "category": "Engineering & Design",
+        "relationship_type": "related_adjacent",
+        "derived_from": "CAD",
+        "note": "Related adjacent technology based on CAD; not an explicit JD requirement."
+      },
+      {
+        "skill": "CATIA",
+        "category": "Engineering & Design",
+        "relationship_type": "related_adjacent",
+        "derived_from": "CAD",
+        "note": "Related adjacent technology based on CAD; not an explicit JD requirement."
+      },
+      {
+        "skill": "2D Drafting",
+        "category": "Engineering & Design",
+        "relationship_type": "related_adjacent",
+        "derived_from": "CAD",
+        "note": "Related adjacent technology based on CAD; not an explicit JD requirement."
+      },
+      {
+        "skill": "3D Modeling",
+        "category": "Engineering & Design",
+        "relationship_type": "related_adjacent",
+        "derived_from": "CAD",
+        "note": "Related adjacent technology based on CAD; not an explicit JD requirement."
+      },
+      {
+        "skill": "BIM 360",
+        "category": "Engineering & Design",
+        "relationship_type": "related_adjacent",
+        "derived_from": "CAD",
+        "note": "Related adjacent technology based on CAD; not an explicit JD requirement."
+      },
+      {
+        "skill": "Navisworks",
+        "category": "Engineering & Design",
+        "relationship_type": "related_adjacent",
+        "derived_from": "Autodesk Revit",
+        "note": "Related adjacent technology based on Autodesk Revit; not an explicit JD requirement."
+      },
+      {
+        "skill": "ProjectWise",
+        "category": "Engineering & Design",
+        "relationship_type": "related_adjacent",
+        "derived_from": "MicroStation",
+        "note": "Related adjacent technology based on MicroStation; not an explicit JD requirement."
+      },
+      {
+        "skill": "VLOOKUP",
+        "category": "Productivity & Analytics",
+        "relationship_type": "related_adjacent",
+        "derived_from": "Excel",
+        "note": "Related adjacent technology based on Excel; not an explicit JD requirement."
+      },
+      {
+        "skill": "Pivot Tables",
+        "category": "Productivity & Analytics",
+        "relationship_type": "related_adjacent",
+        "derived_from": "Excel",
+        "note": "Related adjacent technology based on Excel; not an explicit JD requirement."
+      }
+    ],
+    "term_provenance": {
+      "CAD": "Explicitly stated in JD requirements",
+      "Autodesk Revit": "Explicitly stated in JD requirements",
+      "MicroStation": "Explicitly stated in JD requirements",
+      "Excel": "Explicitly stated in JD requirements"
+    },
+    "term_explanations": {
+      "CAD": "CAD: Explicitly stated in JD requirements",
+      "Autodesk Revit": "Autodesk Revit: Explicitly stated in JD requirements",
+      "MicroStation": "MicroStation: Explicitly stated in JD requirements",
+      "Excel": "Excel: Explicitly stated in JD requirements",
+      "AutoCAD": "Related adjacent technology based on CAD; not an explicit JD requirement.",
+      "SolidWorks": "Related adjacent technology based on CAD; not an explicit JD requirement.",
+      "CATIA": "Related adjacent technology based on CAD; not an explicit JD requirement.",
+      "2D Drafting": "Related adjacent technology based on CAD; not an explicit JD requirement.",
+      "3D Modeling": "Related adjacent technology based on CAD; not an explicit JD requirement.",
+      "BIM 360": "Related adjacent technology based on CAD; not an explicit JD requirement.",
+      "Navisworks": "Related adjacent technology based on Autodesk Revit; not an explicit JD requirement.",
+      "ProjectWise": "Related adjacent technology based on MicroStation; not an explicit JD requirement.",
+      "VLOOKUP": "Related adjacent technology based on Excel; not an explicit JD requirement.",
+      "Pivot Tables": "Related adjacent technology based on Excel; not an explicit JD requirement.",
+      "Macros": "Related adjacent technology based on Excel; not an explicit JD requirement.",
+      "Power Query": "Related adjacent technology based on Excel; not an explicit JD requirement.",
+      "Power BI": "Related adjacent technology based on Excel; not an explicit JD requirement.",
+      "Data Analysis": "Related adjacent technology based on Excel; not an explicit JD requirement."
+    },
+    "queries": {
+      "balanced": {
+        "naukri": "(\"CAD Entry Ops\" OR \"CAD Operator\" OR \"CAD Drafter\") AND (CAD OR \"Autodesk Revit\" OR MicroStation) AND (CAD OR AutoCAD) AND NOT (Intern OR Trainee OR Student OR Fresher)",
+        "linkedin": "(\"CAD Entry Ops\" OR \"CAD Operator\" OR \"CAD Drafter\" OR \"CAD Designer\") (CAD OR \"Autodesk Revit\" OR MicroStation)",
+        "google_xray": "site:linkedin.com/in (\"CAD Entry Ops\" OR \"CAD Operator\") (CAD OR \"Autodesk Revit\" OR MicroStation) Bengaluru -intitle:\"profiles\" -inurl:\"dir/\"",
+        "naukri_len": 169,
+        "naukri_valid": true
+      },
+      "strict": {
+        "naukri": "(\"CAD Entry Ops\") AND (CAD) AND (\"Autodesk Revit\") AND (MicroStation) AND NOT (Intern OR Trainee OR Student OR Fresher)",
+        "linkedin": "(\"CAD Entry Ops\") (CAD) (\"Autodesk Revit\") (MicroStation)",
+        "google_xray": "site:linkedin.com/in (\"CAD Entry Ops\" OR \"CAD Operator\") CAD \"Autodesk Revit\" Bengaluru -intitle:\"profiles\" -inurl:\"dir/\"",
+        "naukri_len": 119,
+        "naukri_valid": true
+      },
+      "broad": {
+        "naukri": "(\"CAD Entry Ops\" OR \"CAD Operator\" OR CAD OR \"Autodesk Revit\" OR MicroStation)",
+        "linkedin": "(\"CAD Entry Ops\" OR \"CAD Operator\" OR \"CAD Drafter\" OR CAD OR \"Autodesk Revit\" OR MicroStation)",
+        "google_xray": "site:linkedin.com/in ((\"CAD Entry Ops\" OR \"CAD Operator\") OR CAD OR \"Autodesk Revit\" OR MicroStation) Bengaluru -intitle:\"profiles\" -inurl:\"dir/\"",
+        "naukri_len": 78,
+        "naukri_valid": true
+      }
+    }
+  },
+  "35": {
+    "job_id": 35,
+    "target_domain": "semiconductor_vlsi",
+    "target_label": "Semiconductor / VLSI",
+    "job_title": "Design Verification Engineer",
+    "detected_domain": "semiconductor_vlsi",
+    "domain_label": "Semiconductor & VLSI Engineering",
+    "extraction_method_ai": "deterministic_source_rules",
+    "model_used_ai": "deterministic-taxonomy-pipeline",
+    "extraction_method_det": "deterministic_source_rules",
+    "model_used_det": "deterministic-taxonomy-pipeline",
+    "mandatory_skills": [
+      "Verilog",
+      "SystemVerilog",
+      "UVM",
+      "VHDL",
+      "FPGA",
+      "SVA",
+      "DO-254"
+    ],
+    "preferred_skills": [],
+    "adjacent_skills": [
+      {
+        "skill": "ASIC",
+        "category": "Semiconductor & VLSI",
+        "relationship_type": "related_adjacent",
+        "derived_from": "Verilog",
+        "note": "Related adjacent technology based on Verilog; not an explicit JD requirement."
+      },
+      {
+        "skill": "ModelSim",
+        "category": "Semiconductor & VLSI",
+        "relationship_type": "related_adjacent",
+        "derived_from": "Verilog",
+        "note": "Related adjacent technology based on Verilog; not an explicit JD requirement."
+      },
+      {
+        "skill": "Assertions",
+        "category": "Semiconductor & VLSI",
+        "relationship_type": "related_adjacent",
+        "derived_from": "SystemVerilog",
+        "note": "Related adjacent technology based on SystemVerilog; not an explicit JD requirement."
+      },
+      {
+        "skill": "OVM",
+        "category": "Semiconductor & VLSI",
+        "relationship_type": "related_adjacent",
+        "derived_from": "SystemVerilog",
+        "note": "Related adjacent technology based on SystemVerilog; not an explicit JD requirement."
+      },
+      {
+        "skill": "Functional Coverage",
+        "category": "Semiconductor & VLSI",
+        "relationship_type": "related_adjacent",
+        "derived_from": "UVM",
+        "note": "Related adjacent technology based on UVM; not an explicit JD requirement."
+      },
+      {
+        "skill": "Testbench Architecture",
+        "category": "Semiconductor & VLSI",
+        "relationship_type": "related_adjacent",
+        "derived_from": "UVM",
+        "note": "Related adjacent technology based on UVM; not an explicit JD requirement."
+      },
+      {
+        "skill": "Vivado",
+        "category": "Semiconductor & VLSI",
+        "relationship_type": "related_adjacent",
+        "derived_from": "FPGA",
+        "note": "Related adjacent technology based on FPGA; not an explicit JD requirement."
+      },
+      {
+        "skill": "Quartus",
+        "category": "Semiconductor & VLSI",
+        "relationship_type": "related_adjacent",
+        "derived_from": "FPGA",
+        "note": "Related adjacent technology based on FPGA; not an explicit JD requirement."
+      },
+      {
+        "skill": "Formal Verification",
+        "category": "Semiconductor & VLSI",
+        "relationship_type": "related_adjacent",
+        "derived_from": "SVA",
+        "note": "Related adjacent technology based on SVA; not an explicit JD requirement."
+      },
+      {
+        "skill": "Hardware Validation",
+        "category": "Semiconductor & VLSI",
+        "relationship_type": "related_adjacent",
+        "derived_from": "DO-254",
+        "note": "Related adjacent technology based on DO-254; not an explicit JD requirement."
+      }
+    ],
+    "term_provenance": {
+      "Verilog": "Explicitly stated in JD requirements",
+      "SystemVerilog": "Explicitly stated in JD requirements",
+      "UVM": "Explicitly stated in JD requirements",
+      "VHDL": "Explicitly stated in JD requirements",
+      "FPGA": "Explicitly stated in JD requirements",
+      "SVA": "Explicitly stated in JD requirements",
+      "DO-254": "Explicitly stated in JD requirements"
+    },
+    "term_explanations": {
+      "Verilog": "Verilog: Explicitly stated in JD requirements",
+      "SystemVerilog": "SystemVerilog: Explicitly stated in JD requirements",
+      "UVM": "UVM: Explicitly stated in JD requirements",
+      "VHDL": "VHDL: Explicitly stated in JD requirements",
+      "FPGA": "FPGA: Explicitly stated in JD requirements",
+      "SVA": "SVA: Explicitly stated in JD requirements",
+      "DO-254": "DO-254: Explicitly stated in JD requirements",
+      "ASIC": "Related adjacent technology based on Verilog; not an explicit JD requirement.",
+      "ModelSim": "Related adjacent technology based on Verilog; not an explicit JD requirement.",
+      "Assertions": "Related adjacent technology based on SystemVerilog; not an explicit JD requirement.",
+      "OVM": "Related adjacent technology based on SystemVerilog; not an explicit JD requirement.",
+      "Functional Coverage": "Related adjacent technology based on UVM; not an explicit JD requirement.",
+      "Testbench Architecture": "Related adjacent technology based on UVM; not an explicit JD requirement.",
+      "Vivado": "Related adjacent technology based on FPGA; not an explicit JD requirement.",
+      "Quartus": "Related adjacent technology based on FPGA; not an explicit JD requirement.",
+      "Formal Verification": "Related adjacent technology based on SVA; not an explicit JD requirement.",
+      "Hardware Validation": "Related adjacent technology based on DO-254; not an explicit JD requirement.",
+      "Design Verification": "Related adjacent technology based on DO-254; not an explicit JD requirement.",
+      "Avionics": "Related adjacent technology based on DO-254; not an explicit JD requirement."
+    },
+    "queries": {
+      "balanced": {
+        "naukri": "(\"Design Verification Engineer\" OR \"ASIC Verification Engineer\" OR \"FPGA Verification Engineer\") AND (Verilog OR SystemVerilog OR VHDL) AND (UVM OR SVA) AND (FPGA OR \"DO-254\") AND (SystemVerilog OR UVM) AND NOT (Intern OR Trainee OR Student OR Fresher)",
+        "linkedin": "(\"Design Verification Engineer\" OR \"ASIC Verification Engineer\" OR \"FPGA Verification Engineer\" OR \"UVM Specialist\") (Verilog OR SystemVerilog OR VHDL) (UVM OR SVA) (FPGA OR \"DO-254\")",
+        "google_xray": "site:linkedin.com/in (\"Design Verification Engineer\" OR \"ASIC Verification Engineer\") (Verilog OR SystemVerilog OR VHDL) (UVM OR SVA) Bengaluru -intitle:\"profiles\" -inurl:\"dir/\"",
+        "naukri_len": 252,
+        "naukri_valid": true
+      },
+      "strict": {
+        "naukri": "(\"Design Verification Engineer\") AND (Verilog) AND (SystemVerilog) AND (UVM) AND NOT (Intern OR Trainee OR Student OR Fresher)",
+        "linkedin": "(\"Design Verification Engineer\") (Verilog) (SystemVerilog) (UVM)",
+        "google_xray": "site:linkedin.com/in (\"Design Verification Engineer\" OR \"ASIC Verification Engineer\") Verilog SystemVerilog Bengaluru -intitle:\"profiles\" -inurl:\"dir/\"",
+        "naukri_len": 126,
+        "naukri_valid": true
+      },
+      "broad": {
+        "naukri": "(\"Design Verification Engineer\" OR \"ASIC Verification Engineer\" OR Verilog OR SystemVerilog OR UVM OR VHDL OR FPGA)",
+        "linkedin": "(\"Design Verification Engineer\" OR \"ASIC Verification Engineer\" OR \"FPGA Verification Engineer\" OR Verilog OR SystemVerilog OR UVM OR VHDL OR FPGA OR SVA)",
+        "google_xray": "site:linkedin.com/in ((\"Design Verification Engineer\" OR \"ASIC Verification Engineer\") OR Verilog OR SystemVerilog OR UVM OR VHDL) Bengaluru -intitle:\"profiles\" -inurl:\"dir/\"",
+        "naukri_len": 115,
+        "naukri_valid": true
+      }
+    }
+  },
+  "34": {
+    "job_id": 34,
+    "target_domain": "cloud_infrastructure",
+    "target_label": "Cloud Infrastructure",
+    "job_title": "Senior Manager , Cloud Infrastructure (1)",
+    "detected_domain": "cloud_infrastructure",
+    "domain_label": "Cloud Infrastructure & DevOps",
+    "extraction_method_ai": "deterministic_source_rules",
+    "model_used_ai": "deterministic-taxonomy-pipeline",
+    "extraction_method_det": "deterministic_source_rules",
+    "model_used_det": "deterministic-taxonomy-pipeline",
+    "mandatory_skills": [
+      "Cloud Infrastructure",
+      "Azure",
+      "Terraform"
+    ],
+    "preferred_skills": [],
+    "adjacent_skills": [
+      {
+        "skill": "AWS",
+        "category": "Cloud & DevOps",
+        "relationship_type": "related_adjacent",
+        "derived_from": "Cloud Infrastructure",
+        "note": "Related adjacent technology based on Cloud Infrastructure; not an explicit JD requirement."
+      },
+      {
+        "skill": "Kubernetes",
+        "category": "Cloud & DevOps",
+        "relationship_type": "related_adjacent",
+        "derived_from": "Cloud Infrastructure",
+        "note": "Related adjacent technology based on Cloud Infrastructure; not an explicit JD requirement."
+      },
+      {
+        "skill": "CI/CD",
+        "category": "Cloud & DevOps",
+        "relationship_type": "related_adjacent",
+        "derived_from": "Cloud Infrastructure",
+        "note": "Related adjacent technology based on Cloud Infrastructure; not an explicit JD requirement."
+      },
+      {
+        "skill": ".NET",
+        "category": "Backend Engineering",
+        "relationship_type": "related_adjacent",
+        "derived_from": "Azure",
+        "note": "Related adjacent technology based on Azure; not an explicit JD requirement."
+      },
+      {
+        "skill": "C#",
+        "category": "Backend Engineering",
+        "relationship_type": "related_adjacent",
+        "derived_from": "Azure",
+        "note": "Related adjacent technology based on Azure; not an explicit JD requirement."
+      },
+      {
+        "skill": "Docker",
+        "category": "Cloud & DevOps",
+        "relationship_type": "related_adjacent",
+        "derived_from": "Azure",
+        "note": "Related adjacent technology based on Azure; not an explicit JD requirement."
+      },
+      {
+        "skill": "Linux",
+        "category": "Cloud & DevOps",
+        "relationship_type": "related_adjacent",
+        "derived_from": "Cloud Infrastructure & DevOps",
+        "note": "Standard Cloud Infrastructure & DevOps sourcing expansion keyword."
+      }
+    ],
+    "term_provenance": {
+      "Cloud Infrastructure": "Explicitly stated in JD requirements",
+      "Azure": "Explicitly stated in JD requirements",
+      "Terraform": "Explicitly stated in JD requirements"
+    },
+    "term_explanations": {
+      "Cloud Infrastructure": "Cloud Infrastructure: Explicitly stated in JD requirements",
+      "Azure": "Azure: Explicitly stated in JD requirements",
+      "Terraform": "Terraform: Explicitly stated in JD requirements",
+      "AWS": "Related adjacent technology based on Cloud Infrastructure; not an explicit JD requirement.",
+      "Kubernetes": "Related adjacent technology based on Cloud Infrastructure; not an explicit JD requirement.",
+      "CI/CD": "Related adjacent technology based on Cloud Infrastructure; not an explicit JD requirement.",
+      ".NET": "Related adjacent technology based on Azure; not an explicit JD requirement.",
+      "C#": "Related adjacent technology based on Azure; not an explicit JD requirement.",
+      "Docker": "Related adjacent technology based on Azure; not an explicit JD requirement.",
+      "Linux": "Standard Cloud Infrastructure & DevOps sourcing expansion keyword."
+    },
+    "queries": {
+      "balanced": {
+        "naukri": "(\"Senior Manager - Cloud Infrastructure\" OR \"Manager - Cloud Infrastructure\" OR \"Cloud Infrastructure Senior Manager\") AND (Azure) AND (Terraform) AND (\"Cloud Infrastructure\") AND (\"Cloud Infrastructure\" OR AWS) AND NOT (Intern OR Trainee OR Student OR Fresher)",
+        "linkedin": "(\"Senior Manager - Cloud Infrastructure\" OR \"Manager - Cloud Infrastructure\" OR \"Cloud Infrastructure Senior Manager\" OR \"Cloud Infrastructure\") (Azure) (Terraform) (\"Cloud Infrastructure\")",
+        "google_xray": "site:linkedin.com/in (\"Senior Manager - Cloud Infrastructure\" OR \"Manager - Cloud Infrastructure\") (Azure) (Terraform) Hyderabad -intitle:\"profiles\" -inurl:\"dir/\"",
+        "naukri_len": 261,
+        "naukri_valid": true
+      },
+      "strict": {
+        "naukri": "(\"Senior Manager - Cloud Infrastructure\") AND (\"Cloud Infrastructure\") AND (Azure) AND (Terraform) AND NOT (Intern OR Trainee OR Student OR Fresher)",
+        "linkedin": "(\"Senior Manager - Cloud Infrastructure\") (\"Cloud Infrastructure\") (Azure) (Terraform)",
+        "google_xray": "site:linkedin.com/in (\"Senior Manager - Cloud Infrastructure\" OR \"Manager - Cloud Infrastructure\") \"Cloud Infrastructure\" Azure Hyderabad -intitle:\"profiles\" -inurl:\"dir/\"",
+        "naukri_len": 148,
+        "naukri_valid": true
+      },
+      "broad": {
+        "naukri": "(\"Senior Manager - Cloud Infrastructure\" OR \"Manager - Cloud Infrastructure\" OR \"Cloud Infrastructure\" OR Azure OR Terraform)",
+        "linkedin": "(\"Senior Manager - Cloud Infrastructure\" OR \"Manager - Cloud Infrastructure\" OR \"Cloud Infrastructure Senior Manager\" OR \"Cloud Infrastructure\" OR Azure OR Terraform)",
+        "google_xray": "site:linkedin.com/in ((\"Senior Manager - Cloud Infrastructure\" OR \"Manager - Cloud Infrastructure\") OR \"Cloud Infrastructure\" OR Azure OR Terraform) Hyderabad -intitle:\"profiles\" -inurl:\"dir/\"",
+        "naukri_len": 125,
+        "naukri_valid": true
+      }
+    }
+  },
+  "36": {
+    "job_id": 36,
+    "target_domain": "servicenow_itsm",
+    "target_label": "ServiceNow",
+    "job_title": "ServiceNow FSO Software Engineer \u2013 Complaint Management",
+    "detected_domain": "servicenow_itsm",
+    "domain_label": "ITSM & ServiceNow",
+    "extraction_method_ai": "deterministic_source_rules",
+    "model_used_ai": "deterministic-taxonomy-pipeline",
+    "extraction_method_det": "deterministic_source_rules",
+    "model_used_det": "deterministic-taxonomy-pipeline",
+    "mandatory_skills": [
+      "REST APIs",
+      "Flow Designer",
+      "Business Rules",
+      "ServiceNow"
+    ],
+    "preferred_skills": [],
+    "adjacent_skills": [
+      {
+        "skill": "Java",
+        "category": "Backend Engineering",
+        "relationship_type": "related_adjacent",
+        "derived_from": "REST APIs",
+        "note": "Related adjacent technology based on REST APIs; not an explicit JD requirement."
+      },
+      {
+        "skill": "Spring Boot",
+        "category": "Backend Engineering",
+        "relationship_type": "related_adjacent",
+        "derived_from": "REST APIs",
+        "note": "Related adjacent technology based on REST APIs; not an explicit JD requirement."
+      },
+      {
+        "skill": ".NET",
+        "category": "Backend Engineering",
+        "relationship_type": "related_adjacent",
+        "derived_from": "REST APIs",
+        "note": "Related adjacent technology based on REST APIs; not an explicit JD requirement."
+      },
+      {
+        "skill": "IntegrationHub",
+        "category": "IT Service Management",
+        "relationship_type": "related_adjacent",
+        "derived_from": "Flow Designer",
+        "note": "Related adjacent technology based on Flow Designer; not an explicit JD requirement."
+      },
+      {
+        "skill": "ITSM",
+        "category": "IT Service Management",
+        "relationship_type": "related_adjacent",
+        "derived_from": "ServiceNow",
+        "note": "Related adjacent technology based on ServiceNow; not an explicit JD requirement."
+      },
+      {
+        "skill": "ITIL",
+        "category": "IT Service Management",
+        "relationship_type": "related_adjacent",
+        "derived_from": "ServiceNow",
+        "note": "Related adjacent technology based on ServiceNow; not an explicit JD requirement."
+      },
+      {
+        "skill": "CMDB",
+        "category": "IT Service Management",
+        "relationship_type": "related_adjacent",
+        "derived_from": "ServiceNow",
+        "note": "Related adjacent technology based on ServiceNow; not an explicit JD requirement."
+      }
+    ],
+    "term_provenance": {
+      "REST APIs": "Explicitly stated in JD requirements",
+      "Flow Designer": "Explicitly stated in JD requirements",
+      "Business Rules": "Explicitly stated in JD requirements",
+      "ServiceNow": "Explicitly stated in JD requirements"
+    },
+    "term_explanations": {
+      "REST APIs": "REST APIs: Explicitly stated in JD requirements",
+      "Flow Designer": "Flow Designer: Explicitly stated in JD requirements",
+      "Business Rules": "Business Rules: Explicitly stated in JD requirements",
+      "ServiceNow": "ServiceNow: Explicitly stated in JD requirements",
+      "Java": "Related adjacent technology based on REST APIs; not an explicit JD requirement.",
+      "Spring Boot": "Related adjacent technology based on REST APIs; not an explicit JD requirement.",
+      ".NET": "Related adjacent technology based on REST APIs; not an explicit JD requirement.",
+      "IntegrationHub": "Related adjacent technology based on Flow Designer; not an explicit JD requirement.",
+      "ITSM": "Related adjacent technology based on ServiceNow; not an explicit JD requirement.",
+      "ITIL": "Related adjacent technology based on ServiceNow; not an explicit JD requirement.",
+      "CMDB": "Related adjacent technology based on ServiceNow; not an explicit JD requirement."
+    },
+    "queries": {
+      "balanced": {
+        "naukri": "(\"ServiceNow FSO Software Engineer \u2013 Complaint Management\" OR \"ServiceNow FSO Software Engineer\" OR \"Complaint Management\") AND (\"REST APIs\") AND (\"Flow Designer\" OR \"Business Rules\" OR ServiceNow) AND (ServiceNow OR \"Flow Designer\") AND NOT (Intern OR Trainee OR Student OR Fresher)",
+        "linkedin": "(\"ServiceNow FSO Software Engineer \u2013 Complaint Management\" OR \"ServiceNow FSO Software Engineer\" OR \"Complaint Management\" OR \"ServiceNow Developer\") (\"REST APIs\") (\"Flow Designer\" OR \"Business Rules\" OR ServiceNow)",
+        "google_xray": "site:linkedin.com/in (\"ServiceNow FSO Software Engineer \u2013 Complaint Management\" OR \"ServiceNow FSO Software Engineer\") (\"REST APIs\") (\"Flow Designer\" OR \"Business Rules\" OR ServiceNow) Hyderabad -intitle:\"profiles\" -inurl:\"dir/\"",
+        "naukri_len": 283,
+        "naukri_valid": true
+      },
+      "strict": {
+        "naukri": "(\"ServiceNow FSO Software Engineer \u2013 Complaint Management\") AND (\"REST APIs\") AND (\"Flow Designer\") AND (\"Business Rules\") AND NOT (Intern OR Trainee OR Student OR Fresher)",
+        "linkedin": "(\"ServiceNow FSO Software Engineer \u2013 Complaint Management\") (\"REST APIs\") (\"Flow Designer\") (\"Business Rules\")",
+        "google_xray": "site:linkedin.com/in (\"ServiceNow FSO Software Engineer \u2013 Complaint Management\" OR \"ServiceNow FSO Software Engineer\") \"REST APIs\" \"Flow Designer\" Hyderabad -intitle:\"profiles\" -inurl:\"dir/\"",
+        "naukri_len": 172,
+        "naukri_valid": true
+      },
+      "broad": {
+        "naukri": "(\"ServiceNow FSO Software Engineer \u2013 Complaint Management\" OR \"ServiceNow FSO Software Engineer\" OR \"REST APIs\" OR \"Flow Designer\" OR \"Business Rules\" OR ServiceNow)",
+        "linkedin": "(\"ServiceNow FSO Software Engineer \u2013 Complaint Management\" OR \"ServiceNow FSO Software Engineer\" OR \"Complaint Management\" OR \"REST APIs\" OR \"Flow Designer\" OR \"Business Rules\" OR ServiceNow)",
+        "google_xray": "site:linkedin.com/in ((\"ServiceNow FSO Software Engineer \u2013 Complaint Management\" OR \"ServiceNow FSO Software Engineer\") OR \"REST APIs\" OR \"Flow Designer\" OR \"Business Rules\" OR ServiceNow) Hyderabad -intitle:\"profiles\" -inurl:\"dir/\"",
+        "naukri_len": 165,
+        "naukri_valid": true
+      }
+    }
+  },
+  "5": {
+    "job_id": 5,
+    "target_domain": "software_engineering",
+    "target_label": "Java / Software",
+    "job_title": "Java Application Support / Production Engineer",
+    "detected_domain": "software_engineering",
+    "domain_label": "Software & Full-Stack Engineering",
+    "extraction_method_ai": "deterministic_source_rules",
+    "model_used_ai": "deterministic-taxonomy-pipeline",
+    "extraction_method_det": "deterministic_source_rules",
+    "model_used_det": "deterministic-taxonomy-pipeline",
+    "mandatory_skills": [
+      "Java"
+    ],
+    "preferred_skills": [],
+    "adjacent_skills": [
+      {
+        "skill": "Spring Boot",
+        "category": "Backend Engineering",
+        "relationship_type": "related_adjacent",
+        "derived_from": "Java",
+        "note": "Related adjacent technology based on Java; not an explicit JD requirement."
+      },
+      {
+        "skill": "Microservices",
+        "category": "Backend Engineering",
+        "relationship_type": "related_adjacent",
+        "derived_from": "Java",
+        "note": "Related adjacent technology based on Java; not an explicit JD requirement."
+      },
+      {
+        "skill": "REST APIs",
+        "category": "Backend Engineering",
+        "relationship_type": "related_adjacent",
+        "derived_from": "Java",
+        "note": "Related adjacent technology based on Java; not an explicit JD requirement."
+      },
+      {
+        "skill": "SQL",
+        "category": "Data & Databases",
+        "relationship_type": "related_adjacent",
+        "derived_from": "Java",
+        "note": "Related adjacent technology based on Java; not an explicit JD requirement."
+      },
+      {
+        "skill": "Hibernate",
+        "category": "Backend Engineering",
+        "relationship_type": "related_adjacent",
+        "derived_from": "Java",
+        "note": "Related adjacent technology based on Java; not an explicit JD requirement."
+      },
+      {
+        "skill": "Maven",
+        "category": "Backend Engineering",
+        "relationship_type": "related_adjacent",
+        "derived_from": "Java",
+        "note": "Related adjacent technology based on Java; not an explicit JD requirement."
+      },
+      {
+        "skill": "Python",
+        "category": "Backend & AI Engineering",
+        "relationship_type": "related_adjacent",
+        "derived_from": "Software & Full-Stack Engineering",
+        "note": "Standard Software & Full-Stack Engineering sourcing expansion keyword."
+      },
+      {
+        "skill": "FastAPI",
+        "category": "Backend & AI Engineering",
+        "relationship_type": "related_adjacent",
+        "derived_from": "Software & Full-Stack Engineering",
+        "note": "Standard Software & Full-Stack Engineering sourcing expansion keyword."
+      }
+    ],
+    "term_provenance": {
+      "Java": "Explicitly stated in JD requirements"
+    },
+    "term_explanations": {
+      "Java": "Java: Explicitly stated in JD requirements",
+      "Spring Boot": "Related adjacent technology based on Java; not an explicit JD requirement.",
+      "Microservices": "Related adjacent technology based on Java; not an explicit JD requirement.",
+      "REST APIs": "Related adjacent technology based on Java; not an explicit JD requirement.",
+      "SQL": "Related adjacent technology based on Java; not an explicit JD requirement.",
+      "Hibernate": "Related adjacent technology based on Java; not an explicit JD requirement.",
+      "Maven": "Related adjacent technology based on Java; not an explicit JD requirement.",
+      "Python": "Standard Software & Full-Stack Engineering sourcing expansion keyword.",
+      "FastAPI": "Standard Software & Full-Stack Engineering sourcing expansion keyword."
+    },
+    "queries": {
+      "balanced": {
+        "naukri": "(\"Java Application Support / Production Engineer\" OR \"Java Application Support\" OR \"Production Engineer\") AND (Java) AND (Java OR \"Spring Boot\") AND NOT (Intern OR Trainee OR Student OR Fresher)",
+        "linkedin": "(\"Java Application Support / Production Engineer\" OR \"Java Application Support\" OR \"Production Engineer\" OR \"Software Engineer\") (Java)",
+        "google_xray": "site:linkedin.com/in (\"Java Application Support / Production Engineer\" OR \"Java Application Support\") (Java) Hyderabad -intitle:\"profiles\" -inurl:\"dir/\"",
+        "naukri_len": 194,
+        "naukri_valid": true
+      },
+      "strict": {
+        "naukri": "(\"Java Application Support / Production Engineer\") AND (Java) AND NOT (Intern OR Trainee OR Student OR Fresher)",
+        "linkedin": "(\"Java Application Support / Production Engineer\") (Java)",
+        "google_xray": "site:linkedin.com/in (\"Java Application Support / Production Engineer\" OR \"Java Application Support\") Java Hyderabad -intitle:\"profiles\" -inurl:\"dir/\"",
+        "naukri_len": 111,
+        "naukri_valid": true
+      },
+      "broad": {
+        "naukri": "(\"Java Application Support / Production Engineer\" OR \"Java Application Support\" OR Java)",
+        "linkedin": "(\"Java Application Support / Production Engineer\" OR \"Java Application Support\" OR \"Production Engineer\" OR Java)",
+        "google_xray": "site:linkedin.com/in ((\"Java Application Support / Production Engineer\" OR \"Java Application Support\") OR Java) Hyderabad -intitle:\"profiles\" -inurl:\"dir/\"",
+        "naukri_len": 88,
+        "naukri_valid": true
+      }
+    }
+  },
+  "4": {
+    "job_id": 4,
+    "target_domain": "sap_erp",
+    "target_label": "SAP / ERP",
+    "job_title": "SAP CPI / Integration Suite Consultant",
+    "detected_domain": "sap_erp",
+    "domain_label": "SAP & Enterprise ERP",
+    "extraction_method_ai": "deterministic_source_rules",
+    "model_used_ai": "deterministic-taxonomy-pipeline",
+    "extraction_method_det": "deterministic_source_rules",
+    "model_used_det": "deterministic-taxonomy-pipeline",
+    "mandatory_skills": [
+      "SAP",
+      "SAP CPI",
+      "Groovy"
+    ],
+    "preferred_skills": [],
+    "adjacent_skills": [
+      {
+        "skill": "ABAP",
+        "category": "Enterprise EPM & ERP",
+        "relationship_type": "related_adjacent",
+        "derived_from": "SAP",
+        "note": "Related adjacent technology based on SAP; not an explicit JD requirement."
+      },
+      {
+        "skill": "SQL",
+        "category": "Data & Databases",
+        "relationship_type": "related_adjacent",
+        "derived_from": "SAP",
+        "note": "Related adjacent technology based on SAP; not an explicit JD requirement."
+      },
+      {
+        "skill": "XML/XSLT",
+        "category": "Enterprise EPM & ERP",
+        "relationship_type": "related_adjacent",
+        "derived_from": "SAP CPI",
+        "note": "Related adjacent technology based on SAP CPI; not an explicit JD requirement."
+      },
+      {
+        "skill": "Oracle FCCS",
+        "category": "Enterprise EPM & ERP",
+        "relationship_type": "related_adjacent",
+        "derived_from": "SAP & Enterprise ERP",
+        "note": "Standard SAP & Enterprise ERP sourcing expansion keyword."
+      },
+      {
+        "skill": "Oracle EPM",
+        "category": "Enterprise EPM & ERP",
+        "relationship_type": "related_adjacent",
+        "derived_from": "SAP & Enterprise ERP",
+        "note": "Standard SAP & Enterprise ERP sourcing expansion keyword."
+      },
+      {
+        "skill": "Hyperion Financial Management",
+        "category": "Enterprise EPM & ERP",
+        "relationship_type": "related_adjacent",
+        "derived_from": "SAP & Enterprise ERP",
+        "note": "Standard SAP & Enterprise ERP sourcing expansion keyword."
+      },
+      {
+        "skill": "Smart View",
+        "category": "Enterprise EPM & ERP",
+        "relationship_type": "related_adjacent",
+        "derived_from": "SAP & Enterprise ERP",
+        "note": "Standard SAP & Enterprise ERP sourcing expansion keyword."
+      },
+      {
+        "skill": "Essbase",
+        "category": "SAP & Enterprise ERP",
+        "relationship_type": "related_adjacent",
+        "derived_from": "SAP & Enterprise ERP",
+        "note": "Standard SAP & Enterprise ERP sourcing expansion keyword."
+      }
+    ],
+    "term_provenance": {
+      "SAP": "Explicitly stated in JD requirements",
+      "SAP CPI": "Explicitly stated in JD requirements",
+      "Groovy": "Explicitly stated in JD requirements"
+    },
+    "term_explanations": {
+      "SAP": "SAP: Explicitly stated in JD requirements",
+      "SAP CPI": "SAP CPI: Explicitly stated in JD requirements",
+      "Groovy": "Groovy: Explicitly stated in JD requirements",
+      "ABAP": "Related adjacent technology based on SAP; not an explicit JD requirement.",
+      "SQL": "Related adjacent technology based on SAP; not an explicit JD requirement.",
+      "XML/XSLT": "Related adjacent technology based on SAP CPI; not an explicit JD requirement.",
+      "Oracle FCCS": "Standard SAP & Enterprise ERP sourcing expansion keyword.",
+      "Oracle EPM": "Standard SAP & Enterprise ERP sourcing expansion keyword.",
+      "Hyperion Financial Management": "Standard SAP & Enterprise ERP sourcing expansion keyword.",
+      "Smart View": "Standard SAP & Enterprise ERP sourcing expansion keyword.",
+      "Essbase": "Standard SAP & Enterprise ERP sourcing expansion keyword."
+    },
+    "queries": {
+      "balanced": {
+        "naukri": "(\"SAP CPI / Integration Suite Consultant\" OR \"SAP CPI\" OR \"Integration Suite Consultant\") AND (SAP OR \"SAP CPI\") AND (Groovy) AND (\"SAP CPI\" OR SAP) AND NOT (Intern OR Trainee OR Student OR Fresher)",
+        "linkedin": "(\"SAP CPI / Integration Suite Consultant\" OR \"SAP CPI\" OR \"Integration Suite Consultant\" OR \"SAP CPI Consultant\") (SAP OR \"SAP CPI\") (Groovy)",
+        "google_xray": "site:linkedin.com/in (\"SAP CPI / Integration Suite Consultant\" OR \"SAP CPI\") (SAP OR \"SAP CPI\") (Groovy) Bangalore -intitle:\"profiles\" -inurl:\"dir/\"",
+        "naukri_len": 198,
+        "naukri_valid": true
+      },
+      "strict": {
+        "naukri": "(\"SAP CPI / Integration Suite Consultant\") AND (SAP) AND (\"SAP CPI\") AND (Groovy) AND NOT (Intern OR Trainee OR Student OR Fresher)",
+        "linkedin": "(\"SAP CPI / Integration Suite Consultant\") (SAP) (\"SAP CPI\") (Groovy)",
+        "google_xray": "site:linkedin.com/in (\"SAP CPI / Integration Suite Consultant\" OR \"SAP CPI\") SAP \"SAP CPI\" Bangalore -intitle:\"profiles\" -inurl:\"dir/\"",
+        "naukri_len": 131,
+        "naukri_valid": true
+      },
+      "broad": {
+        "naukri": "(\"SAP CPI / Integration Suite Consultant\" OR \"SAP CPI\" OR SAP OR \"SAP CPI\" OR Groovy)",
+        "linkedin": "(\"SAP CPI / Integration Suite Consultant\" OR \"SAP CPI\" OR \"Integration Suite Consultant\" OR SAP OR \"SAP CPI\" OR Groovy)",
+        "google_xray": "site:linkedin.com/in ((\"SAP CPI / Integration Suite Consultant\" OR \"SAP CPI\") OR SAP OR \"SAP CPI\" OR Groovy) Bangalore -intitle:\"profiles\" -inurl:\"dir/\"",
+        "naukri_len": 85,
+        "naukri_valid": true
+      }
+    }
+  }
+}

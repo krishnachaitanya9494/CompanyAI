@@ -25,6 +25,7 @@ from database.models import (
     ActivityEvent,
     Candidate,
     Job,
+    JobDescription,
     RecruitmentRequest,
     Resume,
     ResumeEmbedding,
@@ -714,11 +715,30 @@ def delete_job(
     # Preserve requests while explicitly clearing only their foreign-key association.
     for request_record in linked_requests:
         request_record.job_id = None
+    # Resolve and remove the source JD only after the operational job row is deleted.
+    source_jd = session.get(JobDescription, job.job_description_id) if job.job_description_id else None
+    other_jobs = session.scalars(
+        select(Job).where(
+            Job.job_description_id == source_jd.id,
+            Job.id != job_id,
+        )
+    ).all() if source_jd else []
     # Add a safe activity event before removing the managed job row.
     _record_activity(session, "job_deleted", "Job record deleted", "job", job_id)
     try:
         # Commit request unlinking and job deletion atomically.
         session.delete(job)
+        # Remove the source JD only when no other operational job references it.
+        if source_jd and not other_jobs:
+            source_path = source_jd.source_path
+            session.delete(source_jd)
+            if source_path:
+                try:
+                    source_file = Path(source_path)
+                    if source_file.is_file():
+                        source_file.unlink()
+                except OSError:
+                    pass
         session.commit()
     except Exception:
         # Restore both job and request relationships if deletion fails.

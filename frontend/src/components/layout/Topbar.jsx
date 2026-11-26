@@ -62,7 +62,7 @@ export const Topbar = ({
         </div>
       </div>
 
-      {/* Right side: Global Upload JD, Search, Nemotron AI trigger, Theme switch, Notifications, and Profile */}
+      {/* Right side: Global Upload JD, Search, CompanyAI trigger, Theme switch, Notifications, and Profile */}
       <div className="flex items-center gap-2 md:gap-3">
         {/* Global Upload Job Description button fixed in Topbar across all pages */}
         {onUploadJD && (
@@ -91,15 +91,15 @@ export const Topbar = ({
           </span>
         </button>
 
-        {/* Quick Nemotron AI assistant shortcut button with subtle React Bits Magnet pull */}
+        {/* Quick CompanyAI assistant shortcut button with subtle React Bits Magnet pull */}
         <Magnet padding={20} magnetStrength={8}>
           <button
             onClick={onOpenAI}
-            title="Open Nemotron AI Recruitment Assistant"
+            title="Open AI Recruitment Assistant"
             className="flex items-center gap-1.5 md:gap-2 px-3 md:px-3.5 py-1.5 bg-gradient-to-r from-brand-50 via-white to-accent-50 dark:from-brand-900/30 dark:via-surface-darkCard dark:to-accent-950/60 hover:from-brand-100/80 hover:to-accent-100/80 dark:hover:to-accent-900/50 border border-accent-200/80 dark:border-accent-700/60 text-accent-700 dark:text-accent-400 text-[15px] font-semibold rounded-xl transition-all shadow-subtle btn-interactive group"
           >
             <Sparkles className="w-3.5 h-3.5 text-accent-600 dark:text-accent-400 transition-transform group-hover:rotate-12" />
-            <span className="hidden sm:inline">Ask Nemotron</span>
+            <span className="hidden sm:inline">AI Assistant</span>
           </button>
         </Magnet>
 
@@ -194,7 +194,7 @@ export const Topbar = ({
                 </div>
                 <div className="px-2 py-1.5 rounded-lg hover:bg-slate-50 dark:hover:bg-surface-darkHover cursor-pointer flex items-center justify-between">
                   <span>Vector Index</span>
-                  <span className="text-[10px] font-mono text-slate-400">2048-dim</span>
+                  <span className="text-[10px] font-mono text-slate-400">768-dim</span>
                 </div>
               </div>
             </div>

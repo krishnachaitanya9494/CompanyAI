@@ -8,9 +8,9 @@ from app.ai.exceptions import (
     AIEmbeddingError,
     AIGenerationError,
 )
-from app.ai.providers.openrouter_provider import openrouter_provider
-from app.ai.providers.embedding_provider import embedding_provider, NemotronEmbeddingProvider
-from app.ai.providers.chat_provider import chat_provider, NemotronChatProvider
+from app.ai.providers.ollama_provider import ollama_provider
+from app.ai.providers.embedding_provider import embedding_provider, OllamaEmbeddingProvider, NemotronEmbeddingProvider
+from app.ai.providers.chat_provider import chat_provider, OllamaChatProvider, NemotronChatProvider
 from app.ai.services.caching_service import embedding_cache
 from app.ai.services.semantic_search_service import semantic_search_service
 from app.ai.services.rag_service import rag_service
@@ -23,10 +23,12 @@ __all__ = [
     "AIRateLimitError",
     "AIEmbeddingError",
     "AIGenerationError",
-    "openrouter_provider",
+    "ollama_provider",
     "embedding_provider",
+    "OllamaEmbeddingProvider",
     "NemotronEmbeddingProvider",
     "chat_provider",
+    "OllamaChatProvider",
     "NemotronChatProvider",
     "embedding_cache",
     "semantic_search_service",

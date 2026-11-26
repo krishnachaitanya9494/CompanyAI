@@ -557,7 +557,7 @@ def get_segmentation_dict(segmentation: JDSegmentation, source_text: str = "") -
         origin = getattr(req, "source_origin", None) or ("recruiter_edited" if is_appr else "ai_extracted")
 
         # Sanitize requirement text so internal debug annotations never leak into recruiter UI
-        clean_req_text = re.sub(r"\[section=[^;\]]+;\s*source_line=\d+\]\s*", "", req.original_text or "").strip()
+        clean_req_text = re.sub(r"\[(?:section|source_line|category)=[^\]]+\]\s*", "", req.original_text or "", flags=re.IGNORECASE).strip()
         categorized[cat].append({
             "id": req.id,
             "category": req.category,
@@ -596,16 +596,23 @@ def get_segmentation_dict(segmentation: JDSegmentation, source_text: str = "") -
             "is_empty": cat_count == 0,
         }
 
-    # Sanitize job overview and role summary from debug tags and generic boilerplate
-    clean_overview = re.sub(r"\[section=[^;\]]+;\s*source_line=\d+\]\s*", "", segmentation.job_overview or "")
-    clean_overview = re.sub(r"^##\s*Role:.*$", "", clean_overview, flags=re.MULTILINE).strip()
+    # Sanitize job overview and role summary from debug tags, raw markdown, and generic boilerplate
+    clean_overview = re.sub(r"\[(?:section|source_line|category)=[^\]]+\]\s*", "", segmentation.job_overview or "", flags=re.IGNORECASE)
+    clean_overview = re.sub(r"^##\s*(?:Role|Requisition ID|Experience|Location):.*$", "", clean_overview, flags=re.MULTILINE | re.IGNORECASE).strip()
 
-    clean_role_summary = re.sub(r"\[section=[^;\]]+;\s*source_line=\d+\]\s*", "", segmentation.role_summary or "").strip()
-    if not clean_role_summary or clean_role_summary in {
-        "Professional role within engineering organization.",
-        "Professional role within technical organization.",
-        "Enterprise hiring requirement.",
-    }:
+    clean_role_summary = re.sub(r"\[(?:section|source_line|category)=[^\]]+\]\s*", "", segmentation.role_summary or "", flags=re.IGNORECASE).strip()
+    is_generic_summary = (
+        not clean_role_summary
+        or clean_role_summary.lower().startswith("professional role")
+        or clean_role_summary.lower().startswith("enterprise hiring requirement")
+        or clean_role_summary in {
+            "Professional role within engineering organization.",
+            "Professional role within technical organization.",
+            "Enterprise hiring requirement.",
+            "Updated Executive Overview by Recruiter",
+        }
+    )
+    if is_generic_summary:
         job_t = segmentation.job.title if segmentation.job else "Engineering Specialist"
         clean_role_summary = f"Key contributor responsible for delivering end-to-end {job_t} capabilities, solution architecture, and technical execution across business operations."
 
