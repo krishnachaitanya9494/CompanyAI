@@ -88,135 +88,29 @@ logger = logging.getLogger("companyai.routers.jobs")
 JOB_DESCRIPTIONS_UPLOAD_DIR = Path(__file__).resolve().parent.parent.parent / "data" / "job_descriptions"
 
 
-# Schema for updating job status.
+# Schema for updating job status and editable JD fields.
 class JobUpdateSchema(BaseModel):
     # Optional status update (e.g. Active, Under Review, Closed).
     status: Optional[str] = Field(default=None, description="Operational status of the job")
+    # Optional title update.
+    title: Optional[str] = Field(default=None, max_length=255, description="Job title")
+    # Optional department update.
+    department: Optional[str] = Field(default=None, max_length=128, description="Department name")
+    # Optional location update.
+    location: Optional[str] = Field(default=None, max_length=255, description="Work location")
+    # Optional experience bounds.
+    min_experience_years: Optional[float] = Field(default=None, ge=0, le=80, description="Minimum experience years")
+    max_experience_years: Optional[float] = Field(default=None, ge=0, le=80, description="Maximum experience years")
+    # Optional skills updates.
+    required_skills: Optional[list[str]] = Field(default=None, description="Mandatory skills list")
+    preferred_skills: Optional[list[str]] = Field(default=None, description="Preferred skills list")
     # Optional description update.
     description: Optional[str] = Field(default=None, description="Job description text")
 
 
-@router.get("")
-def list_jobs(
-    status: Optional[str] = Query(default=None, description="Filter jobs by status"),
-    db: Session = Depends(get_db),
-) -> list[dict[str, Any]]:
-    """Retrieve all job descriptions with requirements and analysis status."""
-    # Start query on Job table.
-    query = db.query(Job)
-    # Filter by status if provided as a valid non-empty string.
-    if isinstance(status, str) and status.strip():
-        query = query.filter(Job.status == status.strip())
-
-    jobs = query.order_by(Job.id.desc()).all()
-    results = []
-
-    for idx, j in enumerate(jobs):
-        # Look for corresponding JobDescription source document cleanly via foreign key or title.
-        jd_code = f"JD-{j.id:03d}"
-        source_doc = (
-            db.query(JobDescription).filter(JobDescription.id == j.job_description_id).first()
-            if j.job_description_id
-            else db.query(JobDescription).filter(JobDescription.title == j.title).first()
-        )
-        source_filename = source_doc.source_filename if source_doc else f"jd_{j.id:03d}.txt"
-
-        # Retrieve latest approved segmentation metadata for overview readiness indicators.
-        latest_seg = (
-            db.query(JDSegmentation)
-            .filter(JDSegmentation.job_id == j.id)
-            .order_by(JDSegmentation.version.desc())
-            .first()
-        )
-
-        # Check for completed analysis record grounded in JDAnalysis or JDSegmentation.
-        analysis_data = None
-        if source_doc and source_doc.analyses:
-            an = source_doc.analyses[-1]
-            stored_resps = an.requirements.get("extracted_responsibilities") if isinstance(an.requirements, dict) else None
-            analysis_data = {
-                "status": "Analyzed",
-                "analyzedAt": an.analyzed_at.strftime("%Y-%m-%d %H:%M UTC") if an.analyzed_at else "Recent",
-                "modelUsed": an.model_name or "ollama/llama3.2:3b",
-                "confidenceScore": an.requirements.get("confidence_score", 95) if isinstance(an.requirements, dict) else 95,
-                "extractedResponsibilities": stored_resps or [
-                    r.original_text for r in (latest_seg.requirements if latest_seg else []) if r.category == "key_responsibilities"
-                ][:4],
-            }
-        elif latest_seg:
-            seg_resps = [r.original_text for r in latest_seg.requirements if r.category == "key_responsibilities"][:4]
-            if seg_resps or latest_seg.role_summary:
-                analysis_data = {
-                    "status": "Analyzed" if latest_seg.is_approved else "Segmented (Review Pending)",
-                    "analyzedAt": latest_seg.updated_at.strftime("%Y-%m-%d %H:%M UTC") if latest_seg.updated_at else "Recent",
-                    "modelUsed": latest_seg.model_name or "nvidia/nemotron-3.5-super-vl",
-                    "confidenceScore": 95 if latest_seg.is_approved else 88,
-                    "extractedResponsibilities": seg_resps if seg_resps else [latest_seg.role_summary],
-                }
-
-        # Format experience bounds honestly based on stored numeric bounds.
-        if j.min_experience_years is not None and j.max_experience_years is not None:
-            exp_str = f"{int(j.min_experience_years)} - {int(j.max_experience_years)} Years"
-        elif j.min_experience_years is not None:
-            exp_str = f"{int(j.min_experience_years)}+ Years"
-        else:
-            exp_str = "Not specified"
-
-        # Compile job dictionary preserving actual SQLite fields without inventing fake matches or clients.
-        results.append({
-            "id": j.id,
-            "numeric_id": j.id,
-            "code": f"job-{j.id:03d}",
-            "jdCode": jd_code,
-            "title": j.title,
-            "clientName": j.client_name or (source_doc.company_name if source_doc else None) or "Internal Practice",
-            "jobCode": j.job_code or f"REQ-{j.id:04d}",
-            "workMode": j.work_mode or "Not specified",
-            "employmentType": j.employment_type or "Full-time",
-            "salaryRange": j.salary_range or "Not disclosed",
-            "openingsCount": j.openings_count or 1,
-            "recruiterOwner": j.recruiter_owner or "Talent Acquisition Team",
-            "priority": j.priority or "Medium",
-            "source": j.source or "manual_upload",
-            "version": j.version or 1,
-            "jobDescriptionId": j.job_description_id or (source_doc.id if source_doc else None),
-            "ocrNeeded": bool(source_doc.ocr_needed) if source_doc and hasattr(source_doc, "ocr_needed") else False,
-            "department": j.department or "Engineering & Delivery",
-            "location": j.location or "Not specified",
-            "experienceRequired": exp_str,
-            "minYears": j.min_experience_years,
-            "maxYears": j.max_experience_years,
-            "status": j.status or "Active",
-            "requiredSkills": j.required_skills or [],
-            "preferredSkills": j.preferred_skills or [],
-            "syncedMandatorySkills": j.synced_mandatory_skills or [],
-            "syncedPreferredSkills": j.synced_preferred_skills or [],
-            "segmentationApproved": bool(latest_seg and latest_seg.is_approved),
-            "description": j.description or "",
-            "sourceFilename": source_filename,
-            "matchedCandidateIds": [],
-            "analysis": analysis_data,
-            "structuredScope": (latest_seg.structured_scope if latest_seg else None),
-            "intelligenceData": (latest_seg.intelligence_data if latest_seg else None),
-            "originalText": (source_doc.original_text if source_doc else None),
-        })
-
-    return results
-
-
-@router.get("/{job_id}")
-def get_job(job_id: str, db: Session = Depends(get_db)) -> dict[str, Any]:
-    """Retrieve deep job description details and extracted criteria."""
-    raw_id = job_id.replace("job-", "").lstrip("0") or "0"
-    try:
-        j_id = int(raw_id)
-    except ValueError:
-        raise HTTPException(status_code=400, detail="Invalid job ID format.")
-
-    j = db.query(Job).filter(Job.id == j_id).first()
-    if not j:
-        raise HTTPException(status_code=404, detail="Job not found.")
-
+def _serialize_job(j: Job, db: Session) -> dict[str, Any]:
+    """Serialize a Job row with source document and latest segmentation metadata."""
+    jd_code = f"JD-{j.id:03d}"
     source_doc = (
         db.query(JobDescription).filter(JobDescription.id == j.job_description_id).first()
         if j.job_description_id
@@ -265,7 +159,7 @@ def get_job(job_id: str, db: Session = Depends(get_db)) -> dict[str, Any]:
         "id": j.id,
         "numeric_id": j.id,
         "code": f"job-{j.id:03d}",
-        "jdCode": f"JD-{j.id:03d}",
+        "jdCode": jd_code,
         "title": j.title,
         "clientName": j.client_name or (source_doc.company_name if source_doc else None) or "Internal Practice",
         "jobCode": j.job_code or f"REQ-{j.id:04d}",
@@ -300,13 +194,23 @@ def get_job(job_id: str, db: Session = Depends(get_db)) -> dict[str, Any]:
     }
 
 
-@router.patch("/{job_id}")
-def update_job(
-    job_id: str,
-    payload: JobUpdateSchema,
+@router.get("")
+def list_jobs(
+    status: Optional[str] = Query(default=None, description="Filter jobs by status"),
     db: Session = Depends(get_db),
-) -> dict[str, Any]:
-    """Update job status or description."""
+) -> list[dict[str, Any]]:
+    """Retrieve all job descriptions with requirements and analysis status."""
+    query = db.query(Job)
+    if isinstance(status, str) and status.strip():
+        query = query.filter(Job.status == status.strip())
+
+    jobs = query.order_by(Job.id.desc()).all()
+    return [_serialize_job(j, db) for j in jobs]
+
+
+@router.get("/{job_id}")
+def get_job(job_id: str, db: Session = Depends(get_db)) -> dict[str, Any]:
+    """Retrieve deep job description details and extracted criteria."""
     raw_id = job_id.replace("job-", "").lstrip("0") or "0"
     try:
         j_id = int(raw_id)
@@ -317,6 +221,69 @@ def update_job(
     if not j:
         raise HTTPException(status_code=404, detail="Job not found.")
 
+    return _serialize_job(j, db)
+
+
+@router.patch("/{job_id}")
+def update_job(
+    job_id: str,
+    payload: JobUpdateSchema,
+    db: Session = Depends(get_db),
+) -> dict[str, Any]:
+    """Update job status or editable JD fields and return the updated job payload."""
+    raw_id = job_id.replace("job-", "").lstrip("0") or "0"
+    try:
+        j_id = int(raw_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid job ID format.")
+
+    j = db.query(Job).filter(Job.id == j_id).first()
+    if not j:
+        raise HTTPException(status_code=404, detail="Job not found.")
+
+    fields_set = payload.model_fields_set
+    next_min = payload.min_experience_years if "min_experience_years" in fields_set else j.min_experience_years
+    next_max = payload.max_experience_years if "max_experience_years" in fields_set else j.max_experience_years
+    if next_min is not None and next_max is not None and next_min > next_max:
+        raise HTTPException(status_code=400, detail="Minimum experience cannot exceed maximum experience.")
+
+    changed_fields = []
+    if payload.title is not None:
+        cleaned_title = payload.title.strip()
+        if not cleaned_title:
+            raise HTTPException(status_code=400, detail="Job title cannot be empty.")
+        j.title = cleaned_title
+        changed_fields.append("title")
+
+    if "department" in fields_set:
+        j.department = payload.department.strip() if payload.department else None
+        changed_fields.append("department")
+
+    if "location" in fields_set:
+        j.location = payload.location.strip() if payload.location else None
+        changed_fields.append("location")
+
+    if "min_experience_years" in fields_set:
+        j.min_experience_years = payload.min_experience_years
+        changed_fields.append("experience")
+
+    if "max_experience_years" in fields_set:
+        j.max_experience_years = payload.max_experience_years
+        if "experience" not in changed_fields:
+            changed_fields.append("experience")
+
+    if payload.required_skills is not None:
+        j.required_skills = [s.strip() for s in payload.required_skills if s and s.strip()]
+        changed_fields.append("required_skills")
+
+    if payload.preferred_skills is not None:
+        j.preferred_skills = [s.strip() for s in payload.preferred_skills if s and s.strip()]
+        changed_fields.append("preferred_skills")
+
+    if payload.description is not None:
+        j.description = payload.description
+        changed_fields.append("description")
+
     if payload.status is not None:
         j.status = payload.status
         db.add(ActivityEvent(
@@ -326,14 +293,19 @@ def update_job(
             entity_id=str(j.id),
             created_at=datetime.now(timezone.utc),
         ))
-
-    if payload.description is not None:
-        j.description = payload.description
+    elif changed_fields:
+        db.add(ActivityEvent(
+            event_type="job_updated",
+            summary=f"Job {j.title} updated ({', '.join(changed_fields)})",
+            entity_type="job",
+            entity_id=str(j.id),
+            created_at=datetime.now(timezone.utc),
+        ))
 
     db.commit()
     db.refresh(j)
 
-    return {"status": "success", "message": f"Job {j.title} updated.", "job_status": j.status}
+    return _serialize_job(j, db)
 
 
 @router.post("/{job_id}/analyze")
@@ -1949,17 +1921,16 @@ def customize_job_boolean_queries(
 @router.get("/{job_id}/target-companies")
 def get_job_target_companies_endpoint(
     job_id: str,
-    db: Session = Depends(get_db),
 ) -> dict[str, Any]:
-    """Retrieve dynamic, JD-aware corporate headhunting recommendations and sourcing strategies."""
+    """Retrieve LangGraph-powered, JD-aware corporate headhunting recommendations and sourcing strategies."""
     raw_id = job_id.replace("job-", "").lstrip("0") or "0"
     try:
         j_id = int(raw_id)
     except ValueError:
         raise HTTPException(status_code=400, detail="Invalid job ID format.")
 
-    from app.services.target_company_service import get_target_company_recommendations_for_job
-    res = get_target_company_recommendations_for_job(db=db, job_id=j_id)
+    from app.agent.workflows.target_company_graph import run_target_company_graph
+    res = run_target_company_graph(job_id=j_id)
     if "error" in res:
         raise HTTPException(status_code=404, detail=res["error"])
     return res
@@ -2139,13 +2110,16 @@ def export_job_target_companies_csv_endpoint(
     writer = csv.writer(output, quoting=csv.QUOTE_ALL)
 
     writer.writerow([
+        "#",
         "Company Name",
         "Category",
-        "Tier / Type",
+        "Tier Level",
+        "Tier & Focus",
         "Target Locations",
+        "Sourcing Status",
         "Confidence",
+        "JD Overlap Skills",
         "Why Recommended / Headhunting Strategy",
-        "Overlap Skills",
         "Company Overview",
         "Corporate Sourcing Ecosystem",
         "Job Title",
@@ -2155,15 +2129,19 @@ def export_job_target_companies_csv_endpoint(
     ecosystem = res.get("ecosystem_name", "Enterprise Ecosystem")
     job_title = res.get("job_title", f"Job #{j_id}")
 
-    for co in res.get("companies", []):
+    for idx, co in enumerate(res.get("companies", []), 1):
+        tier_lvl = co.get("tier_level") or ("Tier 1" if "tier 1" in co.get("tier", "").lower() or "tier-1" in co.get("tier", "").lower() or co.get("category") in ["oem", "gcc", "retail"] else ("Tier 2" if "tier 2" in co.get("tier", "").lower() or "tier-2" in co.get("tier", "").lower() else "Tier 3"))
         writer.writerow([
+            idx,
             co.get("name", ""),
             co.get("category", ""),
+            tier_lvl,
             co.get("tier", "Industry Peer"),
             co.get("location", ""),
+            co.get("recruiter_status", "Available"),
             co.get("confidence", "High"),
-            co.get("recommendation_reason", co.get("description", "")),
             ", ".join(co.get("overlap_skills", [])),
+            co.get("why_recommended") or co.get("recommendation_reason", co.get("description", "")),
             co.get("description", ""),
             ecosystem,
             job_title,
@@ -2181,22 +2159,187 @@ def export_job_target_companies_csv_endpoint(
     )
 
 
-@router.post("/{job_id}/target-companies")
-def customize_job_target_companies_endpoint(
-    job_id: str,
-    payload: TargetCompaniesRequestSchema,
-    db: Session = Depends(get_db),
-) -> dict[str, Any]:
-    """Dynamically refine target companies based on recruiter sourcing strategy, exclusions, and custom targets."""
+def _export_filename(job_title: str, job_id: int, ext: str) -> str:
+    """Build a sanitized export filename for target companies."""
+    safe_title = "".join(c if c.isalnum() or c in (" ", "-", "_") else "_" for c in (job_title or f"Job_{job_id}")).strip().replace(" ", "_")
+    date_str = datetime.now().strftime("%Y-%m-%d")
+    return f"Target_Companies_{safe_title}_{date_str}.{ext}"
+
+
+@router.get("/{job_id}/target-companies/word")
+def export_job_target_companies_word_endpoint(job_id: str):
+    """Generate and stream a formatted Word (.docx) report of target companies."""
+    import io
+    from docx import Document
+    from docx.shared import Pt, RGBColor
+    from fastapi.responses import Response
+    from app.agent.workflows.target_company_graph import run_target_company_graph
+
     raw_id = job_id.replace("job-", "").lstrip("0") or "0"
     try:
         j_id = int(raw_id)
     except ValueError:
         raise HTTPException(status_code=400, detail="Invalid job ID format.")
 
-    from app.services.target_company_service import get_target_company_recommendations_for_job
-    res = get_target_company_recommendations_for_job(
-        db=db,
+    res = run_target_company_graph(job_id=j_id, allow_llm=False)
+    if "error" in res:
+        raise HTTPException(status_code=404, detail=res["error"])
+
+    job_title = res.get("job_title", f"Job #{j_id}")
+    ecosystem = res.get("ecosystem_name", "Target Corporate Sourcing Ecosystem")
+    strategy = res.get("primary_strategy", "Direct Industry Experience")
+    rationale = res.get("strategy_rationale", "")
+    companies = res.get("companies", [])
+
+    doc = Document()
+    heading = doc.add_heading(f"Target Companies Sourcing Intelligence — {job_title}", level=1)
+    for run in heading.runs:
+        run.font.color.rgb = RGBColor(30, 58, 138)
+
+    meta_p = doc.add_paragraph()
+    meta_p.add_run(f"Job ID: #{j_id}  |  Total Companies: {len(companies)}\n").bold = True
+    meta_p.add_run(f"Corporate Ecosystem: {ecosystem}\n")
+    meta_p.add_run(f"Sourcing Strategy: {strategy}\n")
+    if rationale:
+        r_p = doc.add_paragraph()
+        r_run = r_p.add_run(f"Strategy Rationale: {rationale}")
+        r_run.italic = True
+        r_run.font.size = Pt(10)
+
+    table = doc.add_table(rows=1, cols=7)
+    table.style = "Table Grid"
+    headers = ["#", "Company", "Target Titles", "Tier", "Location", "JD Overlap Skills", "Why Recommended"]
+    for i, h in enumerate(headers):
+        cell = table.rows[0].cells[i]
+        cell.text = h
+        for p in cell.paragraphs:
+            for r in p.runs:
+                r.bold = True
+                r.font.size = Pt(9)
+
+    for idx, co in enumerate(companies, 1):
+        titles_str = ", ".join(co.get("target_departments") or [job_title])
+        row_cells = table.add_row().cells
+        row_cells[0].text = str(idx)
+        row_cells[1].text = str(co.get("name", ""))
+        row_cells[2].text = titles_str
+        row_cells[3].text = str(co.get("tier_level") or co.get("tier") or "")
+        row_cells[4].text = str(co.get("location", ""))
+        row_cells[5].text = ", ".join(co.get("overlap_skills") or [])
+        row_cells[6].text = str(co.get("why_recommended") or co.get("recommendation_reason") or "")
+        for cell in row_cells:
+            for p in cell.paragraphs:
+                for r in p.runs:
+                    r.font.size = Pt(8.5)
+
+    buf = io.BytesIO()
+    doc.save(buf)
+    filename = _export_filename(job_title, j_id, "docx")
+    return Response(
+        content=buf.getvalue(),
+        media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
+
+
+@router.get("/{job_id}/target-companies/pdf")
+def export_job_target_companies_pdf_endpoint(job_id: str):
+    """Generate and stream a formatted PDF report of target companies using PyMuPDF Story."""
+    import html as html_lib
+    import io
+    import fitz
+    from fastapi.responses import Response
+    from app.agent.workflows.target_company_graph import run_target_company_graph
+
+    raw_id = job_id.replace("job-", "").lstrip("0") or "0"
+    try:
+        j_id = int(raw_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid job ID format.")
+
+    res = run_target_company_graph(job_id=j_id, allow_llm=False)
+    if "error" in res:
+        raise HTTPException(status_code=404, detail=res["error"])
+
+    job_title = res.get("job_title", f"Job #{j_id}")
+    ecosystem = res.get("ecosystem_name", "Target Corporate Sourcing Ecosystem")
+    strategy = res.get("primary_strategy", "Direct Industry Experience")
+    rationale = res.get("strategy_rationale", "")
+    companies = res.get("companies", [])
+
+    rows_html = []
+    for idx, co in enumerate(companies, 1):
+        titles_str = html_lib.escape(", ".join(co.get("target_departments") or [job_title]))
+        skills = html_lib.escape(", ".join(co.get("overlap_skills") or []))
+        why = html_lib.escape(str(co.get("why_recommended") or co.get("recommendation_reason") or ""))
+        rows_html.append(
+            f"<tr>"
+            f"<td>{idx}</td>"
+            f"<td><b>{html_lib.escape(str(co.get('name', '')))}</b></td>"
+            f"<td>{titles_str}</td>"
+            f"<td>{html_lib.escape(str(co.get('tier_level', '')))}</td>"
+            f"<td>{html_lib.escape(str(co.get('location', '')))}</td>"
+            f"<td>{skills}</td>"
+            f"<td>{why}</td>"
+            f"</tr>"
+        )
+
+    story_html = f"""
+    <html><head><style>
+      body {{ font-family: sans-serif; font-size: 9pt; color: #1e293b; }}
+      h1 {{ color: #1e3a8a; font-size: 15pt; margin-bottom: 4pt; }}
+      .meta {{ font-size: 8.5pt; color: #334155; margin-bottom: 8pt; }}
+      .rationale {{ font-size: 8.5pt; background: #f8fafc; padding: 6pt; border-left: 3pt solid #4f46e5; margin-bottom: 10pt; }}
+      table {{ width: 100%; border-collapse: collapse; font-size: 7.5pt; }}
+      th {{ background: #1e3a8a; color: #ffffff; text-align: left; padding: 4pt; border: 0.5pt solid #cbd5e1; }}
+      td {{ padding: 4pt; border: 0.5pt solid #cbd5e1; vertical-align: top; }}
+      tr:nth-child(even) td {{ background: #f8fafc; }}
+    </style></head><body>
+      <h1>Target Companies Sourcing Report: {html_lib.escape(job_title)}</h1>
+      <div class="meta"><b>Job ID:</b> #{j_id} &nbsp;|&nbsp; <b>Ecosystem:</b> {html_lib.escape(ecosystem)} &nbsp;|&nbsp; <b>Strategy:</b> {html_lib.escape(strategy)} &nbsp;|&nbsp; <b>Total:</b> {len(companies)}</div>
+      <div class="rationale"><b>Strategy Rationale:</b> {html_lib.escape(rationale)}</div>
+      <table>
+        <thead><tr><th>#</th><th>Company</th><th>Target Titles</th><th>Tier</th><th>Location</th><th>JD Overlap Skills</th><th>Why Recommended</th></tr></thead>
+        <tbody>{''.join(rows_html)}</tbody>
+      </table>
+    </body></html>
+    """
+
+    buf = io.BytesIO()
+    mediabox = fitz.paper_rect("a4-l")
+    where = mediabox + (28, 28, -28, -28)
+    story = fitz.Story(html=story_html)
+    writer = fitz.DocumentWriter(buf)
+    more = True
+    while more:
+        device = writer.begin_page(mediabox)
+        more, _ = story.place(where)
+        story.draw(device, None)
+        writer.end_page()
+    writer.close()
+
+    filename = _export_filename(job_title, j_id, "pdf")
+    return Response(
+        content=buf.getvalue(),
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
+
+
+@router.post("/{job_id}/target-companies")
+def customize_job_target_companies_endpoint(
+    job_id: str,
+    payload: TargetCompaniesRequestSchema,
+) -> dict[str, Any]:
+    """Dynamically refine target companies via LangGraph based on recruiter strategy, exclusions, and custom targets."""
+    raw_id = job_id.replace("job-", "").lstrip("0") or "0"
+    try:
+        j_id = int(raw_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid job ID format.")
+
+    from app.agent.workflows.target_company_graph import run_target_company_graph
+    res = run_target_company_graph(
         job_id=j_id,
         selected_strategy=payload.selected_strategy,
         custom_companies=payload.custom_companies,

@@ -44,6 +44,22 @@ class AIConfig:
     # Fallback dimensions matching local embedding model.
     fallback_dimensions: int = 768
 
+    # -------------------- LangGraph Workflow Settings --------------------
+    # Toggle LangGraph orchestration layer.
+    langgraph_enabled: bool = os.getenv("LANGGRAPH_ENABLED", "true").lower() in ("true", "1", "yes")
+
+    # Workflow execution timeout in seconds.
+    workflow_timeout_seconds: float = float(os.getenv("LANGGRAPH_WORKFLOW_TIMEOUT_SECONDS", "180.0"))
+
+    # Maximum retries per workflow node on transient failure.
+    max_workflow_retries: int = int(os.getenv("LANGGRAPH_MAX_RETRIES", "2"))
+
+    # Maximum concurrent requisitions processed in batch workflows to protect RAM / CPU inference.
+    max_concurrent_requisitions: int = int(os.getenv("LANGGRAPH_MAX_CONCURRENT_REQS", "2"))
+
+    # Dedicated SQLite checkpoint database path for resumable workflow state.
+    checkpoint_db_path: Path = PROJECT_ROOT / "data" / "companyai_checkpoints.db"
+
     # Safe compatibility aliases
     @property
     def chat_model(self) -> str:

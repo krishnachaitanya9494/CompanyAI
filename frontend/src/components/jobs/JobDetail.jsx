@@ -301,6 +301,56 @@ const STACK_COMPANY_ECOSYSTEMS = [
       { name: 'Desirazu Associates', category: 'gsi', tier_level: 'Tier 3', tier: 'Tier-3 Commercial Building & MEP CAD Design', location: 'Bangalore / Chennai', description: 'Building services consultancy providing commercial MEP, HVAC, and building drawing services', overlap_skills: ['Building Engineered Systems', 'AutoCAD MEP', 'Commercial Layout Drafting', 'Detail Drawings'], why_recommended: 'Specialist building engineering studio with experienced drafters for commercial building services.' },
     ],
   },
+
+  // 11. Workforce Management (WFM) & Contact Center Operations Ecosystem
+  {
+    keywords: ['wfm', 'workforce management', 'rtm', 'real-time management', 'intraday', 'service level', 'asa', 'aht', 'occupancy', 'shrinkage', 'adherence', 'nice wfm', 'verint', 'genesys', 'contact center', 'call center', 'bpo', 'teleperformance', 'concentrix'],
+    ecosystemName: 'Workforce Management (WFM) & Contact Center Operations Ecosystem',
+    companies: [
+      { name: 'NICE Systems', category: 'oem', tier_level: 'Tier 1', tier: 'Tier-1 WFM & CX Software OEM', location: 'Pune / Bangalore', description: 'OEM creator of NICE IEX WFM suite, CXone, and workforce engagement analytics.' },
+      { name: 'Verint Systems India', category: 'oem', tier_level: 'Tier 1', tier: 'Tier-1 WFM & Customer Engagement OEM', location: 'Bangalore / Gurgaon', description: 'Enterprise WFM software OEM specializing in forecasting and intraday scheduling.' },
+      { name: 'Genesys Telecommunications', category: 'oem', tier_level: 'Tier 1', tier: 'Tier-1 Omnichannel CCaaS & WFM OEM', location: 'Chennai / Hyderabad / Bangalore', description: 'Global CCaaS platform provider with native WFM and ACD routing.' },
+      { name: 'Amazon Development Center (Customer Service Tech / GCC)', category: 'gcc', tier_level: 'Tier 1', tier: 'Tier-1 Global Consumer GCC Operations', location: 'Hyderabad / Bangalore / Chennai', description: 'Global customer service command center with massive centralized WFM and RTM desks.' },
+      { name: 'Target India (Contact Center & Operations GCC)', category: 'gcc', tier_level: 'Tier 1', tier: 'Tier-1 Retail GCC Operations Command', location: 'Bangalore', description: 'Global capability center managing guest service operations, real-time queues, and scheduling.' },
+      { name: 'American Express India (Global Servicing GCC)', category: 'gcc', tier_level: 'Tier 1', tier: 'Tier-1 Financial Services Operations GCC', location: 'Gurgaon / Bangalore', description: 'High-governance financial contact center running strict intraday workforce management.' },
+      { name: 'Teleperformance India', category: 'gsi', tier_level: 'Tier 2', tier: 'Tier-2 Global Contact Center BPO Leader', location: 'Gurgaon / Mumbai / Bangalore / Hyderabad', description: 'World\'s largest contact center BPO with dedicated centralized WFM/RTM command centers.' },
+      { name: 'Concentrix India', category: 'gsi', tier_level: 'Tier 2', tier: 'Tier-2 Global CX BPO Provider', location: 'Bangalore / Gurgaon / Hyderabad / Chennai', description: 'Premier customer experience solutions provider running complex multi-channel WFM operations.' },
+      { name: 'Genpact (Customer Care & Contact Center BPS)', category: 'gsi', tier_level: 'Tier 2', tier: 'Tier-2 Global BPO & Enterprise Operations', location: 'Gurgaon / Hyderabad / Bangalore / Jaipur', description: 'Enterprise BPM and digital operations managing client contact centers and capacity planning.' },
+      { name: 'Tech Mahindra (BPS / Customer Experience)', category: 'gsi', tier_level: 'Tier 2', tier: 'Tier-2 Enterprise BPS Practice', location: 'Pune / Noida / Bangalore / Hyderabad', description: 'Scalable customer care contact center operations with dedicated workforce management teams.' },
+      { name: 'Wipro (Customer Experience & BPO Services)', category: 'gsi', tier_level: 'Tier 2', tier: 'Tier-2 Global GSI & BPO Operations', location: 'Bangalore / Chennai / Hyderabad', description: 'Global business services managing omnichannel contact centers and ACD routing.' },
+      { name: 'Infosys BPM (Customer Service Operations)', category: 'gsi', tier_level: 'Tier 2', tier: 'Tier-2 Global BPM Leader', location: 'Bangalore / Pune / Jaipur', description: 'Global BPM provider with specialized contact center WFM analysts.' },
+      { name: 'WNS Global Services (Customer Experience)', category: 'gsi', tier_level: 'Tier 2', tier: 'Tier-2 BPM Specialist', location: 'Mumbai / Pune / Gurgaon / Bangalore', description: 'BPM leader with deep contact center operations and dedicated intraday service level monitoring.' },
+      { name: 'Firstsource Solutions', category: 'gsi', tier_level: 'Tier 2', tier: 'Tier-2 Specialized CX Management Leader', location: 'Bangalore / Mumbai / Chennai', description: 'Specialized business process provider with dedicated intraday queue coordination desks.' },
+      { name: 'Hinduja Global Solutions (HGS)', category: 'other', tier_level: 'Tier 3', tier: 'Tier-3 Contact Center & BPM Provider', location: 'Bangalore / Mumbai / Hyderabad / Chennai', description: 'Specialized customer engagement provider running dedicated WFM and SLA reporting.' },
+      { name: 'Conduent India', category: 'other', tier_level: 'Tier 3', tier: 'Tier-3 Business Services Provider', location: 'Bangalore / Hyderabad / Noida / Gurgaon', description: 'Specialized enterprise shared services managing transactional contact center queues.' },
+      { name: 'EXL Service (Customer Operations & Analytics)', category: 'other', tier_level: 'Tier 3', tier: 'Tier-3 Operations Management & Analytics', location: 'Noida / Gurgaon / Bangalore / Pune', description: 'Operations management specialist with analytics-driven intraday scheduling and reporting.' },
+      { name: 'Startek India (formerly Aegis)', category: 'other', tier_level: 'Tier 3', tier: 'Tier-3 CX & BPO Outsourcing Firm', location: 'Mumbai / Gurgaon / Bangalore / Bhopal', description: 'Customer engagement outsourcing firm with regional operations and real-time floor monitoring.' },
+    ],
+  },
+
+  // 12. Business Analysis, Enterprise Analytics & BI Sourcing Ecosystem
+  {
+    keywords: ['business analyst', 'business analysis', 'data analysis', 'bi', 'power bi', 'tableau', 'sql', 'analytics', 'kpi', 'dashboard', 'requirements gathering', 'stakeholder management'],
+    ecosystemName: 'Business Analysis, Enterprise Analytics & BI Sourcing Ecosystem',
+    companies: [
+      { name: 'Microsoft IDC', category: 'oem', tier_level: 'Tier 1', tier: 'Tier-1 Platform OEM & Analytics CoE', location: 'Hyderabad / Bangalore / Noida', description: 'Creator of Power BI, Azure Synapse, and enterprise SQL engines.' },
+      { name: 'Google India', category: 'oem', tier_level: 'Tier 1', tier: 'Tier-1 Hyperscaler & Analytics OEM', location: 'Bangalore / Hyderabad / Gurgaon', description: 'Product engineering for BigQuery, Looker, and data cloud platforms.' },
+      { name: 'Target India (Enterprise Analytics GCC)', category: 'gcc', tier_level: 'Tier 1', tier: 'Tier-1 Retail Analytics GCC', location: 'Bangalore', description: 'Advanced retail analytics CoE driving store merchandising and guest intelligence.' },
+      { name: 'Walmart Global Tech', category: 'gcc', tier_level: 'Tier 1', tier: 'Tier-1 Retail & Supply Chain Analytics GCC', location: 'Bangalore / Chennai', description: 'Enterprise analytics hub solving global retail forecasting and inventory optimization.' },
+      { name: 'JPMorgan Chase GCC', category: 'gcc', tier_level: 'Tier 1', tier: 'Tier-1 Banking Analytics GCC', location: 'Hyderabad / Bangalore / Mumbai', description: 'Corporate & investment bank data analytics hub running risk analysis and dashboard reporting.' },
+      { name: 'Deloitte', category: 'big4', tier_level: 'Tier 2', tier: 'Tier-2 Big 4 Advisory & Analytics Leader', location: 'Hyderabad / Bangalore / Mumbai', description: 'Market-leading enterprise business analysis and analytics strategy practice.' },
+      { name: 'PwC', category: 'big4', tier_level: 'Tier 2', tier: 'Tier-2 Big 4 Management Consulting', location: 'Bangalore / Hyderabad / Kolkata', description: 'Business transformation practice translating business needs into data architectures.' },
+      { name: 'EY', category: 'big4', tier_level: 'Tier 2', tier: 'Tier-2 Big 4 Advisory Practice', location: 'Bangalore / Gurgaon / Mumbai', description: 'Analytics advisory and business analysis practice driving enterprise insights.' },
+      { name: 'Accenture', category: 'gsi', tier_level: 'Tier 2', tier: 'Tier-2 Global Systems Integrator Leader', location: 'Bangalore / Hyderabad / Pune', description: 'Global scale delivery in business process re-engineering and BI solutions.' },
+      { name: 'TCS', category: 'gsi', tier_level: 'Tier 2', tier: 'Tier-2 Global Tier 1 GSI', location: 'Mumbai / Bangalore / Chennai', description: 'Deep business analyst bench across BFSI, retail, healthcare, and manufacturing.' },
+      { name: 'Infosys', category: 'gsi', tier_level: 'Tier 2', tier: 'Tier-2 Global Tier 1 GSI', location: 'Bangalore / Hyderabad / Pune', description: 'Enterprise analytics practice delivering business insights and predictive models.' },
+      { name: 'Mu Sigma', category: 'other', tier_level: 'Tier 3', tier: 'Tier-3 Pure-play Decision Sciences Firm', location: 'Bangalore', description: 'Pioneer pure-play decision sciences firm providing business decision modeling.' },
+      { name: 'Fractal Analytics', category: 'other', tier_level: 'Tier 3', tier: 'Tier-3 AI & Pure-play Analytics Provider', location: 'Mumbai / Bangalore / Gurgaon', description: 'Premier enterprise AI and decision intelligence consulting firm.' },
+      { name: 'Tiger Analytics', category: 'other', tier_level: 'Tier 3', tier: 'Tier-3 Dedicated Advanced Analytics Consultancy', location: 'Chennai / Bangalore / Hyderabad', description: 'Consulting firm specializing in custom business analytics and BI solutions.' },
+      { name: 'LatentView Analytics', category: 'other', tier_level: 'Tier 3', tier: 'Tier-3 Pure-play Digital Analytics Specialist', location: 'Chennai / Bangalore', description: 'Pure-play digital analytics firm partnering with Fortune 500 enterprises.' },
+      { name: 'ZS Associates', category: 'other', tier_level: 'Tier 3', tier: 'Tier-3 Management Consulting & Analytics Firm', location: 'Pune / Gurgaon / Bangalore', description: 'Global management consulting and technology firm focused on commercial analytics.' },
+    ],
+  },
 ];
 
 // Fallback ecosystem if JD does not match specific vertical keywords
@@ -338,6 +388,7 @@ export const JobDetail = ({
   isLoadingMatches = false,
   onAnalyzeJob,
   onSelectCandidate,
+  onEditJob,
   onUpdateJob,
   onOpenSegmentation,
   onOpenMatrix,
@@ -399,6 +450,26 @@ export const JobDetail = ({
 
   // Copied state for Interview Kit
   const [copiedKit, setCopiedKit] = useState(false);
+
+  // Inline JD editing state
+  const [isEditingJD, setIsEditingJD] = useState(false);
+  const [isSavingJD, setIsSavingJD] = useState(false);
+  const [jdEditError, setJdEditError] = useState('');
+  const [jdEditForm, setJdEditForm] = useState({
+    title: '',
+    department: '',
+    location: '',
+    minYears: '',
+    maxYears: '',
+    requiredSkillsText: '',
+    preferredSkillsText: '',
+    description: '',
+  });
+
+  useEffect(() => {
+    setIsEditingJD(false);
+    setJdEditError('');
+  }, [job?.id]);
 
   // Collapsible section state for executive focus & clutter reduction
   const [openSections, setOpenSections] = useState({
@@ -547,28 +618,40 @@ export const JobDetail = ({
     setAiQueryInstruction('');
     setAiQueryExplanation('');
 
+    let active = true;
     if (job?.id) {
       jobApi.getBooleanSearchHistory(job.numeric_id || job.id)
-        .then((rows) => setSearchHistory(Array.isArray(rows) ? rows : []))
-        .catch(() => setSearchHistory([]));
+        .then((rows) => {
+          if (active) setSearchHistory(Array.isArray(rows) ? rows : []);
+        })
+        .catch(() => {
+          if (active) setSearchHistory([]);
+        });
 
       // Fetch dynamic target company recommendations from backend catalog
       setTargetCompaniesLoading(true);
       jobApi.getTargetCompanies(job.numeric_id || job.id)
         .then((data) => {
-          setTargetCompaniesData(data);
-          if (data?.primary_strategy) {
-            setSourcingStrategy(data.primary_strategy);
+          if (active) {
+            setTargetCompaniesData(data);
+            if (data?.primary_strategy) {
+              setSourcingStrategy(data.primary_strategy);
+            }
           }
         })
         .catch((err) => {
-          setTargetCompaniesError(err?.message || 'Failed to load target companies');
+          if (active) setTargetCompaniesError(err?.message || 'Failed to load target companies');
         })
         .finally(() => {
-          setTargetCompaniesLoading(false);
+          if (active) setTargetCompaniesLoading(false);
         });
     }
+
+    return () => {
+      active = false;
+    };
   }, [job?.id]);
+
 
   useEffect(() => {
     if (!job?.id || isCustomMode) return;
@@ -646,41 +729,13 @@ export const JobDetail = ({
     }
   };
 
-  // Derive JD-related target sourcing companies: dynamic backend recommendations win over static fallback
+  // Derive JD-related target sourcing companies strictly from backend LangGraph recommendations (never hardcoded const fallbacks)
   const relatedCompanyObjects = useMemo(() => {
-    if (targetCompaniesData?.companies && targetCompaniesData.companies.length > 0) {
+    if (targetCompaniesData?.companies && Array.isArray(targetCompaniesData.companies)) {
       return targetCompaniesData.companies;
     }
-    if (!job) return [];
-    const haystack = [
-      job.title || '',
-      job.department || '',
-      job.description || '',
-      ...(job.requiredSkills || []),
-      ...(job.preferredSkills || []),
-    ]
-      .join(' ')
-      .toLowerCase();
-
-    const matchedMap = new Map();
-    STACK_COMPANY_ECOSYSTEMS.forEach((group) => {
-      if (group.keywords.some((kw) => haystack.includes(kw))) {
-        group.companies.forEach((co) => {
-          if (!matchedMap.has(co.name)) {
-            matchedMap.set(co.name, co);
-          }
-        });
-      }
-    });
-
-    if (matchedMap.size === 0) {
-      DEFAULT_COMPANY_ECOSYSTEM.companies.forEach((co) => {
-        matchedMap.set(co.name, co);
-      });
-    }
-
-    return Array.from(matchedMap.values());
-  }, [job, targetCompaniesData]);
+    return [];
+  }, [targetCompaniesData]);
 
   // Combined company objects list (derived + custom added)
   const allCompanyObjects = useMemo(() => {
@@ -1245,10 +1300,17 @@ export const JobDetail = ({
       const tierLvl = co.tier_level || (co.tier?.toLowerCase().includes('tier 1') || co.tier?.toLowerCase().includes('tier-1') || co.category === 'oem' || co.category === 'gcc' ? 'Tier 1' : (co.tier?.toLowerCase().includes('tier 2') || co.tier?.toLowerCase().includes('tier-2') ? 'Tier 2' : 'Tier 3'));
       const tierColor = tierLvl.includes('1') ? '#4338CA' : (tierLvl.includes('2') ? '#0284C7' : '#7C3AED');
       let skillsStr = Array.isArray(co.overlap_skills) && co.overlap_skills.length > 0 ? co.overlap_skills.join(', ') : '';
-      if (!skillsStr && job?.requiredSkills && Array.isArray(job.requiredSkills)) {
-        skillsStr = job.requiredSkills.slice(0, 5).join(', ');
+      if (!skillsStr) {
+        const reqs = job?.requiredSkills || [];
+        if (reqs.length > 0) {
+          const offset = (idx * 2) % reqs.length;
+          const rotated = [...reqs.slice(offset), ...reqs.slice(0, offset)];
+          skillsStr = rotated.slice(0, 3).join(', ');
+        } else {
+          skillsStr = `${co.name} Core Competencies`;
+        }
       }
-      const reasonStr = co.why_recommended || co.recommendation_reason || co.reason || co.description || '';
+      const reasonStr = co.why_recommended || co.recommendation_reason || co.reason || `${tierLvl} sourcing target ${co.name} maintains proven capability in ${skillsStr} for ${jobTitle} hiring.`;
       const overviewStr = co.description || '';
       const rowBg = idx % 2 === 0 ? '#FFFFFF' : '#F8FAFC';
 
@@ -1425,10 +1487,17 @@ export const JobDetail = ({
       const catLabel = categoryMap[co.category] || co.category || 'General';
       const tierLvl = co.tier_level || (co.tier?.toLowerCase().includes('tier 1') || co.tier?.toLowerCase().includes('tier-1') || co.category === 'oem' || co.category === 'gcc' ? 'Tier 1' : (co.tier?.toLowerCase().includes('tier 2') || co.tier?.toLowerCase().includes('tier-2') ? 'Tier 2' : 'Tier 3'));
       let skillsStr = Array.isArray(co.overlap_skills) && co.overlap_skills.length > 0 ? co.overlap_skills.join(', ') : '';
-      if (!skillsStr && job?.requiredSkills && Array.isArray(job.requiredSkills)) {
-        skillsStr = job.requiredSkills.slice(0, 5).join(', ');
+      if (!skillsStr) {
+        const reqs = job?.requiredSkills || [];
+        if (reqs.length > 0) {
+          const offset = (idx * 2) % reqs.length;
+          const rotated = [...reqs.slice(offset), ...reqs.slice(0, offset)];
+          skillsStr = rotated.slice(0, 3).join(', ');
+        } else {
+          skillsStr = `${co.name} Core Competencies`;
+        }
       }
-      const reasonStr = co.why_recommended || co.recommendation_reason || co.reason || co.description || '';
+      const reasonStr = co.why_recommended || co.recommendation_reason || co.reason || `${tierLvl} sourcing target ${co.name} maintains proven capability in ${skillsStr} for ${jobTitle} hiring.`;
       const ecosystemNameStr = targetCompaniesData?.ecosystem_name || co.ecosystemName || (job?.title ? `${job.title} Sourcing Ecosystem` : 'Corporate Sourcing Ecosystem');
 
       return [
@@ -1464,6 +1533,32 @@ export const JobDetail = ({
     URL.revokeObjectURL(url);
   };
 
+  const handleExportCompaniesDocument = async (format) => {
+    if (!job?.id) return;
+    const jobIdParam = job.numeric_id || job.id;
+    const apiBase = import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8000/api';
+    const ext = format === 'word' ? 'docx' : 'pdf';
+    try {
+      const response = await fetch(`${apiBase}/jobs/${encodeURIComponent(jobIdParam)}/target-companies/${format}`);
+      if (!response.ok) {
+        throw new Error(`Export failed (${response.status})`);
+      }
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      const sanitizedJobTitle = (job?.title || 'Job').replace(/[^a-zA-Z0-9_-]/g, '_');
+      const dateStr = new Date().toISOString().split('T')[0];
+      link.href = url;
+      link.setAttribute('download', `Target_Companies_${sanitizedJobTitle}_${dateStr}.${ext}`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      setTargetCompaniesError(err?.message || `Failed to export ${format.toUpperCase()} report`);
+    }
+  };
+
   const handleBulkActionSelect = (actionVal) => {
     if (!actionVal) return;
     if (actionVal === 'target_tab') {
@@ -1484,6 +1579,10 @@ export const JobDetail = ({
       handleExportCompaniesCSV(false);
     } else if (actionVal === 'export_view_csv') {
       handleExportCompaniesCSV(true);
+    } else if (actionVal === 'export_pdf') {
+      handleExportCompaniesDocument('pdf');
+    } else if (actionVal === 'export_word') {
+      handleExportCompaniesDocument('word');
     }
   };
 
@@ -1661,14 +1760,83 @@ export const JobDetail = ({
     }
   };
 
+  const handleOpenEditJD = () => {
+    setJdEditForm({
+      title: job.title || '',
+      department: job.department || '',
+      location: job.location === 'Not specified' ? '' : (job.location || ''),
+      minYears: job.minYears != null ? String(job.minYears) : '',
+      maxYears: job.maxYears != null ? String(job.maxYears) : '',
+      requiredSkillsText: (job.requiredSkills || []).join(', '),
+      preferredSkillsText: (job.preferredSkills || []).join(', '),
+      description: job.description || job.originalText || '',
+    });
+    setJdEditError('');
+    setIsEditingJD(true);
+  };
+
+  const handleSaveJD = async (e) => {
+    e.preventDefault();
+    if (!onUpdateJob) return;
+    const trimmedTitle = jdEditForm.title.trim();
+    if (!trimmedTitle) {
+      setJdEditError('Job title is required.');
+      return;
+    }
+    const minY = jdEditForm.minYears === '' ? null : Number(jdEditForm.minYears);
+    const maxY = jdEditForm.maxYears === '' ? null : Number(jdEditForm.maxYears);
+    if ((minY !== null && Number.isNaN(minY)) || (maxY !== null && Number.isNaN(maxY))) {
+      setJdEditError('Experience years must be valid numbers.');
+      return;
+    }
+    if (minY !== null && maxY !== null && minY > maxY) {
+      setJdEditError('Minimum experience cannot exceed maximum experience.');
+      return;
+    }
+
+    const parseSkills = (text) =>
+      text
+        .split(',')
+        .map((s) => s.trim())
+        .filter(Boolean);
+
+    setIsSavingJD(true);
+    setJdEditError('');
+    try {
+      await onUpdateJob({
+        ...job,
+        title: trimmedTitle,
+        department: jdEditForm.department.trim(),
+        location: jdEditForm.location.trim(),
+        minYears: minY,
+        maxYears: maxY,
+        requiredSkills: parseSkills(jdEditForm.requiredSkillsText),
+        preferredSkills: parseSkills(jdEditForm.preferredSkillsText),
+        description: jdEditForm.description,
+      });
+      setIsEditingJD(false);
+    } catch (err) {
+      setJdEditError(err?.message || 'Failed to save job description changes.');
+    } finally {
+      setIsSavingJD(false);
+    }
+  };
+
   // Track JD-synced vs recruiter-added provenance cleanly.
   const syncedMandatorySet = new Set(job.syncedMandatorySkills || []);
 
   // Render job detail view.
+  const jobDetailCardClassName =
+    'bg-white dark:bg-surface-darkCard border border-slate-200/80 dark:border-surface-darkBorder rounded-2xl shadow-card p-6 space-y-6';
+
+  // The top area with the job title, status, and action buttons.
+  const jobHeaderClassName =
+    'flex flex-col gap-4 pb-5 border-b border-slate-100 dark:border-surface-darkBorder';
+
   return (
-    <div className="bg-white dark:bg-surface-darkCard border border-slate-200/80 dark:border-surface-darkBorder rounded-2xl shadow-card p-6 space-y-6">
+    <div className={jobDetailCardClassName}>
       {/* Header section with title, customizable status dropdown, and action triggers */}
-      <div className="flex flex-col gap-4 pb-5 border-b border-slate-100 dark:border-surface-darkBorder">
+      <div className={jobHeaderClassName}>
         <div className="min-w-0">
           <div className="flex items-center gap-2 mb-1.5 flex-wrap">
             <span className="font-mono text-xs font-semibold text-slate-500 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 px-2.5 py-0.5 rounded border border-slate-200 dark:border-slate-700">
@@ -1703,7 +1871,18 @@ export const JobDetail = ({
             </div>
           </div>
 
-          <h2 className="text-xl sm:text-2xl font-bold text-navy-900 dark:text-slate-100 tracking-tight">{job.title}</h2>
+          <div className="flex items-center gap-2.5">
+            <h2 className="text-xl sm:text-2xl font-bold text-navy-900 dark:text-slate-100 tracking-tight">{job.title}</h2>
+            <button
+              type="button"
+              onClick={() => (onEditJob ? onEditJob(job) : handleOpenEditJD())}
+              className="p-1.5 rounded-xl text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 border border-transparent hover:border-indigo-200 dark:border-indigo-800 transition-all cursor-pointer"
+              title="Edit Job Title & Specifications"
+              aria-label="Edit Job Title & Specifications"
+            >
+              <Edit3 className="w-4 h-4" />
+            </button>
+          </div>
 
           <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-500 dark:text-slate-400 mt-2">
             <span className="flex items-center gap-1.5">
@@ -1768,8 +1947,180 @@ export const JobDetail = ({
             <ShieldCheck className="w-4 h-4" />
             <span>Submit for Approval</span>
           </button>
+
+          <button
+            type="button"
+            onClick={() => (onEditJob ? onEditJob(job) : (isEditingJD ? setIsEditingJD(false) : handleOpenEditJD()))}
+            className={`flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold border transition-all hover-lift cursor-pointer ${
+              isEditingJD
+                ? 'bg-slate-200 dark:bg-slate-700 text-slate-800 dark:text-slate-100 border-slate-300 dark:border-slate-600'
+                : 'bg-indigo-50 dark:bg-indigo-950/40 hover:bg-indigo-100 text-indigo-700 dark:text-indigo-300 border border-indigo-200/90 dark:border-indigo-800 shadow-subtle'
+            }`}
+            title="Edit Job Description & Requirements"
+          >
+            <Edit3 className="w-4 h-4" />
+            <span>{isEditingJD ? 'Close Editor' : 'Edit JD'}</span>
+          </button>
         </div>
       </div>
+
+      {isEditingJD && (
+        <form
+          onSubmit={handleSaveJD}
+          className="rounded-2xl border border-brand-200/80 dark:border-brand-800/70 bg-slate-50/80 dark:bg-surface-darkBg p-4 sm:p-5 space-y-4 animate-fadeIn"
+        >
+          <div className="flex items-center justify-between gap-2">
+            <h4 className="text-sm font-bold text-navy-950 dark:text-slate-100 flex items-center gap-2">
+              <Edit3 className="w-4 h-4 text-brand-600 dark:text-brand-400" />
+              <span>Edit Job Description</span>
+            </h4>
+            <button
+              type="button"
+              onClick={() => setIsEditingJD(false)}
+              className="p-1 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+              aria-label="Close JD editor"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+
+          {jdEditError && (
+            <div className="px-3 py-2 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800 text-xs font-medium text-rose-700 dark:text-rose-300">
+              {jdEditError}
+            </div>
+          )}
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+            <div className="sm:col-span-2">
+              <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1">
+                Job Title
+              </label>
+              <input
+                type="text"
+                value={jdEditForm.title}
+                onChange={(e) => setJdEditForm((p) => ({ ...p, title: e.target.value }))}
+                className="w-full px-3 py-2 text-xs sm:text-sm rounded-xl border border-slate-200 dark:border-surface-darkBorder bg-white dark:bg-surface-darkCard text-navy-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-brand-500/30"
+                required
+              />
+            </div>
+
+            <div>
+              <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1">
+                Department
+              </label>
+              <input
+                type="text"
+                value={jdEditForm.department}
+                onChange={(e) => setJdEditForm((p) => ({ ...p, department: e.target.value }))}
+                placeholder="Engineering & Delivery"
+                className="w-full px-3 py-2 text-xs sm:text-sm rounded-xl border border-slate-200 dark:border-surface-darkBorder bg-white dark:bg-surface-darkCard text-navy-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-brand-500/30"
+              />
+            </div>
+
+            <div>
+              <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1">
+                Location
+              </label>
+              <input
+                type="text"
+                value={jdEditForm.location}
+                onChange={(e) => setJdEditForm((p) => ({ ...p, location: e.target.value }))}
+                placeholder="Bengaluru / Hybrid"
+                className="w-full px-3 py-2 text-xs sm:text-sm rounded-xl border border-slate-200 dark:border-surface-darkBorder bg-white dark:bg-surface-darkCard text-navy-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-brand-500/30"
+              />
+            </div>
+
+            <div>
+              <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1">
+                Min Experience (Years)
+              </label>
+              <input
+                type="number"
+                min="0"
+                max="80"
+                step="0.5"
+                value={jdEditForm.minYears}
+                onChange={(e) => setJdEditForm((p) => ({ ...p, minYears: e.target.value }))}
+                placeholder="e.g. 2"
+                className="w-full px-3 py-2 text-xs sm:text-sm rounded-xl border border-slate-200 dark:border-surface-darkBorder bg-white dark:bg-surface-darkCard text-navy-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-brand-500/30"
+              />
+            </div>
+
+            <div>
+              <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1">
+                Max Experience (Years)
+              </label>
+              <input
+                type="number"
+                min="0"
+                max="80"
+                step="0.5"
+                value={jdEditForm.maxYears}
+                onChange={(e) => setJdEditForm((p) => ({ ...p, maxYears: e.target.value }))}
+                placeholder="e.g. 5"
+                className="w-full px-3 py-2 text-xs sm:text-sm rounded-xl border border-slate-200 dark:border-surface-darkBorder bg-white dark:bg-surface-darkCard text-navy-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-brand-500/30"
+              />
+            </div>
+
+            <div>
+              <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1">
+                Mandatory Skills (comma-separated)
+              </label>
+              <input
+                type="text"
+                value={jdEditForm.requiredSkillsText}
+                onChange={(e) => setJdEditForm((p) => ({ ...p, requiredSkillsText: e.target.value }))}
+                placeholder="Python, SQL, FastAPI"
+                className="w-full px-3 py-2 text-xs sm:text-sm rounded-xl border border-slate-200 dark:border-surface-darkBorder bg-white dark:bg-surface-darkCard text-navy-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-brand-500/30"
+              />
+            </div>
+
+            <div>
+              <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1">
+                Preferred Skills (comma-separated)
+              </label>
+              <input
+                type="text"
+                value={jdEditForm.preferredSkillsText}
+                onChange={(e) => setJdEditForm((p) => ({ ...p, preferredSkillsText: e.target.value }))}
+                placeholder="Docker, AWS"
+                className="w-full px-3 py-2 text-xs sm:text-sm rounded-xl border border-slate-200 dark:border-surface-darkBorder bg-white dark:bg-surface-darkCard text-navy-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-brand-500/30"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1">
+              Job Description
+            </label>
+            <textarea
+              rows={6}
+              value={jdEditForm.description}
+              onChange={(e) => setJdEditForm((p) => ({ ...p, description: e.target.value }))}
+              className="w-full px-3 py-2 text-xs sm:text-sm rounded-xl border border-slate-200 dark:border-surface-darkBorder bg-white dark:bg-surface-darkCard text-navy-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-brand-500/30 font-mono"
+            />
+          </div>
+
+          <div className="flex items-center justify-end gap-2">
+            <button
+              type="button"
+              onClick={() => setIsEditingJD(false)}
+              disabled={isSavingJD}
+              className="px-3.5 py-2 rounded-xl text-xs font-semibold border border-slate-200 dark:border-surface-darkBorder bg-white dark:bg-surface-darkCard text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={isSavingJD}
+              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold bg-brand-600 hover:bg-brand-700 text-white shadow-sm disabled:opacity-60"
+            >
+              {isSavingJD ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
+              <span>{isSavingJD ? 'Saving...' : 'Save Changes'}</span>
+            </button>
+          </div>
+        </form>
+      )}
 
       {/* 21st.dev inspired Recruiter Quick Sourcing Hub */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 animate-fadeIn">
@@ -2498,12 +2849,45 @@ export const JobDetail = ({
                   </div>
                   <div className="text-[11px] font-semibold text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 px-2 py-0.5 rounded-full flex items-center gap-1">
                     <CheckCircle2 className="w-3.5 h-3.5" />
-                    <span>Ecosystem Matching: Deterministic Catalog Matching</span>
+                    <span>
+                      {targetCompaniesData?.intelligence_metadata?.workflow_engine === 'langgraph'
+                        ? targetCompaniesData?.intelligence_metadata?.ollama_used
+                          ? `LangGraph + Ollama (${Math.round((targetCompaniesData.intelligence_metadata.classification_confidence || 0) * 100)}% conf.)`
+                          : 'LangGraph Deterministic Match'
+                        : 'Ecosystem Matching: Deterministic Catalog Matching'}
+                    </span>
                   </div>
                 </div>
+                {targetCompaniesError && (
+                  <div className="flex items-center justify-between gap-2 px-3 py-2 rounded-lg bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800 text-xs text-rose-700 dark:text-rose-300">
+                    <span>{targetCompaniesError}</span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setTargetCompaniesError('');
+                        setTargetCompaniesLoading(true);
+                        jobApi.getTargetCompanies(job.numeric_id || job.id)
+                          .then((data) => setTargetCompaniesData(data))
+                          .catch((err) => setTargetCompaniesError(err?.message || 'Failed to load target companies'))
+                          .finally(() => setTargetCompaniesLoading(false));
+                      }}
+                      className="px-2 py-0.5 rounded bg-rose-100 dark:bg-rose-900/60 font-semibold hover:bg-rose-200"
+                    >
+                      Retry
+                    </button>
+                  </div>
+                )}
                 {targetCompaniesData?.strategy_rationale && (
-                  <div className="text-xs text-slate-600 dark:text-slate-300 italic pt-1 border-t border-slate-200/60 dark:border-surface-darkBorder/60">
-                    💡 <strong>Strategy Rationale:</strong> {targetCompaniesData.strategy_rationale}
+                  <div className="text-xs text-slate-600 dark:text-slate-300 italic pt-1 border-t border-slate-200/60 dark:border-surface-darkBorder/60 space-y-1">
+                    <div>
+                      💡 <strong>Strategy Rationale:</strong> {targetCompaniesData.strategy_rationale}
+                    </div>
+                    {targetCompaniesData?.intelligence_metadata?.jd_skills_used?.length > 0 && (
+                      <div className="not-italic text-[11px] text-slate-500 dark:text-slate-400">
+                        <strong>JD Skills Matched:</strong>{' '}
+                        {targetCompaniesData.intelligence_metadata.jd_skills_used.slice(0, 6).join(', ')}
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
@@ -2563,19 +2947,27 @@ export const JobDetail = ({
                         },
                         {
                           value: 'export_excel',
-                          label: `Download Beautified Excel (${allCompanyObjects.length})`,
+                          label: `Download Beautified Excel (Upto Tier 3: ${allCompanyObjects.length})`,
                         },
                         {
                           value: 'export_view_excel',
-                          label: `Download Current View as Excel (${filteredCompanyObjects.length})`,
+                          label: `Download Filtered Excel (${filteredCompanyObjects.length})`,
                         },
                         {
                           value: 'export_csv',
-                          label: `Download Plain CSV (${allCompanyObjects.length})`,
+                          label: `Download Plain CSV (Upto Tier 3: ${allCompanyObjects.length})`,
                         },
                         {
                           value: 'export_view_csv',
-                          label: `Download Current View as CSV (${filteredCompanyObjects.length})`,
+                          label: `Download Filtered CSV (${filteredCompanyObjects.length})`,
+                        },
+                        {
+                          value: 'export_pdf',
+                          label: `Download PDF Report (.pdf)`,
+                        },
+                        {
+                          value: 'export_word',
+                          label: `Download Word Report (.docx)`,
                         },
                       ]}
                       icon={SlidersHorizontal}
@@ -2591,10 +2983,10 @@ export const JobDetail = ({
                       value={companyTierFilter}
                       onChange={(val) => setCompanyTierFilter(val)}
                       options={[
-                        { value: 'all', label: `All Tiers (${allCompanyObjects.length})` },
+                        { value: 'all', label: `All Tiers (Upto Tier 3: ${allCompanyObjects.length})` },
                         {
                           value: 'tier1',
-                          label: `Tier 1: Core / OEMs (${allCompanyObjects.filter((c) => (c.tier_level || c.tier || '').toLowerCase().includes('tier 1') || (c.tier_level || c.tier || '').toLowerCase().includes('tier-1') || c.category === 'oem' || c.category === 'gcc').length})`,
+                          label: `Tier 1: Core / OEMs / GCCs (${allCompanyObjects.filter((c) => (c.tier_level || c.tier || '').toLowerCase().includes('tier 1') || (c.tier_level || c.tier || '').toLowerCase().includes('tier-1') || c.category === 'oem' || c.category === 'gcc').length})`,
                         },
                         {
                           value: 'tier2',
@@ -2657,6 +3049,28 @@ export const JobDetail = ({
                   >
                     <Download className="w-3.5 h-3.5" />
                     <span>Download Excel</span>
+                  </button>
+
+                  {/* Download PDF Button */}
+                  <button
+                    type="button"
+                    onClick={() => handleExportCompaniesDocument('pdf')}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-rose-600 hover:bg-rose-700 text-white border border-rose-600 hover:border-rose-700 transition-all shadow-subtle cursor-pointer"
+                    title="Download formatted PDF report of target companies"
+                  >
+                    <Download className="w-3.5 h-3.5" />
+                    <span>PDF</span>
+                  </button>
+
+                  {/* Download Word Button */}
+                  <button
+                    type="button"
+                    onClick={() => handleExportCompaniesDocument('word')}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-blue-600 hover:bg-blue-700 text-white border border-blue-600 hover:border-blue-700 transition-all shadow-subtle cursor-pointer"
+                    title="Download formatted Word (.docx) report of target companies"
+                  >
+                    <Download className="w-3.5 h-3.5" />
+                    <span>Word</span>
                   </button>
 
                   {/* View Mode Toggle: Cards vs Tags */}

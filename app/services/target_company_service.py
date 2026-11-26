@@ -423,6 +423,421 @@ COMPANY_ECOSYSTEMS_CATALOG: List[Dict[str, Any]] = [
             {"name": "Bayer Global Capability Center", "category": "gcc", "tier_level": "Tier 1", "tier": "Life Sciences GCC", "location": "Bangalore / Hyderabad", "description": "Global SAP ERP integration, cloud middleware, and BTP operations.", "domain_specialties": ["SAP ERP Integration", "Cloud Middleware", "BTP Operations", "Global APIs"], "why_recommended": "Dedicated life sciences capability center running enterprise SAP BTP and cross-border API integrations."},
         ],
     },
+
+    # 11. Workforce Management (WFM), Real-Time Management (RTM) & Contact Center Operations
+    {
+        "id": "wfm_contact_center",
+        "name": "Workforce Management (WFM) & Contact Center Operations Ecosystem",
+        "domains": ["workforce_management", "contact_center", "bpo_operations", "customer_operations"],
+        "keywords": [
+            "workforce management", "wfm", "rtm", "real-time management", "real time management",
+            "contact center", "contact-center", "call center", "call-center",
+            "service level", "asa", "abandonment", "aht", "average handle time", "shrinkage",
+            "adherence", "occupancy", "intraday", "intraday management", "nice iex", "nice wfm",
+            "verint", "genesys", "genesys wfm", "acd", "routing dashboards", "staffing requirement",
+            "forecast variance", "interval performance", "schedule adherence", "queue management"
+        ],
+        "primary_strategy": "Direct Industry Experience",
+        "strategy_rationale": "Specialized proficiency in intraday real-time management (RTM), queue adherence, service level SLA compliance, and platforms (NICE, Verint, Genesys) is concentrated in enterprise WFM platform creators (Tier 1), premier global contact center BPOs & GSIs (Tier 2), and specialized mid-market support operations (Tier 3).",
+        "companies": [
+            # Tier 1: Core WFM Platform OEMs & Dedicated Captive GCCs
+            {
+                "name": "NICE India",
+                "category": "oem",
+                "tier_level": "Tier 1",
+                "tier": "Tier-1 Contact Center & WFM Platform OEM",
+                "location": "Pune / Bangalore",
+                "description": "Creator of NICE IEX WFM, CXone, and Real-Time Adherence platforms with major R&D and implementation center in India.",
+                "domain_specialties": ["NICE IEX / WFM", "Real-Time Management (RTM)", "Intraday Adherence", "CXone Analytics"],
+                "why_recommended": "Core creator of NICE IEX and WFM platforms; primary headhunting ground for certified workforce management product specialists and technical administrators."
+            },
+            {
+                "name": "Verint Systems India",
+                "category": "oem",
+                "tier_level": "Tier 1",
+                "tier": "Tier-1 WFM & Customer Engagement OEM",
+                "location": "Bangalore / Hyderabad",
+                "description": "Global enterprise software leader in Workforce Engagement Management (WEM), forecasting, and speech analytics.",
+                "domain_specialties": ["Verint WFM", "Forecasting & Scheduling", "Intraday Queue Management", "Quality Monitoring"],
+                "why_recommended": "Platform creator of Verint WFM; authoritative source for intraday specialists and scheduling analysts adept at complex enterprise queuing."
+            },
+            {
+                "name": "Genesys India",
+                "category": "oem",
+                "tier_level": "Tier 1",
+                "tier": "Tier-1 Cloud Contact Center OEM",
+                "location": "Bangalore / Chennai / Hyderabad",
+                "description": "Global leader in omnichannel customer experience and contact center software (Genesys Cloud CX / WFM).",
+                "domain_specialties": ["Genesys Cloud WFM", "Omnichannel ACD Routing", "Interval Performance", "Skill-Based Routing"],
+                "why_recommended": "Premier cloud contact center OEM developing native WFM scheduling and real-time routing engines."
+            },
+            {
+                "name": "Amazon Customer Service (Ops GCC)",
+                "category": "gcc",
+                "tier_level": "Tier 1",
+                "tier": "Tier-1 Global E-Commerce Contact Operations GCC",
+                "location": "Bangalore / Hyderabad / Pune",
+                "description": "Massive global captive customer service operations managing 24/7 intraday RTM, shrinkage analytics, and multi-skill queues.",
+                "domain_specialties": ["Intraday RTM", "AWS Connect / ACD", "AHT & Occupancy Control", "Shrinkage Management"],
+                "why_recommended": "High-volume captive operations center running sophisticated real-time queue management across phone, chat, and email channels."
+            },
+            {
+                "name": "Target in India (Guest Relations GCC)",
+                "category": "gcc",
+                "tier_level": "Tier 1",
+                "tier": "Tier-1 Retail Enterprise Operations GCC",
+                "location": "Bangalore",
+                "description": "Enterprise captive hub managing omnichannel guest relations, contact center scheduling, and staffing interval adherence.",
+                "domain_specialties": ["Omnichannel Contact Center", "Staffing Adherence", "Service Level Monitoring", "Excel Reporting"],
+                "why_recommended": "Established corporate capability center in Bangalore managing end-to-end guest service operations with strict SLA and shrinkage controls."
+            },
+            {
+                "name": "American Express Global Service Center",
+                "category": "gcc",
+                "tier_level": "Tier 1",
+                "tier": "Tier-1 Financial Services Contact GCC",
+                "location": "Gurgaon / Bangalore",
+                "description": "High-governance financial contact center running strict intraday workforce management, ASA adherence, and occupancy tracking.",
+                "domain_specialties": ["ASA & Service Level", "Intraday Schedule Adherence", "NICE WFM Operations", "Forecasting Variance"],
+                "why_recommended": "Elite captive financial services operations hub recognized for rigorous WFM governance, real-time staffing adjustments, and metric tracking."
+            },
+
+            # Tier 2: Premier Global BPO Providers, System Integrators & Shared Services
+            {
+                "name": "Teleperformance India",
+                "category": "gsi",
+                "tier_level": "Tier 2",
+                "tier": "Tier-2 Global Contact Center BPO Leader",
+                "location": "Gurgaon / Mumbai / Bangalore / Hyderabad",
+                "description": "World's largest contact center BPO with dedicated centralized WFM/RTM command centers managing multi-client intraday delivery.",
+                "domain_specialties": ["Real-Time Management (RTM)", "Service Level & ASA", "Intraday Scheduling", "Omnichannel Queues"],
+                "why_recommended": "Global BPO market leader maintaining large centralized WFM control towers with seasoned RTM analysts tracking interval metrics."
+            },
+            {
+                "name": "Concentrix India",
+                "category": "gsi",
+                "tier_level": "Tier 2",
+                "tier": "Tier-2 Global CX BPO Provider",
+                "location": "Bangalore / Gurgaon / Hyderabad / Chennai",
+                "description": "Premier customer experience solutions provider running complex multi-channel WFM operations using Verint and NICE.",
+                "domain_specialties": ["Verint / NICE Operations", "Intraday Queue Adherence", "AHT & Shrinkage Analytics", "Interval SLA"],
+                "why_recommended": "Major contact center powerhouse with extensive talent proficient in leading WFM software suites and rotational shift scheduling."
+            },
+            {
+                "name": "Genpact (Customer Care & Contact Center BPS)",
+                "category": "gsi",
+                "tier_level": "Tier 2",
+                "tier": "Tier-2 Global BPO & Enterprise Operations",
+                "location": "Gurgaon / Hyderabad / Bangalore / Jaipur",
+                "description": "Enterprise BPM and digital operations managing enterprise client contact centers, capacity planning, and real-time floor management.",
+                "domain_specialties": ["Real-Time Floor Management", "Staffing Capacity Planning", "ACD Dashboards", "Excel Data Models"],
+                "why_recommended": "Pioneer in business process services with structured training programs in real-time management and contact center KPIs."
+            },
+            {
+                "name": "Tech Mahindra (BPS / Customer Experience)",
+                "category": "gsi",
+                "tier_level": "Tier 2",
+                "tier": "Tier-2 Enterprise BPS Practice",
+                "location": "Pune / Noida / Bangalore / Hyderabad",
+                "description": "Scalable customer care and telecom contact center operations with dedicated workforce management teams.",
+                "domain_specialties": ["Telecom & Enterprise WFM", "ACD Queue Routing", "Service Level Monitoring", "Adherence Tracking"],
+                "why_recommended": "Established systems integrator running large-scale 24/7 contact centers with proven benches in intraday schedule enforcement."
+            },
+            {
+                "name": "Wipro (Customer Experience & BPO Services)",
+                "category": "gsi",
+                "tier_level": "Tier 2",
+                "tier": "Tier-2 Global GSI & BPO Operations",
+                "location": "Bangalore / Chennai / Hyderabad",
+                "description": "Global business services managing omnichannel contact centers, ACD routing, and interval performance analytics.",
+                "domain_specialties": ["Omnichannel Routing", "WFM Dashboard Reporting", "Shrinkage Analysis", "Intraday Adjustments"],
+                "why_recommended": "Tier-1 global systems integrator managing multi-tenant contact center infrastructure and dedicated WFM analyst desks."
+            },
+            {
+                "name": "Infosys BPM (Customer Service Operations)",
+                "category": "gsi",
+                "tier_level": "Tier 2",
+                "tier": "Tier-2 Global BPM Leader",
+                "location": "Bangalore / Pune / Jaipur",
+                "description": "Global BPM provider with specialized contact center WFM analysts supporting global voice, email, and live chat queues.",
+                "domain_specialties": ["Voice & Chat WFM", "Real-Time Adherence", "Interval Variance", "Workforce Reporting"],
+                "why_recommended": "High-rigor business process management practice with certified analysts skilled in intraday queue re-balancing and forecast variance."
+            },
+            {
+                "name": "WNS Global Services (Customer Experience)",
+                "category": "gsi",
+                "tier_level": "Tier 2",
+                "tier": "Tier-2 BPM Specialist",
+                "location": "Mumbai / Pune / Gurgaon / Bangalore",
+                "description": "BPM leader with deep contact center operations and dedicated intraday service level monitoring teams.",
+                "domain_specialties": ["Intraday Service Level Monitoring", "AHT Optimization", "Shift Adherence", "Reporting Dashboards"],
+                "why_recommended": "Specialized BPM provider delivering managed contact center operations with strict adherence to client SLA thresholds."
+            },
+            {
+                "name": "Firstsource Solutions",
+                "category": "gsi",
+                "tier_level": "Tier 2",
+                "tier": "Tier-2 Specialized CX Management Leader",
+                "location": "Bangalore / Mumbai / Chennai",
+                "description": "Pure-play business process services provider focused on banking, healthcare, and retail contact center operations.",
+                "domain_specialties": ["Contact Center Operations", "WFM Scheduling", "Queue Monitoring", "Real-Time Tracking"],
+                "why_recommended": "Dedicated customer experience management specialist with extensive intraday and workforce management practitioner pools."
+            },
+
+            # Tier 3: Specialized Mid-Market & Regional BPO / Support Operations
+            {
+                "name": "Hinduja Global Solutions (HGS)",
+                "category": "gsi",
+                "tier_level": "Tier 3",
+                "tier": "Tier-3 Mid-Market BPM & Customer Care",
+                "location": "Bangalore / Mumbai / Hyderabad",
+                "description": "Consumer engagement and BPM operations with hands-on RTM and queue monitoring teams.",
+                "domain_specialties": ["RTM Queue Monitoring", "Agent Adherence", "Excel Operational Trackers", "Shift Coordination"],
+                "why_recommended": "Mid-tier BPM operator offering agile intraday coordinators skilled in floor management and interval tracking."
+            },
+            {
+                "name": "Conduent India",
+                "category": "gsi",
+                "tier_level": "Tier 3",
+                "tier": "Tier-3 Business Process Services",
+                "location": "Bangalore / Gurgaon / Noida",
+                "description": "Commercial and healthcare business process services managing inbound queues and workforce scheduling.",
+                "domain_specialties": ["Inbound Queue Management", "Schedule Adherence", "Interval Reporting", "ACD Dashboards"],
+                "why_recommended": "Established business operations provider with experienced contact center support staff handling queue monitoring."
+            },
+            {
+                "name": "EXL Service (Customer Operations)",
+                "category": "gsi",
+                "tier_level": "Tier 3",
+                "tier": "Tier-3 Operations & Analytics Specialist",
+                "location": "Noida / Gurgaon / Bangalore",
+                "description": "Operations management and customer analytics with operational reporting in Excel and ACD dashboards.",
+                "domain_specialties": ["Operational Reporting", "Data Extraction", "Excel Dashboards", "Queue Tracking"],
+                "why_recommended": "Analytics-driven operations practice providing nimble analysts experienced in daily WFM dashboards and SLA trackers."
+            },
+            {
+                "name": "Startek (Aegis)",
+                "category": "gsi",
+                "tier_level": "Tier 3",
+                "tier": "Tier-3 Regional CX Outsourcer",
+                "location": "Bangalore / Bhopal / Mumbai",
+                "description": "Regional customer experience provider with front-line intraday coordinators and interval performance trackers.",
+                "domain_specialties": ["Front-Line Intraday Tracking", "Agent Schedule Adherence", "ACD Monitoring", "Floor Operations"],
+                "why_recommended": "High-volume domestic and regional BPO partner with strong grass-roots talent in contact center queue coordination."
+            },
+        ],
+    },
+
+    # 12. Data Analytics, Business Intelligence & Business Analysis Sourcing Ecosystem
+    {
+        "id": "business_analysis_bi",
+        "name": "Business Analysis, Enterprise Analytics & BI Sourcing Ecosystem",
+        "domains": ["data_analytics_bi", "business_analysis", "analytics", "bi"],
+        "keywords": [
+            "business analyst", "data analyst", "bi analyst", "business intelligence",
+            "power bi", "tableau", "requirements gathering", "functional specifications",
+            "gap analysis", "user stories", "kpi dashboards", "data modeling", "etl", "sql",
+            "process mapping", "stakeholder management", "business analysis"
+        ],
+        "primary_strategy": "Similar Job Function",
+        "strategy_rationale": "Business analysis, requirements elicitation, functional specification design, and KPI reporting are concentrated in technology OEMs (Tier 1), Big 4 advisory practices and GSIs (Tier 2), and specialized pure-play analytics consultancies (Tier 3).",
+        "companies": [
+            # Tier 1: Technology OEMs & Top Enterprise GCCs
+            {"name": "Microsoft IDC", "category": "oem", "tier_level": "Tier 1", "tier": "Tier-1 Technology OEM", "location": "Bangalore / Hyderabad / Noida", "description": "Enterprise cloud systems, Power BI platform engineering, and business data analytics.", "domain_specialties": ["Power BI", "SQL", "Functional Specifications", "KPI Analytics"], "why_recommended": "Platform creator of Power BI; primary talent bench for high-caliber business and functional analysts."},
+            {"name": "Google India", "category": "oem", "tier_level": "Tier 1", "tier": "Tier-1 Hyperscaler OEM", "location": "Bangalore / Hyderabad", "description": "Cloud analytics, BigQuery, and enterprise decision intelligence systems.", "domain_specialties": ["Data Modeling", "Business Intelligence", "Requirements Analysis", "SQL"], "why_recommended": "World-class analytics and cloud decision platform engineering hub with elite data and business analysts."},
+            {"name": "Target in India (Analytics GCC)", "category": "gcc", "tier_level": "Tier 1", "tier": "Tier-1 Retail Enterprise GCC", "location": "Bangalore", "description": "Enterprise retail analytics, merchandising intelligence, and BI dashboard reporting.", "domain_specialties": ["Business Analysis", "Requirements Gathering", "Tableau", "Retail KPIs"], "why_recommended": "Mature corporate capability center in Bangalore driving global enterprise retail analytics and user stories."},
+            {"name": "Walmart Global Tech", "category": "gcc", "tier_level": "Tier 1", "tier": "Tier-1 Supply Chain & Tech GCC", "location": "Bangalore / Chennai", "description": "Global retail supply chain intelligence, business requirements gathering, and data visualization.", "domain_specialties": ["Business Process Mapping", "Gap Analysis", "SQL", "User Stories"], "why_recommended": "High-volume retail technology center translating complex business workflows into functional IT specifications."},
+            {"name": "JPMorgan Chase GCC", "category": "gcc", "tier_level": "Tier 1", "tier": "Tier-1 Financial Services GCC", "location": "Bangalore / Hyderabad / Mumbai", "description": "Financial analytics, regulatory business analysis, and institutional reporting platforms.", "domain_specialties": ["Functional Analysis", "Regulatory Reporting", "SQL Modeling", "Business Analytics"], "why_recommended": "Premier financial capability center with rigorous business analysis standards and functional specification governance."},
+
+            # Tier 2: Big 4 Advisory & Global Systems Integrators
+            {"name": "Deloitte Consulting", "category": "big4", "tier_level": "Tier 2", "tier": "Tier-2 Big 4 Advisory Leader", "location": "Bangalore / Hyderabad / Mumbai", "description": "Enterprise business transformation, functional requirements elicitation, and analytics consulting.", "domain_specialties": ["Requirements Elicitation", "Functional Architecture", "Power BI", "Agile User Stories"], "why_recommended": "Tier-1 advisory leader with deep expertise in bridging business stakeholders with technical development teams."},
+            {"name": "PwC India Advisory", "category": "big4", "tier_level": "Tier 2", "tier": "Tier-2 Global Advisory Practice", "location": "Bangalore / Hyderabad / Kolkata", "description": "Digital consulting, business analysis, and BI dashboard design.", "domain_specialties": ["Business Analysis", "Tableau / Power BI", "Stakeholder Alignment", "KPI Design"], "why_recommended": "Leading management and technology consultancy delivering structured functional analysis across enterprise clients."},
+            {"name": "EY India Advisory", "category": "big4", "tier_level": "Tier 2", "tier": "Tier-2 Technology Advisory", "location": "Bangalore / Gurgaon / Mumbai", "description": "Business process re-engineering, gap analysis, and data-driven controllership.", "domain_specialties": ["Process Mapping", "Gap Analysis", "Requirements Documentation", "SQL"], "why_recommended": "Comprehensive advisory practice with proven track record in business specifications and process optimization."},
+            {"name": "Accenture", "category": "gsi", "tier_level": "Tier 2", "tier": "Tier-2 Global Integrator Leader", "location": "Bangalore / Hyderabad / Pune", "description": "End-to-end technology transformation, functional requirement definitions, and agile product delivery.", "domain_specialties": ["Agile Business Analysis", "Functional Specs", "User Stories", "Analytics Delivery"], "why_recommended": "Global systems integration powerhouse featuring certified business analysts across diverse enterprise verticals."},
+            {"name": "TCS", "category": "gsi", "tier_level": "Tier 2", "tier": "Tier-2 Global Tier 1 GSI", "location": "Mumbai / Bangalore / Chennai", "description": "Enterprise business analysis, digital reporting solutions, and client functional specifications.", "domain_specialties": ["Business Analysis", "Requirements Engineering", "Power BI / Tableau", "SQL"], "why_recommended": "Scalable global delivery bench with thousands of experienced business and functional analysts."},
+            {"name": "Infosys", "category": "gsi", "tier_level": "Tier 2", "tier": "Tier-2 Global Tier 1 GSI", "location": "Bangalore / Hyderabad / Pune", "description": "Digital consulting, agile user story backlog management, and BI visualization services.", "domain_specialties": ["User Story Backlogs", "Functional Analysis", "Data Modeling", "BI Dashboards"], "why_recommended": "Established systems integrator with structured training and deployment in enterprise business analysis."},
+
+            # Tier 3: Specialized Analytics & Pure-Play Consultancies
+            {"name": "Mu Sigma", "category": "gsi", "tier_level": "Tier 3", "tier": "Tier-3 Decision Sciences Pioneer", "location": "Bangalore", "description": "Pioneering decision sciences and big data analytics consultancy.", "domain_specialties": ["Decision Sciences", "Business Problem Definition", "SQL Modeling", "KPI Dashboards"], "why_recommended": "Specialized decision science firm training nimble analysts in converting messy business problems into mathematical specifications."},
+            {"name": "Fractal Analytics", "category": "gsi", "tier_level": "Tier 3", "tier": "Tier-3 AI & Pure-Play Analytics Leader", "location": "Mumbai / Bangalore / Gurgaon", "description": "Enterprise decision intelligence, customer analytics, and automated reporting platforms.", "domain_specialties": ["Predictive Analytics", "Tableau / Power BI", "Business Insights", "Data Extraction"], "why_recommended": "Pure-play analytics consultancy with strong functional analysts experienced in client-facing analytics delivery."},
+            {"name": "Tiger Analytics", "category": "gsi", "tier_level": "Tier 3", "tier": "Tier-3 Specialized AI & BI Boutique", "location": "Chennai / Bangalore / Hyderabad", "description": "Custom analytics, business intelligence modeling, and data science consulting.", "domain_specialties": ["BI Modeling", "Business Metrics", "Requirements Gathering", "SQL Pipelines"], "why_recommended": "Agile analytics specialist providing high-performing analysts skilled in rapid functional delivery."},
+            {"name": "LatentView Analytics", "category": "gsi", "tier_level": "Tier 3", "tier": "Tier-3 Digital Analytics Boutique", "location": "Chennai / Bangalore", "description": "Digital analytics, marketing intelligence, and functional business requirements definition.", "domain_specialties": ["Digital Business Analysis", "Dashboard Engineering", "Functional KPIs", "User Stories"], "why_recommended": "Focused digital analytics firm offering disciplined analysts adept at bridging business requirements and dashboards."},
+            {"name": "ZS Associates", "category": "gsi", "tier_level": "Tier 3", "tier": "Tier-3 Management & Analytics Consulting", "location": "Pune / Gurgaon / Bangalore", "description": "Global management consulting and analytics firm specialized in commercial and sales analytics.", "domain_specialties": ["Commercial Analytics", "Business Process Mapping", "Data Modeling", "Stakeholder Alignment"], "why_recommended": "Premier specialized analytics consultancy renowned for high-rigor functional problem-solving and business analysis."},
+        ],
+    },
+
+    # 13. Procurement, Strategic Sourcing, Vendor Management & Supply Chain Operations Ecosystem
+    {
+        "id": "procurement_supply_chain",
+        "name": "Procurement, Strategic Sourcing & Supply Chain Operations Ecosystem",
+        "domains": ["procurement_supply_chain", "procurement", "supply_chain", "sourcing"],
+        "keywords": [
+            "procurement", "procurement analyst", "purchasing", "strategic sourcing",
+            "vendor management", "supplier management", "source to pay", "source-to-pay",
+            "s2p", "procure to pay", "p2p", "purchase order", "rfq", "rfp", "rfi",
+            "spend analysis", "contract management", "ariba", "sap ariba", "coupa",
+            "ivalua", "supply chain", "category management", "vendor onboarding", "cost savings"
+        ],
+        "primary_strategy": "Direct Industry Experience",
+        "strategy_rationale": "Procurement operations, Source-to-Pay (S2P), vendor management, RFQ/RFP execution, and spend analytics talent is concentrated in procurement SaaS platforms & global GCC procurement hubs (Tier 1), enterprise S2P shared-service delivery centers (Tier 2), and specialized B2B procurement & supply chain specialists (Tier 3).",
+        "companies": [
+            # Tier 1: Direct Procurement Platforms & Enterprise Procurement GCCs
+            {
+                "name": "GEP Worldwide",
+                "category": "oem",
+                "tier_level": "Tier 1",
+                "tier": "Tier-1 Procurement Software & Consulting Leader",
+                "location": "Mumbai / Hyderabad / Bangalore",
+                "description": "Global leader in AI-powered procurement software (GEP SMART) and managed procurement services.",
+                "domain_specialties": ["Strategic Sourcing", "Spend Analysis", "Source-to-Pay (S2P)", "Category Management"],
+                "why_recommended": "Pure-play global procurement leader with deep talent in spend analytics, RFQ execution, and enterprise sourcing operations.",
+            },
+            {
+                "name": "Zycus",
+                "category": "oem",
+                "tier_level": "Tier 1",
+                "tier": "Tier-1 Cognitive Procurement Suite OEM",
+                "location": "Mumbai / Bangalore / Pune",
+                "description": "Enterprise Source-to-Pay (S2P) and cognitive procurement SaaS platform.",
+                "domain_specialties": ["Procure-to-Pay (P2P)", "Contract Management", "Supplier Management", "e-Sourcing"],
+                "why_recommended": "Dedicated procurement software OEM in Bangalore/Mumbai with experienced procurement analysts and S2P specialists.",
+            },
+            {
+                "name": "SAP Ariba (SAP Labs India)",
+                "category": "oem",
+                "tier_level": "Tier 1",
+                "tier": "Tier-1 Enterprise Procurement Network OEM",
+                "location": "Bangalore / Gurgaon",
+                "description": "Global B2B procurement network, supplier lifecycle, and SAP Ariba S2P engineering and operations.",
+                "domain_specialties": ["SAP Ariba", "Supplier Lifecycle", "Purchase Orders", "Procurement Compliance"],
+                "why_recommended": "Creator of SAP Ariba in Bangalore; premier talent pool for digital procurement workflows and supplier compliance.",
+            },
+            {
+                "name": "Coupa Software India",
+                "category": "oem",
+                "tier_level": "Tier 1",
+                "tier": "Tier-1 Business Spend Management OEM",
+                "location": "Pune / Bangalore / Hyderabad",
+                "description": "Cloud Business Spend Management (BSM) platform for procurement, invoicing, and supply chain.",
+                "domain_specialties": ["Business Spend Management", "P2P Operations", "Vendor Onboarding", "Spend Analytics"],
+                "why_recommended": "Leading BSM platform hub with specialists in purchase requisitioning, spend controls, and supplier enablement.",
+            },
+            {
+                "name": "Ivalua India",
+                "category": "oem",
+                "tier_level": "Tier 1",
+                "tier": "Tier-1 Spend Management Platform",
+                "location": "Pune / Bangalore",
+                "description": "Unified spend management platform for direct and indirect procurement.",
+                "domain_specialties": ["Direct & Indirect Procurement", "Supplier Risk", "RFQ/RFP Workflows", "Contract Lifecycle"],
+                "why_recommended": "Specialized spend management platform team experienced in end-to-end sourcing and supplier governance.",
+            },
+            {
+                "name": "Shell Global Procurement Hub",
+                "category": "gcc",
+                "tier_level": "Tier 1",
+                "tier": "Tier-1 Enterprise Procurement GCC",
+                "location": "Bangalore / Chennai",
+                "description": "Global contracting & procurement operations hub managing vendor contracts, POs, and category spend.",
+                "domain_specialties": ["Contracting & Procurement", "Vendor Management", "Purchase Orders", "Spend Governance"],
+                "why_recommended": "Major Bangalore procurement GCC operating high-rigor global vendor management and purchasing compliance.",
+            },
+            {
+                "name": "Target in India (Supply Chain & Procurement GCC)",
+                "category": "gcc",
+                "tier_level": "Tier 1",
+                "tier": "Tier-1 Retail Procurement GCC",
+                "location": "Bangalore",
+                "description": "Global retail sourcing, indirect procurement, vendor compliance, and supply chain analytics.",
+                "domain_specialties": ["Indirect Procurement", "Vendor Compliance", "Spend Analytics", "Supply Chain Ops"],
+                "why_recommended": "Established Bangalore GCC with strong entry-to-mid procurement analysts managing global vendor lifecycles.",
+            },
+
+            # Tier 2: Source-to-Pay (S2P) & Procurement Shared Services (Adjacent Enterprise Operations)
+            {
+                "name": "Accenture Operations (Procurement & S2P)",
+                "category": "gsi",
+                "tier_level": "Tier 2",
+                "tier": "Tier-2 Global S2P Operations Leader",
+                "location": "Bangalore / Hyderabad / Pune",
+                "description": "Managed procurement services, Source-to-Pay (S2P), and category spend operations for global clients.",
+                "domain_specialties": ["Source-to-Pay (S2P)", "PO Processing", "Supplier Helpdesk", "Spend Reporting"],
+                "why_recommended": "Large-scale procurement operations center in Bangalore with analysts experienced in Excel spend reporting and PO workflows.",
+            },
+            {
+                "name": "Genpact (Source-to-Pay & Supply Chain)",
+                "category": "gsi",
+                "tier_level": "Tier 2",
+                "tier": "Tier-2 Enterprise S2P Operations Leader",
+                "location": "Bangalore / Gurgaon / Hyderabad",
+                "description": "Global Source-to-Pay, supplier master data, RFQ support, and procurement compliance operations.",
+                "domain_specialties": ["Procure-to-Pay", "Vendor Onboarding", "RFQ Support", "Excel Spend Analysis"],
+                "why_recommended": "Industry leader in S2P shared services with deep benches of procurement analysts and purchasing coordinators.",
+            },
+            {
+                "name": "Capgemini (Procurement & Supply Chain Ops)",
+                "category": "gsi",
+                "tier_level": "Tier 2",
+                "tier": "Tier-2 Global Procurement Delivery",
+                "location": "Bangalore / Mumbai / Chennai",
+                "description": "Enterprise procurement transformation, Ariba/Coupa operations, and vendor governance.",
+                "domain_specialties": ["SAP Ariba Ops", "Procurement Analytics", "Vendor Governance", "PO Compliance"],
+                "why_recommended": "Strong S2P delivery practice in Bangalore supporting global purchasing, contract compliance, and supplier coordination.",
+            },
+            {
+                "name": "Infosys BPM (Sourcing & Procurement)",
+                "category": "gsi",
+                "tier_level": "Tier 2",
+                "tier": "Tier-2 Enterprise S2P Shared Services",
+                "location": "Bangalore / Pune / Jaipur",
+                "description": "End-to-end sourcing and procurement BPO covering requisitions, RFQs, and supplier compliance.",
+                "domain_specialties": ["Requisition-to-PO", "RFQ Management", "Supplier Master Data", "Cost Tracking"],
+                "why_recommended": "Large Bangalore-anchored S2P team ideal for sourcing entry-to-mid procurement analysts with strong documentation skills.",
+            },
+
+            # Tier 3: Specialist Procurement & B2B Supply Chain Platforms
+            {
+                "name": "Beroe Inc.",
+                "category": "gsi",
+                "tier_level": "Tier 3",
+                "tier": "Tier-3 Procurement Intelligence Specialist",
+                "location": "Chennai / Bangalore",
+                "description": "Pure-play procurement market intelligence, supplier benchmarking, and category cost modeling.",
+                "domain_specialties": ["Procurement Intelligence", "Supplier Benchmarking", "Category Research", "Cost Modeling"],
+                "why_recommended": "Niche procurement intelligence specialist producing analytical sourcing talent trained in vendor research and spend insights.",
+            },
+            {
+                "name": "Zetwerk",
+                "category": "oem",
+                "tier_level": "Tier 3",
+                "tier": "Tier-3 B2B Manufacturing Procurement Hub",
+                "location": "Bangalore",
+                "description": "B2B manufacturing procurement marketplace managing supplier sourcing, RFQs, and order fulfillment.",
+                "domain_specialties": ["Vendor Sourcing", "RFQ Execution", "Manufacturing Procurement", "Order Tracking"],
+                "why_recommended": "Fast-paced Bangalore procurement marketplace with hands-on sourcing analysts skilled in vendor coordination and specs.",
+            },
+            {
+                "name": "Moglix",
+                "category": "oem",
+                "tier_level": "Tier 3",
+                "tier": "Tier-3 Industrial B2B Procurement Platform",
+                "location": "Noida / Bangalore / Pune",
+                "description": "B2B industrial procurement and supply chain platform for MRO, packaging, and enterprise purchasing.",
+                "domain_specialties": ["B2B Purchasing", "Vendor Management", "Catalog Procurement", "Supply Chain Ops"],
+                "why_recommended": "Specialized industrial procurement platform with practical purchasing and supplier operations analysts.",
+            },
+            {
+                "name": "Procol",
+                "category": "oem",
+                "tier_level": "Tier 3",
+                "tier": "Tier-3 Boutique e-Sourcing & Procurement SaaS",
+                "location": "Gurgaon / Bangalore",
+                "description": "Modern e-procurement, reverse auction, and vendor comparison SaaS platform.",
+                "domain_specialties": ["e-Procurement", "RFQ Comparison", "Vendor Onboarding", "Purchasing Workflows"],
+                "why_recommended": "Agile procurement-tech specialist with analysts experienced in structured RFQ comparisons and supplier onboarding.",
+            },
+        ],
+    },
 ]
 
 # Fallback general technology & consulting catalog with rich company profiles
@@ -465,90 +880,70 @@ def _compute_dynamic_skills_and_reason(
     tier = co.get("tier", f"{tier_level} Sourcing Pool")
     company_specialties = co.get("domain_specialties", [])
 
-    # 1. Compute dynamic, non-identical Overlap Skills
+    # 1. Compute dynamic, non-identical Overlap Skills per company
     assigned_skills: List[str] = []
 
     # Check for direct overlap between this company's known specialties and the JD's extracted skills
+    matched_specialties: List[str] = []
     if jd_skills:
-        # Match case-insensitively
-        direct_matches = [
-            s for s in jd_skills
-            if any(s.lower() in spec.lower() or spec.lower() in s.lower() for spec in company_specialties)
-        ]
+        for spec in company_specialties:
+            for s in jd_skills:
+                s_l = s.lower().strip()
+                spec_l = spec.lower().strip()
+                if s_l == spec_l or (len(s_l) > 3 and s_l in spec_l):
+                    if s not in matched_specialties:
+                        matched_specialties.append(s)
+                    elif spec not in matched_specialties:
+                        matched_specialties.append(spec)
 
-        if direct_matches:
-            assigned_skills = direct_matches[:4]
+    # Pick 1-2 matched specialties offset by company_idx to ensure different companies emphasize different aspects
+    if matched_specialties:
+        offset_m = company_idx % len(matched_specialties)
+        assigned_skills.extend(matched_specialties[offset_m:offset_m + 2])
+        if len(assigned_skills) < 2 and len(matched_specialties) > 1:
+            assigned_skills.append(matched_specialties[(offset_m + 1) % len(matched_specialties)])
 
-        # If direct matches are fewer than 3, select distinct skills from the JD using round-robin offset
-        if len(assigned_skills) < 3 and len(jd_skills) >= 2:
-            offset = (company_idx * 2) % len(jd_skills)
-            rotated_skills = jd_skills[offset:] + jd_skills[:offset]
-            for s in rotated_skills:
-                if s not in assigned_skills:
-                    assigned_skills.append(s)
-                if len(assigned_skills) >= 4:
-                    break
+    # Anchor with company's native signature specialty so company's distinct focus is visible
+    if company_specialties:
+        native_spec = company_specialties[company_idx % len(company_specialties)]
+        if native_spec not in assigned_skills and not any(native_spec.lower() in a.lower() for a in assigned_skills):
+            assigned_skills.append(native_spec)
 
-    # If still empty or no JD skills extracted, use company specialties or domain-grounded terms
+    # Fill remaining slots with rotated JD skills so each company receives a distinct blend
+    if jd_skills:
+        jd_offset = (company_idx * 2) % len(jd_skills)
+        rotated_jd = jd_skills[jd_offset:] + jd_skills[:jd_offset]
+        for s in rotated_jd:
+            if s not in assigned_skills and not any(s.lower() == a.lower() for a in assigned_skills):
+                assigned_skills.append(s)
+            if len(assigned_skills) >= 4:
+                break
+
+    # Final fallback if still empty
     if not assigned_skills:
-        assigned_skills = company_specialties[:4] if company_specialties else [f"{domain_label} Competencies", "Core Operations"]
+        assigned_skills = company_specialties[:3] if company_specialties else [f"{domain_label} Competencies"]
 
-    skills_str = ", ".join(assigned_skills[:4])
+    assigned_skills = assigned_skills[:4]
+    skills_str = ", ".join(assigned_skills)
 
     # 2. Check if company has an existing hand-crafted bespoke reason
-    if co.get("why_recommended") and ("{" not in co["why_recommended"]):
-        # If hand-crafted reason already exists and is specific, return it
-        return assigned_skills, co["why_recommended"]
+    existing_reason = co.get("why_recommended")
+    if existing_reason and "{" not in existing_reason and "practitioners in" not in existing_reason:
+        return assigned_skills, existing_reason
 
-    # 3. Generate dynamic, non-repeating why_recommended sentence tailored to this company and this exact JD
-    # We use varied phrasing templates keyed by category and company index to guarantee high textual diversity
-    role_noun = job_title if job_title else "specialists"
-
-    if co_cat == "big4":
-        templates = [
-            f"Tier-1 advisory and assurance practice with proven client-facing exposure in {skills_str}; primary talent source for {role_noun} candidates with strong audit readiness.",
-            f"Renowned professional services firm maintaining a premier bench of {role_noun} practitioners skilled in {skills_str} and regulatory governance.",
-            f"Leading consulting practice with extensive hands-on delivery in {skills_str}; exceptional ground for headhunting rigorous {role_noun} professionals.",
-            f"High-caliber advisory practice recognized for deep technical governance in {skills_str} across multi-entity enterprise operations.",
-        ]
-        reason = templates[company_idx % len(templates)]
-    elif co_cat == "gcc":
-        templates = [
-            f"Institutional enterprise capability center with deep internal workflows in {skills_str}; key source for operational {role_noun} talent handling high-volume workflows.",
-            f"Captive enterprise global center running core daily operations in {skills_str}; proven source for structured and process-driven {role_noun} practitioners.",
-            f"Dedicated global technology and operational hub maintaining strict governance in {skills_str} for mission-critical enterprise functions.",
-            f"High-rigor corporate capability center with deep hands-on expertise in {skills_str} and end-to-end controllership.",
-        ]
-        reason = templates[company_idx % len(templates)]
-    elif co_cat in ["oem", "product"]:
-        templates = [
-            f"Platform creator and software engineering center with authoritative technical expertise in {skills_str}; premier source for senior {role_noun} practitioners.",
-            f"Leading technology OEM developing core platforms in {skills_str}; unmatched technical bench for high-complexity {role_noun} requirements.",
-            f"Tier-1 product engineering hub maintaining high architectural standards in {skills_str} and scalable operational tooling.",
-        ]
-        reason = templates[company_idx % len(templates)]
-    elif co_cat in ["agency", "creative"]:
-        templates = [
-            f"Top creative agency network delivering high-impact commercial campaigns; primary headhunting ground for {role_noun} talent skilled in {skills_str}.",
-            f"Integrated creative and visual production studio with an award-winning bench of {role_noun} professionals delivering {skills_str}.",
-            f"Specialized creative studio renowned for contemporary visual craftsmanship, brand narratives, and {skills_str}.",
-        ]
-        reason = templates[company_idx % len(templates)]
-    elif co_cat == "retail":
-        templates = [
-            f"High-volume e-commerce and retail operator with dedicated teams executing {skills_str} across large-scale consumer catalogs.",
-            f"Enterprise retail operations hub managing complex vendor networks and rapid execution of {skills_str}.",
-            f"Leading retail center with proven operational workflows in {skills_str} and master data remediation.",
-        ]
-        reason = templates[company_idx % len(templates)]
-    else:  # gsi or general consulting
-        templates = [
-            f"Established global systems integrator with a scalable delivery bench of {role_noun} professionals experienced in enterprise {skills_str}.",
-            f"Tier-1 technology services provider with an extensive certified talent bench in {skills_str} across global client engagements.",
-            f"Global consulting and managed services leader delivering end-to-end operational execution and system expertise in {skills_str}.",
-            f"Enterprise systems integrator with proven delivery capacity in {skills_str} and cross-functional operational documentation.",
-        ]
-        reason = templates[company_idx % len(templates)]
+    # 3. Generate dynamic, non-repeating why_recommended sentence tailored to this company, tier, and exact JD
+    role_noun = job_title if job_title else "domain specialists"
+    templates = [
+        f"{co_name} ({tier_level}) maintains an authoritative talent bench in {skills_str}; primary headhunting source for {role_noun} practitioners.",
+        f"Proven {tier_level} practice at {co_name} with deep operational exposure in {skills_str}; ideal for sourcing high-performing {role_noun} talent.",
+        f"Specialized {tier_level} center at {co_name} executing mission-critical workflows in {skills_str}; premier pool for experienced {role_noun} candidates.",
+        f"{co_name} offers a scalable {tier_level} engineering bench skilled in {skills_str}; high-conversion target for {role_noun} recruitment.",
+        f"High-rigor {tier_level} operational unit at {co_name} delivering proven results across {skills_str}; strong source for qualified {role_noun} professionals.",
+        f"{co_name} is recognized for robust standards in {skills_str}; highly recommended for headhunting senior {role_noun} practitioners.",
+        f"Tier-1 industry leader {co_name} features extensive project delivery in {skills_str}; strategic target for passive {role_noun} talent.",
+        f"Established {tier} at {co_name} with validated candidate track records in {skills_str}; prioritized for {role_noun} sourcing.",
+    ]
+    reason = templates[company_idx % len(templates)]
 
     return assigned_skills, reason
 
@@ -599,13 +994,30 @@ def get_target_company_recommendations_for_job(
             seen_skills.add(s_clean.lower())
             all_jd_skills.append(s_clean)
 
-    # Match relevant ecosystem from verified corporate catalogs
-    matched_ecosystems: List[Dict[str, Any]] = []
+    # Match relevant ecosystem from verified corporate catalogs using multi-factor scored ranking
+    scored_ecosystems: List[Tuple[float, Dict[str, Any]]] = []
+    title_lower = title.lower()
+
     for eco in COMPANY_ECOSYSTEMS_CATALOG:
-        has_domain = domain_id in eco.get("domains", [])
-        has_kw = any(re.search(r"(?:\b|_)" + re.escape(kw) + r"(?:\b|_)", haystack) for kw in eco.get("keywords", []))
-        if has_domain or has_kw:
-            matched_ecosystems.append(eco)
+        score = 0.0
+        # 1. Domain match provides primary foundational weighting
+        if domain_id in eco.get("domains", []):
+            score += 30.0
+
+        # 2. Match keywords against title (high signal) and full haystack (content signal)
+        for kw in eco.get("keywords", []):
+            kw_pattern = r"(?:\b|_)" + re.escape(kw) + r"(?:\b|_)"
+            if re.search(kw_pattern, title_lower):
+                score += 8.0
+            elif re.search(kw_pattern, haystack):
+                score += 2.0
+
+        if score >= 4.0:
+            scored_ecosystems.append((score, eco))
+
+    # Sort ecosystems by descending score
+    scored_ecosystems.sort(key=lambda x: x[0], reverse=True)
+    matched_ecosystems = [eco for _, eco in scored_ecosystems]
 
     primary_ecosystem = matched_ecosystems[0] if matched_ecosystems else DEFAULT_GENERAL_CATALOG
     
@@ -624,11 +1036,13 @@ def get_target_company_recommendations_for_job(
     active_off_limits = set((name or "").strip().lower() for name in (off_limits_companies or []))
     active_exclusions = set((name or "").strip().lower() for name in (excluded_companies or []))
 
-    # Pull companies strictly from matched ecosystems for role relevance
-    source_pools = [primary_ecosystem.get("companies", [])]
-    if len(matched_ecosystems) > 1:
+    # Pull companies strictly from primary matched ecosystem to guarantee role relevance without leakage.
+    # Only if the primary catalog has fewer than 10 companies, supplement from the next highest scoring ecosystem.
+    primary_companies = primary_ecosystem.get("companies", [])
+    source_pools = [primary_companies]
+    if len(primary_companies) < 10 and len(matched_ecosystems) > 1:
         source_pools.append(matched_ecosystems[1].get("companies", []))
-    elif not matched_ecosystems:
+    elif not matched_ecosystems or len(primary_companies) == 0:
         source_pools.append(DEFAULT_GENERAL_CATALOG.get("companies", []))
 
     flat_pool = []

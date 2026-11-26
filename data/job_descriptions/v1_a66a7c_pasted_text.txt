@@ -1,0 +1,6 @@
+Minimum 2 years of work experience in a contact-center environment.
+·   Minimum 6 months of hands-on experience within a Real-Time Management (RTM) or intraday WFM team.
+·   Working knowledge of contact-center operations across at least one live channel such as phone or chat; exposure to blended or omnichannel operations is preferred.
+·   Practical understanding of service level, ASA, abandonment, AHT, occupancy, adherence, shrinkage, staffing requirement, forecast variance, and interval performance.
+·   Experience using a WFM platform such as NICE IEX/NICE WFM, Verint, or Genesys WFM, along with ACD or routing dashboards and Microsoft Excel.
+·   Ability to work rotational shifts and provide coverage during weekends, holidays, peak periods, and business events as scheduled.

@@ -17,9 +17,8 @@ const ResumePreview = lazy(() =>
 const UploadJDModal = lazy(() =>
   import('../components/jobs/UploadJDModal').then((m) => ({ default: m.UploadJDModal }))
 );
-const JDSegmentationWorkspace = lazy(() =>
-  import('../components/jobs/JDSegmentationWorkspace').then((m) => ({ default: m.JDSegmentationWorkspace }))
-);
+import { JDSegmentationWorkspace } from '../components/jobs/JDSegmentationWorkspace';
+import { EditJobModal } from '../components/jobs/EditJobModal';
 // Query the existing Phase 3 job-to-candidate semantic matching endpoint.
 import { apiRequest } from '../api';
 import { jobApi } from '../api/client';
@@ -48,6 +47,8 @@ export const JobsPage = ({
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
   // Job object to open in JD 15-category Segmentation Workspace.
   const [segmentingJob, setSegmentingJob] = useState(null);
+  // Job object to edit in EditJobModal.
+  const [editingJob, setEditingJob] = useState(null);
 
   // Candidate detail modal state if clicked from matching candidates list.
   const [activeCandidateId, setActiveCandidateId] = useState(null);
@@ -302,6 +303,7 @@ export const JobsPage = ({
                 selectedJobId={selectedJobId}
                 onSelectJob={setSelectedJobId}
                 onAnalyzeJob={(job) => setAnalyzingJob(job)}
+                onEditJob={(job) => setEditingJob(job)}
                 onUpdateJob={onUpdateJob}
                 onDeleteJob={onDeleteJob}
               />
@@ -394,6 +396,7 @@ export const JobsPage = ({
               onAnalyzeJob={(job) => setAnalyzingJob(job)}
               onOpenSegmentation={(job) => setSegmentingJob(job)}
               onSelectCandidate={handleSelectCandidate}
+              onEditJob={(job) => setEditingJob(job || currentJob)}
               onUpdateJob={onUpdateJob}
               onOpenMatrix={onNavigateToMatrix}
               onNavigateToJob={(targetJobId) => setSelectedJobId(targetJobId)}
@@ -472,6 +475,15 @@ export const JobsPage = ({
                 onUpdateJob({ ...segmentingJob });
               }
             }}
+          />
+        )}
+        {/* Interactive Edit Job Modal */}
+        {editingJob && (
+          <EditJobModal
+            isOpen={Boolean(editingJob)}
+            onClose={() => setEditingJob(null)}
+            job={editingJob}
+            onSave={onUpdateJob}
           />
         )}
       </Suspense>

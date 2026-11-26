@@ -49,3 +49,13 @@ python-docx
 
 # Persistent vector database used for resume embeddings and semantic search.
 chromadb
+
+# -------------------- Workflow Orchestration --------------------
+
+# Central workflow orchestration engine for conversational and automated recruitment agent workflows.
+langgraph>=1.2.0
+
+# Persistent SQLite checkpoint saver for resumable LangGraph workflows.
+langgraph-checkpoint-sqlite>=3.1.0
+
+chromadb

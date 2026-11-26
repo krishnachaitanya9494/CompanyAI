@@ -28,6 +28,8 @@ export const ChatInput = ({ onSendMessage, isLoading, placeholder = 'Ask Company
     }
   };
 
+  
+
   // Render chat input box.
   return (
     <form onSubmit={handleSubmit} className="relative bg-white border border-slate-200/90 rounded-2xl shadow-card focus-within:border-brand-500 focus-within:ring-2 focus-within:ring-brand-500/10 transition-all p-2">

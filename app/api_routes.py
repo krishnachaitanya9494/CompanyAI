@@ -623,8 +623,8 @@ def list_jobs(
     limit: int = Query(default=100, ge=1, le=500),
     session: Session = Depends(get_db),
 ) -> list[JobResponse]:
-    # Order by job key so pagination remains repeatable.
-    statement = select(Job).order_by(Job.id.asc())
+    # Order by job key descending so newly added requisitions/demand appear first.
+    statement = select(Job).order_by(Job.id.desc())
     # Apply case-insensitive title search when a recruiter supplies a query.
     if q and q.strip():
         statement = statement.where(func.lower(Job.title).like(f"%{q.strip().casefold()}%"))

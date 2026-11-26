@@ -853,27 +853,157 @@ DOMAIN_TAXONOMY: Dict[str, Dict[str, Any]] = {
             "General / Domain",
         },
     },
+    "workforce_management": {
+        "label": "Workforce Management & Contact Center Operations",
+        "job_family": "Contact Center Operations / Workforce Management",
+        "functional_area": "Real-Time Management, Scheduling & Capacity Planning",
+        "role_category": "Workforce Operations / RTM",
+        "role_type": "Operational Support / Specialist",
+        "industry": "Contact Center, Customer Experience (CX) & Business Process Services",
+        "work_environment": "24/7 contact center operations, real-time command tower & omnichannel queue management",
+        "keywords": [
+            "workforce management", "wfm", "rtm", "real-time management", "real time management",
+            "contact center", "contact-center", "call center", "call-center",
+            "service level", "asa", "abandonment", "aht", "average handle time",
+            "occupancy", "adherence", "shrinkage", "intraday", "intraday management",
+            "nice iex", "nice wfm", "verint", "genesys", "genesys wfm", "acd",
+            "routing dashboards", "staffing requirement", "forecast variance", "interval performance",
+            "schedule adherence", "queue management", "omnichannel operations", "teleperformance",
+            "concentrix", "customer care", "customer operations"
+        ],
+        "alt_titles": [
+            "WFM Analyst",
+            "RTM Analyst",
+            "Real-Time Management Specialist",
+            "Workforce Management Specialist",
+            "Intraday WFM Coordinator",
+            "Contact Center Operations Specialist",
+            "WFM Scheduling Analyst",
+            "Real-Time Queue Coordinator",
+        ],
+        "primary_skills": [
+            "Workforce Management",
+            "Real-Time Management (RTM)",
+            "Intraday Management",
+            "NICE IEX / WFM",
+            "Verint WFM",
+            "Genesys Cloud WFM",
+            "Service Level Monitoring",
+            "Schedule Adherence",
+            "Shrinkage Analysis",
+            "AHT & Occupancy Control",
+            "ACD Routing",
+            "Staffing Forecasting",
+            "Interval Performance",
+            "Excel",
+        ],
+        "allowed_categories": {
+            "Workforce & Contact Center Operations",
+            "Business Operations",
+            "Productivity & Analytics",
+            "General / Domain",
+        },
+    },
+    "data_analytics_bi": {
+        "label": "Data Analytics & Business Intelligence",
+        "job_family": "Analytics / Business Intelligence",
+        "functional_area": "Requirements Gathering, BI Dashboards & Functional Analysis",
+        "role_category": "Analytics / Business Analysis",
+        "role_type": "Specialist / Consultant",
+        "industry": "Enterprise Consulting, Analytics & Technology Services",
+        "work_environment": "Agile project teams, stakeholder workshops & analytics delivery",
+        "keywords": [
+            "business analyst", "data analyst", "bi analyst", "business intelligence",
+            "power bi", "tableau", "requirements gathering", "functional specifications",
+            "gap analysis", "user stories", "kpi dashboards", "data modeling", "etl", "sql",
+            "process mapping", "stakeholder management", "business analysis"
+        ],
+        "alt_titles": [
+            "Business Analyst",
+            "Senior Business Analyst",
+            "Data Analyst",
+            "BI Specialist",
+            "Functional Business Analyst",
+            "Analytics Consultant",
+        ],
+        "primary_skills": [
+            "Requirements Gathering",
+            "Business Analysis",
+            "Functional Specifications",
+            "User Stories",
+            "SQL",
+            "Power BI",
+            "Tableau",
+            "Gap Analysis",
+            "Process Mapping",
+            "KPI Reporting",
+            "Excel",
+        ],
+        "allowed_categories": {
+            "Productivity & Analytics",
+            "Data & Databases",
+            "Business Operations",
+            "General / Domain",
+        },
+    },
+    "supply_chain_procurement": {
+        "label": "Supply Chain & Procurement Operations",
+        "job_family": "Supply Chain / Procurement",
+        "functional_area": "Sourcing, Vendor Management & Logistics Operations",
+        "keywords": [
+            "supply chain", "procurement", "sourcing specialist", "logistics",
+            "inventory management", "purchase order", "po processing", "vendor management",
+            "warehousing", "freight", "erp purchasing"
+        ],
+        "alt_titles": [
+            "Supply Chain Analyst",
+            "Procurement Specialist",
+            "Sourcing Analyst",
+            "Logistics Coordinator",
+        ],
+        "primary_skills": [
+            "Supply Chain Management",
+            "Procurement Operations",
+            "Vendor Management",
+            "Purchase Order Processing",
+            "Inventory Control",
+            "Logistics Tracking",
+            "Excel",
+        ],
+        "allowed_categories": {
+            "Business Operations",
+            "Productivity & Analytics",
+            "General / Domain",
+        },
+    },
 }
 
 
 def detect_jd_domain(title: str, raw_text: str) -> Tuple[str, Dict[str, Any]]:
     """Determine the primary domain from the job title and text without cross-domain pollution."""
     combined = f"{title}\n{raw_text}".lower()
-    best_domain = "software_engineering"
-    best_score = -1
+    title_lower = (title or "").lower()
+
+    best_domain = "general_operations"
+    best_score = 0
 
     for domain_id, meta in DOMAIN_TAXONOMY.items():
         score = 0
-        # Title matches carry 3x weight
-        title_lower = (title or "").lower()
         for kw in meta["keywords"]:
+            # Title matches carry 5x weight
             if re.search(r"\b" + re.escape(kw) + r"\b", title_lower):
-                score += 3
+                score += 5
+            # Body matches carry 1x weight
             elif re.search(r"\b" + re.escape(kw) + r"\b", combined):
                 score += 1
         if score > best_score:
             best_score = score
             best_domain = domain_id
+
+    # If no domain has meaningful evidence (best_score <= 1), use general operations fallback
+    if best_score <= 1:
+        if "general_operations" in DOMAIN_TAXONOMY:
+            return "general_operations", DOMAIN_TAXONOMY["general_operations"]
 
     return best_domain, DOMAIN_TAXONOMY[best_domain]
 

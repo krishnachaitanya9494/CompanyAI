@@ -2,7 +2,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 
 // Import icons from lucide-react.
-import { Briefcase, MapPin, Sparkles, ChevronRight, ChevronDown, ChevronUp, Search, X, Trash2 } from 'lucide-react';
+import { Briefcase, MapPin, Sparkles, ChevronRight, ChevronDown, ChevronUp, Search, X, Trash2, Edit3 } from 'lucide-react';
 import { CustomSelect } from '../common/CustomSelect';
 import { Modal } from '../common/Modal';
 
@@ -16,6 +16,7 @@ export const JobList = ({
   selectedJobId,
   onSelectJob,
   onAnalyzeJob,
+  onEditJob,
   onUpdateJob,
   onDeleteJob,
 }) => {
@@ -35,10 +36,15 @@ export const JobList = ({
   // Available status options including Open/Active case variants.
   const statusOptions = ['Active', 'Open', 'Under Review', 'Draft', 'On Hold', 'Closed'];
 
-  // Filter jobs client-side while preserving full backend list order.
+  // Filter jobs client-side and sort so newly added demand appears first.
   const filteredJobs = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
-    return jobs.filter((job) => {
+    const sorted = [...jobs].sort((a, b) => {
+      const idA = typeof a.id === 'number' ? a.id : parseInt(String(a.id || '').replace(/\D/g, ''), 10) || 0;
+      const idB = typeof b.id === 'number' ? b.id : parseInt(String(b.id || '').replace(/\D/g, ''), 10) || 0;
+      return idB - idA;
+    });
+    return sorted.filter((job) => {
       if (statusFilter !== 'All' && (job.status || '').toLowerCase() !== statusFilter.toLowerCase()) {
         return false;
       }
@@ -203,6 +209,22 @@ export const JobList = ({
                   >
                     <Sparkles className="w-3.5 h-3.5 text-brand-600 dark:text-brand-400" />
                     <span>Analyze JD</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onSelectJob(job.id);
+                      if (onEditJob) {
+                        onEditJob(job);
+                      }
+                    }}
+                    className="flex items-center gap-1.5 px-3 py-1 bg-indigo-50 dark:bg-indigo-950/40 hover:bg-indigo-100 dark:hover:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300 border border-indigo-200/80 dark:border-indigo-800 rounded-xl text-xs font-medium transition-colors cursor-pointer"
+                    aria-label={`Edit ${job.title}`}
+                  >
+                    <Edit3 className="w-3.5 h-3.5" />
+                    <span>Edit JD</span>
                   </button>
 
                   <button

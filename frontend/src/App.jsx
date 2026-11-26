@@ -247,7 +247,15 @@ export default function App() {
         approvalApi.getPending(),
       ]);
 
-      if (jobRes.status === 'fulfilled') setJobs((jobRes.value || []).map(toJob));
+      if (jobRes.status === 'fulfilled') {
+        const mappedJobs = (jobRes.value || []).map(toJob);
+        mappedJobs.sort((a, b) => {
+          const idA = typeof a.id === 'number' ? a.id : parseInt(String(a.id || '').replace(/\D/g, ''), 10) || 0;
+          const idB = typeof b.id === 'number' ? b.id : parseInt(String(b.id || '').replace(/\D/g, ''), 10) || 0;
+          return idB - idA;
+        });
+        setJobs(mappedJobs);
+      }
       if (reqRes.status === 'fulfilled') setRequests((reqRes.value || []).map(toRequest));
       const dashboard = dashRes.status === 'fulfilled' ? dashRes.value : null;
       if (dashboard) {
@@ -425,13 +433,20 @@ export default function App() {
     setActivities((prev) => [newActivity, ...prev]);
   };
 
-  // Handler to update a job description (status, description).
+  // Handler to update a job description (status and editable JD fields).
   const handleUpdateJob = async (updatedJob) => {
     // Persist supported job fields before refreshing the corresponding UI item.
     const saved = await apiRequest(`/jobs/${updatedJob.id}`, {
       method: 'PATCH',
       body: JSON.stringify({
-        status: updatedJob.status.toLowerCase(),
+        status: updatedJob.status ? updatedJob.status.toLowerCase() : undefined,
+        title: updatedJob.title,
+        department: updatedJob.department,
+        location: updatedJob.location,
+        min_experience_years: updatedJob.minYears ?? null,
+        max_experience_years: updatedJob.maxYears ?? null,
+        required_skills: updatedJob.requiredSkills,
+        preferred_skills: updatedJob.preferredSkills,
         description: updatedJob.description,
       }),
     });
