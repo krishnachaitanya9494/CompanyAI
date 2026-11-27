@@ -37,7 +37,7 @@ import { GradientText } from '../components/reactbits/GradientText';
 import { AnimatedContent } from '../components/reactbits/AnimatedContent';
 
 // Import real agent API service from CompanyAI client.
-import { agentApi } from '../api/client';
+import { agentApi, aiApi } from '../api/client';
 
 // Suggested recruitment prompt starter cards organized into actionable categories.
 const PROMPT_CATEGORIES = [
@@ -128,6 +128,26 @@ export const AIAssistantPage = ({
 
   // Active error notice banner if API call blocks.
   const [errorNotice, setErrorNotice] = useState('');
+
+  const [activeModelInfo, setActiveModelInfo] = useState({
+    chatModel: 'llama3.2:3b',
+    embeddingModel: 'nomic-embed-text',
+    online: true,
+  });
+
+  useEffect(() => {
+    aiApi.getMonitor()
+      .then((res) => {
+        if (res) {
+          setActiveModelInfo({
+            chatModel: res.chat_model || 'llama3.2:3b',
+            embeddingModel: res.embedding_model || 'nomic-embed-text',
+            online: Boolean(res.ollama_online),
+          });
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   // Right-side Context Panel selection state ('job', 'candidate', 'request').
   const [contextTab, setContextTab] = useState('job');
@@ -287,10 +307,12 @@ export const AIAssistantPage = ({
         <div className="pt-3 border-t border-slate-100 dark:border-surface-darkBorder">
           <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-surface-darkHover/60 border border-slate-200/70 dark:border-surface-darkBorder text-[11px] text-slate-600 dark:text-slate-300">
             <span className="font-bold text-navy-900 dark:text-white block">CompanyAI</span>
-            <span className="text-[10px] text-slate-400 font-mono block">ollama/llama3.2:3b</span>
-            <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-medium flex items-center gap-1 mt-1">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-              Connected • 768-dim Grounded
+            <span className="text-[10px] text-slate-500 dark:text-slate-400 font-mono block">
+              ollama/{activeModelInfo.chatModel}
+            </span>
+            <span className={`text-[10px] font-medium flex items-center gap-1 mt-1 ${activeModelInfo.online ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400'}`}>
+              <span className={`w-1.5 h-1.5 rounded-full ${activeModelInfo.online ? 'bg-emerald-500 animate-pulse' : 'bg-amber-500'}`} />
+              {activeModelInfo.online ? 'Connected • 768-dim Grounded' : 'Offline • Fallback Active'}
             </span>
           </div>
         </div>
@@ -316,6 +338,10 @@ export const AIAssistantPage = ({
                 />
                 <span className="text-[10px] font-semibold text-brand-700 dark:text-brand-300 bg-brand-50 dark:bg-brand-900/50 border border-brand-200 dark:border-brand-700/60 px-1.5 py-0.2 rounded">
                   Safety Gated
+                </span>
+                <span className="text-[10px] font-mono font-semibold text-indigo-700 dark:text-indigo-300 bg-indigo-50 dark:bg-indigo-950/60 border border-indigo-200 dark:border-indigo-800/60 px-1.5 py-0.2 rounded inline-flex items-center gap-1">
+                  <span className={`w-1.5 h-1.5 rounded-full ${activeModelInfo.online ? 'bg-emerald-500' : 'bg-amber-500'}`} />
+                  {activeModelInfo.chatModel}
                 </span>
               </h2>
               <p className="text-xs text-slate-500 dark:text-slate-400">

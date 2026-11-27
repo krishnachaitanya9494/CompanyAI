@@ -1731,12 +1731,18 @@ class BooleanQueryRequestSchema(BaseModel):
 
 
 class CustomizeBooleanQuerySchema(BaseModel):
-    instruction: str
+    instruction: str = ""
     custom_mandatory: Optional[list[str]] = None
     custom_preferred: Optional[list[str]] = None
     custom_exclusions: Optional[list[str]] = None
     target_companies: Optional[list[str]] = None
     search_mode: str = "balanced"
+    custom_titles: Optional[list[str]] = None
+    custom_related_skills: Optional[list[str]] = None
+    custom_industries: Optional[list[str]] = None
+    custom_location: Optional[str] = None
+    experience_preference: Optional[str] = None
+    apply_edited_suggestions: bool = False
 
 
 class TargetCompaniesRequestSchema(BaseModel):
@@ -1909,6 +1915,12 @@ def customize_job_boolean_queries(
         exclusions=exclusions,
         job_id=job.id,
         search_mode=payload.search_mode,
+        custom_titles=payload.custom_titles,
+        custom_related_skills=payload.custom_related_skills,
+        custom_industries=payload.custom_industries,
+        custom_location=payload.custom_location,
+        experience_preference=payload.experience_preference,
+        apply_edited_suggestions=payload.apply_edited_suggestions,
     )
     customized["domain"] = extraction["domain"]
     customized["domain_label"] = extraction["domain_label"]
@@ -2349,6 +2361,92 @@ def customize_job_target_companies_endpoint(
     if "error" in res:
         raise HTTPException(status_code=404, detail=res["error"])
     return res
+
+
+@router.post("/{job_id}/market-report")
+def generate_job_market_report_endpoint(
+    job_id: str,
+    payload: Optional[dict[str, Any]] = None,
+) -> dict[str, Any]:
+    """Generate a recruiter-friendly Market Intelligence & Target Company Sourcing Report."""
+    raw_id = job_id.replace("job-", "").lstrip("0") or "0"
+    try:
+        j_id = int(raw_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid job ID format.")
+
+    opts = payload or {}
+    from app.agent.workflows.market_report_graph import run_market_report_graph
+
+    res = run_market_report_graph(
+        job_id=j_id,
+        allow_llm=bool(opts.get("allow_llm", True)),
+        force_refresh=bool(opts.get("force_refresh", False)),
+        recruiter_notes=str(opts.get("recruiter_notes") or ""),
+    )
+    if "error" in res:
+        raise HTTPException(status_code=404, detail=res["error"])
+    return res
+
+
+@router.get("/{job_id}/market-report/pdf")
+def export_job_market_report_pdf_endpoint(
+    job_id: str,
+    notes: str = "",
+):
+    """Download the Market Intelligence & Target Company Report as a paginated PDF."""
+    from fastapi.responses import Response
+    from app.agent.workflows.market_report_graph import run_market_report_graph
+    from app.services.market_report_export_service import generate_market_report_pdf
+
+    raw_id = job_id.replace("job-", "").lstrip("0") or "0"
+    try:
+        j_id = int(raw_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid job ID format.")
+
+    report = run_market_report_graph(job_id=j_id, recruiter_notes=notes)
+    if "error" in report:
+        raise HTTPException(status_code=404, detail=report["error"])
+
+    pdf_bytes = generate_market_report_pdf(report)
+    job_title = (report.get("report_metadata") or {}).get("job_title") or f"Job_{j_id}"
+    filename = _export_filename(job_title, j_id, "pdf").replace("Target_Companies_", "Market_Intelligence_Report_")
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
+
+
+@router.get("/{job_id}/market-report/word")
+def export_job_market_report_word_endpoint(
+    job_id: str,
+    notes: str = "",
+):
+    """Download the Market Intelligence & Target Company Report as a formatted Word (.docx)."""
+    from fastapi.responses import Response
+    from app.agent.workflows.market_report_graph import run_market_report_graph
+    from app.services.market_report_export_service import generate_market_report_word
+
+    raw_id = job_id.replace("job-", "").lstrip("0") or "0"
+    try:
+        j_id = int(raw_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid job ID format.")
+
+    report = run_market_report_graph(job_id=j_id, recruiter_notes=notes)
+    if "error" in report:
+        raise HTTPException(status_code=404, detail=report["error"])
+
+    docx_bytes = generate_market_report_word(report)
+    job_title = (report.get("report_metadata") or {}).get("job_title") or f"Job_{j_id}"
+    filename = _export_filename(job_title, j_id, "docx").replace("Target_Companies_", "Market_Intelligence_Report_")
+    return Response(
+        content=docx_bytes,
+        media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
 
 
 @router.get("/{job_id}/boolean-search-history")

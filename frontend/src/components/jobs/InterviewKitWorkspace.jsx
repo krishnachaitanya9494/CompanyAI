@@ -25,6 +25,7 @@ import {
   ExternalLink,
 } from 'lucide-react';
 import { interviewKitApi } from '../../api/client';
+import { AIModelBadge } from '../common/AIModelBadge';
 
 export function InterviewKitWorkspace({
   job,
@@ -437,6 +438,7 @@ export function InterviewKitWorkspace({
             </div>
 
             {/* Candidate Selector for personalized mode */}
+            <AIModelBadge models="llama3.2:3b" />
             {candidates.length > 0 && (
               <div className="flex items-center gap-1.5 text-xs">
                 <select

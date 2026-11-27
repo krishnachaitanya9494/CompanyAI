@@ -32,6 +32,7 @@ import {
   Gauge,
   GitCompare,
   Lock,
+  Activity,
 } from 'lucide-react';
 
 // Export Sidebar component receiving navigation state, counts, and layout controls.
@@ -58,6 +59,14 @@ export const Sidebar = ({
           label: 'Dashboard',
           icon: LayoutDashboard,
           badge: null,
+          isFunctional: true,
+        },
+        {
+          id: 'ai_monitor',
+          label: 'AI Monitor',
+          icon: Activity,
+          badge: 'Live',
+          isAi: true,
           isFunctional: true,
         },
         {

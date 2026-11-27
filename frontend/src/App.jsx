@@ -12,6 +12,7 @@ import { BlockedGovernanceView } from './components/common/BlockedGovernanceView
 
 // Lazy-load page modules cleanly so initial bundle stays compact while preserving named exports.
 const DashboardPage = lazy(() => import('./pages/DashboardPage').then((m) => ({ default: m.DashboardPage })));
+const AIMonitorPanel = lazy(() => import('./components/dashboard/AIMonitorPanel').then((m) => ({ default: m.AIMonitorPanel })));
 const AIAssistantPage = lazy(() => import('./pages/AIAssistantPage').then((m) => ({ default: m.AIAssistantPage })));
 const CandidatesPage = lazy(() => import('./pages/CandidatesPage').then((m) => ({ default: m.CandidatesPage })));
 const JobsPage = lazy(() => import('./pages/JobsPage').then((m) => ({ default: m.JobsPage })));
@@ -53,7 +54,7 @@ const ENABLE_TALENT_INTELLIGENCE = false;
 
 // Valid workspace tab keys shared with URL ?tab= synchronization and browser history.
 const VALID_TABS = new Set([
-  'dashboard', 'assistant', 'candidates', 'jobs', 'requests',
+  'dashboard', 'ai_monitor', 'assistant', 'candidates', 'jobs', 'requests',
   'interviews', 'pipeline', 'matching', 'comparison', 'jd_resume_compare', 'talent_pool', 'clients',
   'placements', 'analytics', 'approvals', 'agent_activity', 'notifications', 'settings',
   ...(ENABLE_TALENT_INTELLIGENCE
@@ -759,6 +760,9 @@ export default function App() {
               isLoading={apiState.loading}
             />
           )}
+
+          {/* Dedicated AI Usage & Bar Monitoring Tab */}
+          {activeTab === 'ai_monitor' && <AIMonitorPanel onNavigateTab={setActiveTab} />}
 
           {/* Talent Intelligence routes (blocked when ENABLE_TALENT_INTELLIGENCE is false) */}
           {ENABLE_TALENT_INTELLIGENCE && activeTab === 'intelligence_graph' && (

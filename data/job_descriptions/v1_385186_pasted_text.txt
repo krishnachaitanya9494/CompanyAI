@@ -1,0 +1,10 @@
+Job Description
+5+ years of experience in developing applications using OOABAP and ODATA OR WEB DYNPRO OR BOPF OR RAP for ABAP technologies 
+Understanding of Clean Core principle, BTP, RAP and BOPF experience will be an added advantage. 
+Understand SAP’s development environment and related technologies and have a detailed technical understanding of the subject area 
+Performs detailed business analysis and/or detailed development and/or technical implementation/support with all documentation, testing, production preparation and go-live aspects 
+Cooperates with consultants from implementation projects 
+Delivers business/software/technical detailed design and realization 
+Assess accurately the time required to complete tasks 
+Escalate issues well in advance and suggest alternative approaches 
+Be jointly responsible for ensuring the quality along with the project team

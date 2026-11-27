@@ -231,6 +231,13 @@ export const jobApi = {
       method: 'POST',
       body: JSON.stringify(payload),
     }),
+
+  // Generate a recruiter-friendly Market Intelligence & Target Company Sourcing Report.
+  generateMarketReport: (id, payload = {}) =>
+    apiRequest(`/jobs/${id}/market-report`, {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
 };
 
 /**
@@ -510,6 +517,9 @@ export const jobPostingApi = {
 export const aiApi = {
   // Retrieve AI models, 768-dim verification, vector coverage, and cache status
   getHealth: () => apiRequest('/ai/health'),
+
+  // Retrieve live AI usage readings, per-feature telemetry, and bar monitoring data
+  getMonitor: () => apiRequest('/ai/monitor'),
 
   // Execute live embedding generation test
   testEmbedding: (text = 'Recruitment test') =>

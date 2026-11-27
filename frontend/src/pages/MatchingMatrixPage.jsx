@@ -15,6 +15,7 @@ const SemanticMatchingDetailPage = lazy(() =>
 
 // Import jobApi client service for Phase 5C endpoints.
 import { jobApi } from '../api/client';
+import { AIModelBadge } from '../components/common/AIModelBadge';
 
 // Import icons from lucide-react.
 import {
@@ -341,6 +342,7 @@ export const MatchingMatrixPage = ({
             <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-brand-50 dark:bg-brand-950/50 text-brand-700 dark:text-brand-300 border border-brand-200 dark:border-brand-800">
               Smart Fit Ranking
             </span>
+            <AIModelBadge models="nomic-embed-text" />
           </h2>
           <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
             Evaluate and compare candidate fit against job requirements, verified skills, and experience.

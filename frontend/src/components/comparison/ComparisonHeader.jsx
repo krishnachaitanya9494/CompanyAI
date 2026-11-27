@@ -1,5 +1,6 @@
 import React from 'react';
 import { FileText, LoaderCircle, Upload } from 'lucide-react';
+import { AIModelBadge } from '../common/AIModelBadge';
 
 /** Keep the comparison entry point focused on pasting or uploading the two source documents. */
 export const ComparisonHeader = ({
@@ -13,7 +14,10 @@ export const ComparisonHeader = ({
 }) => (
   <div className="space-y-4">
     <header className="border-b border-slate-200 pb-3 dark:border-surface-darkBorder">
-      <h1 className="text-xl font-bold text-navy-950 dark:text-slate-100 sm:text-2xl">JD vs Resume Comparison</h1>
+      <div className="flex flex-wrap items-center gap-2.5">
+        <h1 className="text-xl font-bold text-navy-950 dark:text-slate-100 sm:text-2xl">JD vs Resume Comparison</h1>
+        <AIModelBadge models="nomic-embed-text + llama3.2:3b" />
+      </div>
       <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">Paste text or upload a job description and resume.</p>
     </header>
     <section className="space-y-4 rounded-2xl border border-slate-200/90 bg-white p-5 shadow-xs dark:border-surface-darkBorder dark:bg-surface-darkCard">

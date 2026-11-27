@@ -19,6 +19,9 @@ import { RecentActivity } from '../components/dashboard/RecentActivity';
 // Import AIInsightsPanel for grounded intelligence recommendations.
 import { AIInsightsPanel } from '../components/dashboard/AIInsightsPanel';
 
+// Import AIMonitorPanel for live AI usage, model status, and bar monitoring below the Dashboard.
+import { AIMonitorPanel } from '../components/dashboard/AIMonitorPanel';
+
 // Import analyticsApi to fetch true SQLite insights, embedding counts, and interview totals.
 import { analyticsApi } from '../api/client';
 
@@ -554,6 +557,11 @@ export const DashboardPage = ({
           />
         </div>
       </div>
+      </AnimatedContent>
+
+      {/* Row 4: Live AI Usage & Bar Monitoring Panel */}
+      <AnimatedContent distance={12} duration={0.36} delay={160}>
+        <AIMonitorPanel onNavigateTab={onNavigateTab} />
       </AnimatedContent>
     </div>
   );

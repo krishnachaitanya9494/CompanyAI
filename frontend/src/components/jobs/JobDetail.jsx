@@ -13,6 +13,7 @@ import { JobPostingWorkspace } from './JobPostingWorkspace';
 // Import MatchingCandidates subcomponent.
 import { MatchingCandidates } from './MatchingCandidates';
 import { InterviewKitWorkspace } from './InterviewKitWorkspace';
+import { MarketReportModal } from './MarketReportModal';
 
 // Import approvalApi & intelligence APIs for JD approval & AI insights.
 import { approvalApi, intelligenceApi, aiApi, jobApi } from '../../api/client';
@@ -58,6 +59,7 @@ import {
   Minimize2,
   Database,
   Send,
+  FileBarChart2,
   Save,
   Loader2,
   Download,
@@ -425,9 +427,11 @@ export const JobDetail = ({
   const [customCompanyCategory, setCustomCompanyCategory] = useState('gsi');
   const [customCompanyLocation, setCustomCompanyLocation] = useState('');
   const [showAddCompanyInput, setShowAddCompanyInput] = useState(false);
+  const [showMarketReportModal, setShowMarketReportModal] = useState(false);
   const [copiedBoolean, setCopiedBoolean] = useState(false);
   const [copiedTargetClause, setCopiedTargetClause] = useState(false);
   const [copiedExcludedClause, setCopiedExcludedClause] = useState(false);
+  const [copiedOriginalSource, setCopiedOriginalSource] = useState(false);
   // View mode for talent sourcing companies: 'cards' (rich cards) or 'tags' (compact chips)
   const [companyViewMode, setCompanyViewMode] = useState('cards');
   // Talent Sourcing Strategy selector state
@@ -442,6 +446,10 @@ export const JobDetail = ({
   const [aiQueryInstruction, setAiQueryInstruction] = useState('');
   const [aiQueryCustomizing, setAiQueryCustomizing] = useState(false);
   const [aiQueryExplanation, setAiQueryExplanation] = useState('');
+  const [aiSuggestions, setAiSuggestions] = useState(null);
+  const [aiStatusNotice, setAiStatusNotice] = useState('');
+  const [aiValidationWarnings, setAiValidationWarnings] = useState([]);
+  const [newSuggestionChip, setNewSuggestionChip] = useState({ titles: '', mandatory_skills: '', related_skills: '', industries: '', exclusions: '' });
 
   // Custom Query Editor state
   const [isCustomMode, setIsCustomMode] = useState(false);
@@ -604,9 +612,11 @@ export const JobDetail = ({
     setCustomCompanyCategory('gsi');
     setCustomCompanyLocation('');
     setShowAddCompanyInput(false);
+    setShowMarketReportModal(false);
     setCopiedBoolean(false);
     setCopiedTargetClause(false);
     setCopiedExcludedClause(false);
+    setCopiedOriginalSource(false);
     setIsCustomMode(false);
     setCustomQueryText('');
     setCandidateKeywordFilter('');
@@ -617,6 +627,9 @@ export const JobDetail = ({
     setTargetCompaniesError('');
     setAiQueryInstruction('');
     setAiQueryExplanation('');
+    setAiSuggestions(null);
+    setAiStatusNotice('');
+    setAiValidationWarnings([]);
 
     let active = true;
     if (job?.id) {
@@ -720,6 +733,11 @@ export const JobDetail = ({
           setIsCustomMode(true);
           setAiQueryExplanation(res.customization_applied || res.explanation || 'Customization applied successfully');
         }
+        if (res.interpreted_suggestions) {
+          setAiSuggestions(res.interpreted_suggestions);
+        }
+        setAiStatusNotice(res.ai_status || '');
+        setAiValidationWarnings(Array.isArray(res.validation_warnings) ? res.validation_warnings : []);
       }
     } catch (err) {
       console.warn('AI Boolean customization failed:', err.message);
@@ -727,6 +745,67 @@ export const JobDetail = ({
     } finally {
       setAiQueryCustomizing(false);
     }
+  };
+
+  // Regenerate Boolean query directly from the recruiter's edited suggestion chips
+  const handleApplyEditedSuggestions = async () => {
+    if (!aiSuggestions || !job?.id) return;
+    setAiQueryCustomizing(true);
+    try {
+      const res = await jobApi.customizeBooleanQueries(job.numeric_id || job.id, {
+        instruction: aiQueryInstruction.trim(),
+        search_mode: aiSuggestions.search_mode || searchDepth,
+        custom_mandatory: aiSuggestions.mandatory_skills || [],
+        custom_preferred: aiSuggestions.related_skills || [],
+        custom_exclusions: aiSuggestions.exclusions || [],
+        custom_titles: aiSuggestions.titles || [],
+        custom_related_skills: aiSuggestions.related_skills || [],
+        custom_industries: aiSuggestions.industries || [],
+        custom_location: aiSuggestions.location_preference || '',
+        experience_preference: aiSuggestions.experience_preference || '',
+        apply_edited_suggestions: true,
+        target_companies: includeCompaniesInBoolean
+          ? (selectedCompanies.length ? selectedCompanies : allCompanies.slice(0, 4).map((item) => item.name || item))
+          : [],
+      });
+      if (res) {
+        const nextQuery =
+          (sourcingPlatform === 'linkedin' && res.linkedin?.query) ||
+          (sourcingPlatform === 'xray' && res.google_xray?.query) ||
+          res.naukri?.query ||
+          res.customized_query ||
+          '';
+        if (nextQuery) {
+          setCustomQueryText(nextQuery);
+          setIsCustomMode(true);
+        }
+        if (res.interpreted_suggestions) setAiSuggestions(res.interpreted_suggestions);
+        setAiQueryExplanation(res.customization_applied || 'Regenerated query from edited suggestions.');
+        setAiValidationWarnings(Array.isArray(res.validation_warnings) ? res.validation_warnings : []);
+      }
+    } catch (err) {
+      setAiQueryExplanation(`Regeneration failed: ${err.message}`);
+    } finally {
+      setAiQueryCustomizing(false);
+    }
+  };
+
+  const removeSuggestionChip = (field, idx) => {
+    setAiSuggestions((prev) =>
+      prev ? { ...prev, [field]: (prev[field] || []).filter((_, i) => i !== idx) } : prev
+    );
+  };
+
+  const addSuggestionChip = (field) => {
+    const val = (newSuggestionChip[field] || '').trim();
+    if (!val) return;
+    setAiSuggestions((prev) => {
+      if (!prev) return prev;
+      const existing = prev[field] || [];
+      if (existing.some((x) => x.toLowerCase() === val.toLowerCase())) return prev;
+      return { ...prev, [field]: [...existing, val] };
+    });
+    setNewSuggestionChip((prev) => ({ ...prev, [field]: '' }));
   };
 
   // Derive JD-related target sourcing companies strictly from backend LangGraph recommendations (never hardcoded const fallbacks)
@@ -1249,6 +1328,7 @@ export const JobDetail = ({
     setCustomCompanyInput('');
     setCustomCompanyLocation('');
     setShowAddCompanyInput(false);
+    setShowMarketReportModal(false);
   };
 
   const handleRemoveCustomCompany = (companyName, e) => {
@@ -1614,6 +1694,18 @@ export const JobDetail = ({
       await navigator.clipboard.writeText(textToCopy);
       setCopiedBoolean(true);
       setTimeout(() => setCopiedBoolean(false), 2000);
+    } catch {
+      // Clipboard fallback omitted in restricted contexts.
+    }
+  };
+
+  const handleCopyOriginalSource = async () => {
+    const text = job?.originalText || job?.description;
+    if (!text) return;
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopiedOriginalSource(true);
+      setTimeout(() => setCopiedOriginalSource(false), 2000);
     } catch {
       // Clipboard fallback omitted in restricted contexts.
     }
@@ -2437,9 +2529,26 @@ export const JobDetail = ({
                       <span>Original Source Document</span>
                     </button>
                   </div>
-                  <span className="text-[11px] text-slate-500 dark:text-slate-400">
-                    {scopeTab === 'structured' ? '✨ Deep semantic synthesis' : '📄 Verbatim source audit'}
-                  </span>
+                  <div className="flex items-center gap-2.5">
+                    {scopeTab === 'original' && (job.originalText || job.description) && (
+                      <button
+                        type="button"
+                        onClick={handleCopyOriginalSource}
+                        className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-semibold bg-white dark:bg-surface-darkCard border border-slate-200 dark:border-surface-darkBorder text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors shadow-xs"
+                        title="Copy original source document"
+                      >
+                        {copiedOriginalSource ? (
+                          <Check className="w-3.5 h-3.5 text-emerald-500" />
+                        ) : (
+                          <Copy className="w-3.5 h-3.5 text-slate-500 dark:text-slate-400" />
+                        )}
+                        <span>{copiedOriginalSource ? 'Copied' : 'Copy'}</span>
+                      </button>
+                    )}
+                    <span className="text-[11px] text-slate-500 dark:text-slate-400">
+                      {scopeTab === 'structured' ? '✨ Deep semantic synthesis' : '📄 Verbatim source audit'}
+                    </span>
+                  </div>
                 </div>
 
                 {scopeTab === 'structured' ? (
@@ -3071,6 +3180,17 @@ export const JobDetail = ({
                   >
                     <Download className="w-3.5 h-3.5" />
                     <span>Word</span>
+                  </button>
+
+                  {/* Create Market Intelligence & Target Company Report Button */}
+                  <button
+                    type="button"
+                    onClick={() => setShowMarketReportModal(true)}
+                    className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-semibold bg-indigo-600 hover:bg-indigo-700 text-white border border-indigo-600 hover:border-indigo-700 transition-all shadow-subtle cursor-pointer"
+                    title="Create detailed recruiter-friendly Market Intelligence & Target Company Report"
+                  >
+                    <FileBarChart2 className="w-3.5 h-3.5" />
+                    <span>Create Report</span>
                   </button>
 
                   {/* View Mode Toggle: Cards vs Tags */}
@@ -4013,6 +4133,89 @@ export const JobDetail = ({
                 )}
               </button>
             </form>
+
+            {/* Editable AI-Interpreted Sourcing Suggestions */}
+            {aiSuggestions && (
+              <div className="mt-2 pt-2.5 border-t border-brand-200/60 dark:border-surface-darkBorder space-y-2.5 text-[11px]">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <span className="font-semibold text-slate-600 dark:text-slate-300">
+                    {aiStatusNotice || 'Review & edit interpreted terms before regenerating:'}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={handleApplyEditedSuggestions}
+                    disabled={aiQueryCustomizing}
+                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-teal-600 hover:bg-teal-700 text-white font-semibold transition-colors"
+                  >
+                    <Check className="w-3 h-3" />
+                    <span>Regenerate Query from Edits</span>
+                  </button>
+                </div>
+
+                {aiValidationWarnings.length > 0 && (
+                  <div className="p-2 rounded-lg bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 text-amber-800 dark:text-amber-200">
+                    {aiValidationWarnings.join(' ')}
+                  </div>
+                )}
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
+                  {[
+                    { key: 'titles', label: 'Job Titles' },
+                    { key: 'mandatory_skills', label: 'Mandatory Skills' },
+                    { key: 'related_skills', label: 'Related / Alternative Skills' },
+                    { key: 'industries', label: 'Industries' },
+                    { key: 'exclusions', label: 'Exclusions (NOT)' },
+                  ].map((group) => (
+                    <div key={group.key} className="p-2 rounded-lg bg-white/80 dark:bg-surface-darkBg border border-slate-200/80 dark:border-surface-darkBorder space-y-1.5">
+                      <span className="font-bold text-slate-700 dark:text-slate-200">{group.label}</span>
+                      <div className="flex flex-wrap gap-1">
+                        {(aiSuggestions[group.key] || []).map((chip, idx) => (
+                          <span key={idx} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200">
+                            <span>{chip}</span>
+                            <button type="button" onClick={() => removeSuggestionChip(group.key, idx)} className="text-slate-400 hover:text-rose-500">
+                              <X className="w-2.5 h-2.5" />
+                            </button>
+                          </span>
+                        ))}
+                      </div>
+                      <div className="flex gap-1">
+                        <input
+                          type="text"
+                          value={newSuggestionChip[group.key] || ''}
+                          onChange={(e) => setNewSuggestionChip((prev) => ({ ...prev, [group.key]: e.target.value }))}
+                          onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addSuggestionChip(group.key); } }}
+                          placeholder={`Add ${group.label.toLowerCase()}...`}
+                          className="flex-1 px-2 py-0.5 rounded border border-slate-200 dark:border-surface-darkBorder bg-transparent text-[11px]"
+                        />
+                        <button type="button" onClick={() => addSuggestionChip(group.key)} className="px-2 py-0.5 rounded bg-slate-200 dark:bg-slate-700 font-semibold">
+                          +
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+
+                  <div className="p-2 rounded-lg bg-white/80 dark:bg-surface-darkBg border border-slate-200/80 dark:border-surface-darkBorder space-y-1.5">
+                    <span className="font-bold text-slate-700 dark:text-slate-200">Experience &amp; Location</span>
+                    <div className="grid grid-cols-2 gap-1.5">
+                      <input
+                        type="text"
+                        value={aiSuggestions.experience_preference || ''}
+                        onChange={(e) => setAiSuggestions((prev) => ({ ...prev, experience_preference: e.target.value }))}
+                        placeholder="Experience (e.g. 5+ yrs)"
+                        className="px-2 py-1 rounded border border-slate-200 dark:border-surface-darkBorder bg-transparent text-[11px]"
+                      />
+                      <input
+                        type="text"
+                        value={aiSuggestions.location_preference || ''}
+                        onChange={(e) => setAiSuggestions((prev) => ({ ...prev, location_preference: e.target.value }))}
+                        placeholder="Location (e.g. Bangalore)"
+                        className="px-2 py-1 rounded border border-slate-200 dark:border-surface-darkBorder bg-transparent text-[11px]"
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Generated or Custom Boolean Code Box */}
@@ -4524,6 +4727,13 @@ export const JobDetail = ({
           )}
         </div>
       )}
+
+      <MarketReportModal
+        isOpen={showMarketReportModal}
+        onClose={() => setShowMarketReportModal(false)}
+        job={job}
+        hasTargetCompanies={allCompanies.length > 0}
+      />
     </div>
   );
 };

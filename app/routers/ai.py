@@ -45,6 +45,72 @@ def get_ai_health(db: Session = Depends(get_db)) -> Dict[str, Any]:
     return ai_health_service.get_health_report(db)
 
 
+@router.get("/monitor")
+def get_ai_monitor(db: Session = Depends(get_db)) -> Dict[str, Any]:
+    """Return live AI model status, per-feature usage readings, bar metrics, and recent AI calls."""
+    from app.ai.providers.ollama_provider import ollama_provider
+    from app.ai.services.ai_telemetry import get_ai_telemetry_snapshot
+
+    health = ai_health_service.get_health_report(db)
+    telemetry = get_ai_telemetry_snapshot()
+    live_online = ollama_provider.is_available()
+
+    chat_model = health.get("chat_model", "llama3.2:3b")
+    emb_model = health.get("embedding_model", "nomic-embed-text")
+    live_by_feature = {row["feature"]: row for row in telemetry.get("by_feature", [])}
+
+    # Combine live telemetry with the known CompanyAI modules that use local AI.
+    catalog = [
+        ("Boolean Search Customization", chat_model, "Jobs → Boolean Search"),
+        ("Target Companies Sourcing", chat_model, "Jobs → Target Companies"),
+        ("Market Intelligence Report", chat_model, "Jobs → Create Report"),
+        ("AI Recruitment Assistant", chat_model, "AI Assistant / RAG Chat"),
+        ("JD Skill Extraction", chat_model, "Jobs → JD Scope & Analysis"),
+        ("Candidate Resume Embeddings", emb_model, "Candidates & Matching Matrix"),
+        ("Job Description Embeddings", emb_model, "Jobs & Semantic Search"),
+        ("Interview Kit Generator", chat_model, "Jobs → Interview Kit"),
+    ]
+    where_used = []
+    seen = set()
+    for feat_name, default_model, location_hint in catalog:
+        seen.add(feat_name)
+        live = live_by_feature.get(feat_name, {})
+        where_used.append({
+            "feature": feat_name,
+            "location": location_hint,
+            "model": ", ".join(live.get("models") or [default_model]),
+            "calls": live.get("calls", 0),
+            "errors": live.get("errors", 0),
+            "avg_latency_ms": live.get("avg_latency_ms", 0.0),
+            "tokens": live.get("tokens", 0),
+            "active_now": live.get("calls", 0) > 0,
+        })
+    for row in telemetry.get("by_feature", []):
+        if row["feature"] not in seen:
+            where_used.append({
+                "feature": row["feature"],
+                "location": "Backend AI Pipeline",
+                "model": ", ".join(row.get("models") or [chat_model]),
+                "calls": row["calls"],
+                "errors": row["errors"],
+                "avg_latency_ms": row["avg_latency_ms"],
+                "tokens": row["tokens"],
+                "active_now": True,
+            })
+
+    return {
+        "ollama_online": live_online,
+        "provider": "Ollama (Local)",
+        "chat_model": chat_model,
+        "embedding_model": emb_model,
+        "embedding_dimensions": health.get("embedding_dimensions", 768),
+        "telemetry": telemetry,
+        "where_ai_is_used": where_used,
+        "database_audit": health.get("database_audit", {}),
+        "cache_metrics": health.get("cache_metrics", {}),
+    }
+
+
 @router.post("/test-embedding")
 def test_embedding(payload: Optional[TestEmbeddingSchema] = None) -> Dict[str, Any]:
     """Execute a test embedding with the local Ollama nomic-embed-text model and return latency and dimensions."""

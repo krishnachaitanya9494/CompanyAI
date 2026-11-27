@@ -12,6 +12,7 @@ from app.ai.exceptions import (
     AIGenerationError,
     AIEmbeddingError,
 )
+from app.ai.services.ai_telemetry import record_ai_call
 
 logger = logging.getLogger("companyai.ai.ollama")
 
@@ -80,16 +81,21 @@ class OllamaProvider:
                 data = response.json()
                 latency_ms = round((time.perf_counter() - start_time) * 1000, 2)
                 data["_latency_ms"] = latency_ms
+                tokens = int(data.get("eval_count") or 0) + int(data.get("prompt_eval_count") or 0)
+                record_ai_call(model=model_name, operation="chat", latency_ms=latency_ms, status="success", tokens=tokens)
                 return data
         except (httpx.ConnectError, httpx.ConnectTimeout) as exc:
+            record_ai_call(model=model_name, operation="chat", latency_ms=(time.perf_counter() - start_time) * 1000, status="error")
             raise AIOllamaUnavailableError(
                 f"Local Ollama server is unavailable at {self.base_url}. Start Ollama and retry."
             ) from exc
         except httpx.TimeoutException as exc:
+            record_ai_call(model=model_name, operation="chat", latency_ms=(time.perf_counter() - start_time) * 1000, status="error")
             raise AIProviderError(
                 f"Ollama inference timed out after {timeout}s for model '{model_name}'."
             ) from exc
         except Exception as exc:
+            record_ai_call(model=model_name, operation="chat", latency_ms=(time.perf_counter() - start_time) * 1000, status="error")
             raise AIProviderError(f"Ollama chat completion failed: {exc}") from exc
 
     def generate(
@@ -155,6 +161,7 @@ class OllamaProvider:
             "model": model_name,
             "prompt": clean_prompt,
         }
+        start_emb = time.perf_counter()
         try:
             with httpx.Client(timeout=timeout) as client:
                 response = client.post(f"{self.base_url}/api/embeddings", json=payload)
@@ -163,16 +170,25 @@ class OllamaProvider:
                 emb = data.get("embedding")
                 if not isinstance(emb, list) or not emb:
                     raise AIEmbeddingError("Ollama returned empty embedding vector.")
+                record_ai_call(
+                    model=model_name,
+                    operation="embeddings",
+                    latency_ms=(time.perf_counter() - start_emb) * 1000,
+                    status="success",
+                )
                 return [float(x) for x in emb]
         except (httpx.ConnectError, httpx.ConnectTimeout) as exc:
+            record_ai_call(model=model_name, operation="embeddings", latency_ms=(time.perf_counter() - start_emb) * 1000, status="error")
             raise AIOllamaUnavailableError(
                 f"Local Ollama server is unavailable at {self.base_url}. Start Ollama and retry."
             ) from exc
         except httpx.TimeoutException as exc:
+            record_ai_call(model=model_name, operation="embeddings", latency_ms=(time.perf_counter() - start_emb) * 1000, status="error")
             raise AIEmbeddingError(
                 f"Ollama embedding generation timed out after {timeout}s."
             ) from exc
         except Exception as exc:
+            record_ai_call(model=model_name, operation="embeddings", latency_ms=(time.perf_counter() - start_emb) * 1000, status="error")
             if isinstance(exc, (AIEmbeddingError, AIOllamaUnavailableError)):
                 raise
             raise AIEmbeddingError(f"Ollama embedding generation failed: {exc}") from exc

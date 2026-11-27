@@ -9,7 +9,7 @@ Generates platform-aware, evidence-grounded search queries for:
 """
 
 import re
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Set, Tuple
 from pydantic import BaseModel, Field
 
 
@@ -153,6 +153,81 @@ def _group_skills_into_clusters(skills: List[str]) -> List[List[str]]:
     return grouped
 
 
+def _dedupe_terms(terms: Optional[List[str]]) -> List[str]:
+    """Deduplicate keyword strings case-insensitively while preserving order."""
+    seen: Set[str] = set()
+    out: List[str] = []
+    for raw in terms or []:
+        cleaned = str(raw or "").strip().strip('"\'')
+        low = cleaned.lower()
+        if cleaned and low not in seen:
+            seen.add(low)
+            out.append(cleaned)
+    return out
+
+
+def validate_boolean_query(query: str, character_limit: int) -> Tuple[bool, str, List[str]]:
+    """Deterministically validate Boolean syntax: parentheses, quotes, operators, and length."""
+    warnings: List[str] = []
+    q = (query or "").strip()
+    if not q:
+        return False, "Invalid: Empty query", ["Query is empty."]
+
+    # Check balanced parentheses.
+    depth = 0
+    for ch in q:
+        if ch == "(":
+            depth += 1
+        elif ch == ")":
+            depth -= 1
+            if depth < 0:
+                warnings.append("Unmatched closing parenthesis ')'.")
+                break
+    if depth > 0:
+        warnings.append("Unclosed opening parenthesis '('.")
+
+    # Check balanced double quotation marks.
+    if q.count('"') % 2 != 0:
+        warnings.append('Unbalanced quotation marks (").')
+
+    # Check operator placement (no leading/trailing binary operators or adjacent operators).
+    if re.match(r"^(?:AND|OR)\b", q) or re.search(r"\b(?:AND|OR|NOT)$", q):
+        warnings.append("Dangling Boolean operator at start or end of query.")
+    if re.search(r"\b(?:AND|OR)\s+(?:AND|OR)\b", q) or re.search(r"\bNOT\s+(?:AND|OR)\b", q):
+        warnings.append("Adjacent Boolean operators detected.")
+
+    if len(q) > character_limit:
+        warnings.append(f"Exceeds platform limit ({len(q)}/{character_limit} chars).")
+
+    is_valid = len(warnings) == 0
+    status = "Valid" if is_valid else "; ".join(warnings)
+    return is_valid, status, warnings
+
+
+def _resolve_contradictions(
+    included: List[str],
+    excluded: List[str],
+    mandatory_jd: List[str],
+) -> Tuple[List[str], List[str], List[str]]:
+    """Prevent contradictory inclusion and exclusion terms while protecting mandatory JD skills."""
+    mand_lower = {s.lower() for s in mandatory_jd}
+    inc_lower = {s.lower() for s in included}
+    warnings: List[str] = []
+    clean_excl: List[str] = []
+
+    for ex in _dedupe_terms(excluded):
+        low = ex.lower()
+        if low in mand_lower:
+            warnings.append(f"Kept mandatory JD skill '{ex}' and skipped excluding it.")
+            continue
+        if low in inc_lower:
+            warnings.append(f"Removed '{ex}' from exclusions because it is in included search terms.")
+            continue
+        clean_excl.append(ex)
+
+    return _dedupe_terms(included), clean_excl, warnings
+
+
 def generate_boolean_queries(
     title: str,
     mandatory_skills: Optional[List[str]] = None,
@@ -167,13 +242,16 @@ def generate_boolean_queries(
     exclusions: Optional[List[str]] = None,
     job_id: Optional[int] = None,
     search_mode: str = "balanced",
+    industries: Optional[List[str]] = None,
+    experience_preference: Optional[str] = None,
 ) -> AllBooleanQueriesResponse:
     """Generate comprehensive, platform-aware Boolean search queries from structured JD intelligence."""
     from datetime import datetime, timezone
 
-    mand_skills = [s.strip() for s in (mandatory_skills or []) if s.strip()]
-    pref_skills = [s.strip() for s in (preferred_skills or []) if s.strip()]
-    dom_terms = [d.strip() for d in (domain_terms or []) if d.strip()]
+    mand_skills = _dedupe_terms(mandatory_skills)
+    pref_skills = _dedupe_terms(preferred_skills)
+    dom_terms = _dedupe_terms(domain_terms)
+    ind_terms = _dedupe_terms(industries)
     alt_titles = _clean_title_variants(title, alternative_titles)
     mode = search_mode.lower().strip()
     if mode not in {"broad", "balanced", "strict"}:
@@ -215,40 +293,60 @@ def generate_boolean_queries(
     title_clause = f"({ ' OR '.join(_quote(t) for t in alt_titles[:3]) })" if alt_titles else f"({_quote(title)})"
     naukri_included.extend(alt_titles[:3] or [title])
 
-    excl_clause = f"NOT ({' OR '.join(_quote(e) for e in default_exclusions)})"
+    excl_clause = f"NOT ({' OR '.join(_quote(e) for e in default_exclusions)})" if default_exclusions else ""
+    ind_clause = f"({' OR '.join(_quote(i) for i in ind_terms[:4])})" if ind_terms else ""
+    pref_or_clause = f"({' OR '.join(_quote(p) for p in pref_skills[:4])})" if pref_skills else ""
 
     if mode == "broad":
-        broad_naukri_terms = [_quote(t) for t in (alt_titles[:2] or [title])] + [_quote(s) for s in tech_tools[:5]]
-        naukri_query = f"({' OR '.join(broad_naukri_terms)})"
-        naukri_included.extend(tech_tools[:5])
+        # Preserve core mandatory requirements while broadening titles, related skills, and industries.
+        broad_parts = [title_clause]
+        core_mand = tech_tools[:3] or mand_skills[:3]
+        broad_pool = _dedupe_terms(core_mand + pref_skills[:3])
+        if broad_pool:
+            broad_parts.append(f"({' OR '.join(_quote(s) for s in broad_pool)})")
+            naukri_included.extend(broad_pool)
+        if ind_clause:
+            broad_parts.append(ind_clause)
+            naukri_included.extend(ind_terms[:4])
+        if excl_clause:
+            broad_parts.append(excl_clause)
+        naukri_query = " AND ".join(broad_parts)
     elif mode == "strict":
         strict_parts = [f"({_quote(alt_titles[0] if alt_titles else title)})"]
-        for sk in tech_tools[:3]:
+        for sk in (tech_tools[:3] or mand_skills[:3]):
             strict_parts.append(f"({_quote(sk)})")
             naukri_included.append(sk)
-        strict_parts.append(excl_clause)
+        if excl_clause:
+            strict_parts.append(excl_clause)
         naukri_query = " AND ".join(strict_parts)
     else:  # balanced
         bal_parts = [title_clause]
         for grp in skill_clusters:
             bal_parts.append(f"({' OR '.join(_quote(s) for s in grp[:4])})")
             naukri_included.extend(grp[:4])
-        if dom_terms:
+        if ind_clause:
+            bal_parts.append(ind_clause)
+            naukri_included.extend(ind_terms[:4])
+        elif dom_terms:
             bal_parts.append(f"({' OR '.join(_quote(d) for d in dom_terms[:2])})")
             naukri_included.extend(dom_terms[:2])
         if office_tools and len(bal_parts) <= 3:
             bal_parts.append(f"({' OR '.join(_quote(o) for o in office_tools[:2])})")
             naukri_included.extend(office_tools[:2])
-        bal_parts.append(excl_clause)
+        if excl_clause:
+            bal_parts.append(excl_clause)
         naukri_query = " AND ".join(bal_parts)
 
-    # Ensure query strictly respects portal character limit
+    # Intelligently simplify if query exceeds Naukri's 1,000 char limit while preserving core intent.
     if len(naukri_query) > naukri_limit:
         bal_parts_compact = [f"({_quote(alt_titles[0] if alt_titles else title)})"]
         for grp in skill_clusters[:2]:
             bal_parts_compact.append(f"({' OR '.join(_quote(s) for s in grp[:2])})")
-        bal_parts_compact.append(excl_clause)
+        if excl_clause:
+            bal_parts_compact.append(excl_clause)
         naukri_query = " AND ".join(bal_parts_compact)
+
+    naukri_valid, naukri_status, _ = validate_boolean_query(naukri_query, naukri_limit)
 
     naukri_result = BooleanStrategyResult(
         platform="naukri",
@@ -257,8 +355,8 @@ def generate_boolean_queries(
         compact_query=None,
         character_count=len(naukri_query),
         character_limit=naukri_limit,
-        is_valid=len(naukri_query) <= naukri_limit,
-        validation_status="Valid" if len(naukri_query) <= naukri_limit else f"Exceeds Limit by {len(naukri_query) - naukri_limit} chars",
+        is_valid=naukri_valid,
+        validation_status=naukri_status,
         strategy_explanation=(
             f"Combines role title variants with mandatory technical skills ({', '.join(tech_tools[:3]) or ', '.join(mand_skills[:3])}) "
             f"in {mode.capitalize()} mode without forcing non-essential keyword conjunctions."
@@ -277,34 +375,55 @@ def generate_boolean_queries(
     li_title_clause = f"({ ' OR '.join(_quote(t) for t in alt_titles[:4]) })" if alt_titles else f"({_quote(title)})"
     li_included.extend(alt_titles[:4] or [title])
 
+    li_excl_clause = f"NOT ({' OR '.join(_quote(e) for e in default_exclusions)})" if default_exclusions else ""
+
     if mode == "broad":
-        li_terms = [_quote(t) for t in (alt_titles[:3] or [title])] + [_quote(s) for s in tech_tools[:6]]
-        li_query = f"({' OR '.join(li_terms)})"
-        li_included.extend(tech_tools[:6])
+        li_parts = [li_title_clause]
+        li_pool = _dedupe_terms((tech_tools[:4] or mand_skills[:4]) + pref_skills[:3])
+        if li_pool:
+            li_parts.append(f"({' OR '.join(_quote(s) for s in li_pool)})")
+            li_included.extend(li_pool)
+        if ind_clause:
+            li_parts.append(ind_clause)
+            li_included.extend(ind_terms[:4])
+        if li_excl_clause:
+            li_parts.append(li_excl_clause)
+        li_query = " AND ".join(li_parts)
     elif mode == "strict":
         li_parts = [f"({_quote(alt_titles[0] if alt_titles else title)})"]
-        for s in tech_tools[:3]:
+        for s in (tech_tools[:3] or mand_skills[:3]):
             li_parts.append(f"({_quote(s)})")
             li_included.append(s)
-        li_query = " ".join(li_parts)
+        if li_excl_clause:
+            li_parts.append(li_excl_clause)
+        li_query = " AND ".join(li_parts)
     else:  # balanced
         li_parts = [li_title_clause]
         for grp in skill_clusters:
             li_parts.append(f"({' OR '.join(_quote(s) for s in grp[:4])})")
             li_included.extend(grp[:4])
-        if pref_skills:
-            li_parts.append(f"({' OR '.join(_quote(p) for p in pref_skills[:2])})")
-            li_included.extend(pref_skills[:2])
+        if pref_or_clause:
+            li_parts.append(pref_or_clause)
+            li_included.extend(pref_skills[:4])
+        if ind_clause:
+            li_parts.append(ind_clause)
+            li_included.extend(ind_terms[:4])
         if office_tools and len(li_parts) <= 3:
             li_parts.append(f"({' OR '.join(_quote(o) for o in office_tools[:2])})")
             li_included.extend(office_tools[:2])
-        li_query = " ".join(li_parts)
+        if li_excl_clause:
+            li_parts.append(li_excl_clause)
+        li_query = " AND ".join(li_parts)
 
     if len(li_query) > linkedin_limit:
         li_parts_compact = [f"({_quote(alt_titles[0] if alt_titles else title)})"]
         for grp in skill_clusters[:2]:
             li_parts_compact.append(f"({' OR '.join(_quote(s) for s in grp[:2])})")
-        li_query = " ".join(li_parts_compact)
+        if li_excl_clause:
+            li_parts_compact.append(li_excl_clause)
+        li_query = " AND ".join(li_parts_compact)
+
+    li_valid, li_status, _ = validate_boolean_query(li_query, linkedin_limit)
 
     linkedin_result = BooleanStrategyResult(
         platform="linkedin",
@@ -313,14 +432,14 @@ def generate_boolean_queries(
         compact_query=None,
         character_count=len(li_query),
         character_limit=linkedin_limit,
-        is_valid=len(li_query) <= linkedin_limit,
-        validation_status="Valid",
+        is_valid=li_valid,
+        validation_status=li_status,
         strategy_explanation=(
             "Optimized for LinkedIn Recruiter keyword box. Groups role titles with alternative tool skills "
             "to maximize qualified talent match."
         ),
         included_skills=list(dict.fromkeys(li_included)),
-        excluded_terms=[],
+        excluded_terms=default_exclusions,
         syntax_tips="Paste into the LinkedIn Recruiter 'Keywords' field. Use 'Job Titles' facet for titles to increase precision.",
     )
 
@@ -338,6 +457,10 @@ def generate_boolean_queries(
     xray_skill_clause = f"({' OR '.join(_quote(s) for s in xray_skills)})" if xray_skills else ""
     xray_included.extend(xray_skills)
 
+    xray_ind_clause = f"({' OR '.join(_quote(i) for i in ind_terms[:3])})" if ind_terms else ""
+    if ind_terms:
+        xray_included.extend(ind_terms[:3])
+
     xray_loc_clause = ""
     if location:
         clean_loc = re.split(r"[/,&]", location)[0].strip()
@@ -345,18 +468,30 @@ def generate_boolean_queries(
             xray_loc_clause = f" {_quote(clean_loc)}"
 
     if mode == "broad":
-        xray_query = f'site:linkedin.com/in ({xray_titles} OR {xray_skill_clause.strip("()")}){xray_loc_clause} -intitle:"profiles" -inurl:"dir/"'
+        xray_parts = ["site:linkedin.com/in", xray_titles]
+        if xray_skill_clause:
+            xray_parts.append(xray_skill_clause)
+        if xray_ind_clause:
+            xray_parts.append(xray_ind_clause)
+        if xray_loc_clause:
+            xray_parts.append(xray_loc_clause.strip())
+        xray_parts.append('-intitle:"profiles" -inurl:"dir/"')
+        xray_query = " ".join(xray_parts)
     elif mode == "strict":
         strict_skills_str = " ".join(_quote(s) for s in xray_skills[:2])
-        xray_query = f'site:linkedin.com/in {xray_titles} {strict_skills_str}{xray_loc_clause} -intitle:"profiles" -inurl:"dir/"'
+        xray_query = f'site:linkedin.com/in {xray_titles} {strict_skills_str}{xray_loc_clause} -intitle:"profiles" -inurl:"dir/"'.strip()
     else:  # balanced
         bal_xray_clauses = ["site:linkedin.com/in", xray_titles]
         for grp in skill_clusters[:2]:
             bal_xray_clauses.append(f"({' OR '.join(_quote(s) for s in grp[:3])})")
+        if xray_ind_clause:
+            bal_xray_clauses.append(xray_ind_clause)
         if xray_loc_clause:
             bal_xray_clauses.append(xray_loc_clause.strip())
         bal_xray_clauses.append('-intitle:"profiles" -inurl:"dir/"')
         xray_query = " ".join(bal_xray_clauses)
+
+    xray_valid, xray_status, _ = validate_boolean_query(xray_query, xray_limit)
 
     google_xray_result = BooleanStrategyResult(
         platform="google_xray",
@@ -365,8 +500,8 @@ def generate_boolean_queries(
         compact_query=None,
         character_count=len(xray_query),
         character_limit=xray_limit,
-        is_valid=len(xray_query) <= xray_limit,
-        validation_status="Valid",
+        is_valid=xray_valid,
+        validation_status=xray_status,
         strategy_explanation=(
             "Direct public web sourcing query that bypasses LinkedIn search limits. "
             "Filters for genuine member profiles while omitting directory and aggregator pages."
@@ -504,6 +639,140 @@ def generate_boolean_queries(
     )
 
 
+_KNOWN_LOCATIONS = {
+    "bangalore", "bengaluru", "pune", "mumbai", "hyderabad", "chennai",
+    "delhi", "new delhi", "ncr", "delhi ncr", "gurugram", "gurgaon",
+    "noida", "kolkata", "ahmedabad", "kochi", "jaipur", "chandigarh",
+    "india", "remote", "hybrid",
+}
+
+_INDUSTRY_KEYWORDS = (
+    "manufacturing", "it services", "software services", "retail", "automotive",
+    "pharma", "pharmaceutical", "banking", "fintech", "healthcare", "telecom",
+    "ecommerce", "e-commerce", "consulting", "supply chain", "logistics",
+    "aerospace", "semiconductor", "insurance", "fmcg", "media", "advertising",
+)
+
+
+def _deterministic_interpret_instruction(
+    title: str,
+    instruction: str,
+    mand: List[str],
+    pref: List[str],
+    excl: List[str],
+    alt_titles: List[str],
+    location: Optional[str],
+    mode: str,
+) -> Dict[str, Any]:
+    """Deterministic fallback parser when local Ollama is offline or unavailable.
+
+    Extracts Location, Experience, Exclusions, Industries, and Skills in separate
+    passes and strips matched spans so location or sentence fragments never leak into skills.
+    """
+    inst = (instruction or "").strip()
+    inst_low = inst.lower()
+    working = inst
+    exp_pref = ""
+    loc_pref = location or ""
+    industries: List[str] = []
+    related_skills: List[str] = []
+    notes: List[str] = []
+
+    if any(k in inst_low for k in ("broader", "broad", "expand", "adjacent")):
+        mode = "broad"
+        notes.append("Set mode to Broad while preserving mandatory JD skills.")
+    elif any(k in inst_low for k in ("strict", "narrow", "tight", "exact")):
+        mode = "strict"
+        notes.append("Set mode to Strict for exact requirement matching.")
+    elif "balanced" in inst_low or "reset" in inst_low:
+        mode = "balanced"
+        notes.append("Set mode to Balanced.")
+
+    # 1. Extract and strip location phrases FIRST so city names never mix with skills.
+    loc_pattern = re.compile(
+        r"\b(?:(?:in|at|from|location|based in|focus on|prioritize)\s+)?"
+        r"(bangalore|bengaluru|pune|mumbai|hyderabad|chennai|new delhi|delhi ncr|delhi|gurugram|gurgaon|noida|kolkata|ahmedabad|kochi|jaipur|chandigarh|india|remote)\b",
+        re.I,
+    )
+    for m in loc_pattern.finditer(working):
+        loc_pref = m.group(1).strip().title()
+        notes.append(f"Captured location: {loc_pref}.")
+    working = loc_pattern.sub(" ", working)
+
+    # 2. Extract and strip experience requirements.
+    exp_pattern = re.compile(r"\b(\d{1,2}\s?(?:\+|[-–to]+\s?\d{1,2})\s?(?:years?|yrs?))\b(?:\s+of\s+experience|\s+experience)?", re.I)
+    exp_m = exp_pattern.search(working)
+    if exp_m:
+        exp_pref = exp_m.group(1).strip()
+        notes.append(f"Captured experience: {exp_pref}.")
+        working = exp_pattern.sub(" ", working)
+    elif any(k in inst_low for k in ("senior", "lead", "principal")):
+        exp_pref = "Senior / Lead"
+        for prefix in ("Senior", "Lead"):
+            cand = f"{prefix} {title}".strip()
+            if cand.lower() not in {a.lower() for a in alt_titles}:
+                alt_titles.insert(0, cand)
+        notes.append("Prioritized Senior/Lead title variants.")
+
+    # 3. Extract and strip explicit exclusions (e.g., "avoid freshers", "exclude interns").
+    excl_pattern = re.compile(
+        r"\b(?:avoid|exclude|without|no)\s+([a-zA-Z0-9\s\.\+#\-_/]{2,40}?)(?=[,.;]|\band\b|\bwith\b|\bfocus\b|\binclude\b|$)",
+        re.I,
+    )
+    for m in excl_pattern.finditer(working):
+        for part in re.split(r"\s+and\s+|,", m.group(1), flags=re.I):
+            cleaned = part.strip(" .")
+            if cleaned and len(cleaned) >= 2 and cleaned.lower() not in _KNOWN_LOCATIONS:
+                if cleaned.lower() not in {e.lower() for e in excl}:
+                    excl.append(cleaned.title())
+                    notes.append(f"Excluded '{cleaned.title()}'.")
+    working = excl_pattern.sub(" ", working)
+
+    if any(k in inst_low for k in ("fresher", "freshers", "intern", "trainee")):
+        for t in ["Intern", "Trainee", "Student", "Fresher"]:
+            if t.lower() not in {e.lower() for e in excl}:
+                excl.append(t)
+
+    # 4. Extract explicit industry preferences cleanly.
+    for ind_kw in _INDUSTRY_KEYWORDS:
+        if re.search(rf"\b{re.escape(ind_kw)}\b", working, re.I):
+            label = "IT Services" if ind_kw == "it services" else ind_kw.title()
+            if label.lower() not in {i.lower() for i in industries}:
+                industries.append(label)
+            working = re.sub(rf"\b{re.escape(ind_kw)}\b(?:\s+companies|\s+industry|\s+industries|\s+sector)?", " ", working, flags=re.I)
+
+    # 5. Extract clean skill tokens from remaining explicit skill clauses; skip ambiguous phrases.
+    skill_pattern = re.compile(
+        r"(?:focus on|prioritize|experience with|experience in|skills?\s*(?:like|such as|:)|with|include)\s+([a-zA-Z0-9\s\.\+#\-_/&]{2,50}?)(?=[,.;]|\b(?:experience|candidates?|profiles?|people|companies|background|backgrounds|industry|industries)\b|$)",
+        re.I,
+    )
+    noise_words = {"find", "candidates", "candidate", "profiles", "people", "experience", "background", "backgrounds", "companies", "company", "industry", "industries", "with", "from", "having", "focus", "include", "and", "or", "the", "for"}
+    for m in skill_pattern.finditer(working):
+        for tok in re.split(r"\s+and\s+|,", m.group(1), flags=re.I):
+            cleaned = re.sub(r"^(?:candidates?|profiles?|people|experience)\s+(?:with|in|from)\s+", "", tok.strip(), flags=re.I).strip(" .")
+            words = [w for w in cleaned.split() if w]
+            low = cleaned.lower()
+            if not cleaned or len(cleaned) < 2 or len(words) > 3:
+                continue
+            if low in _KNOWN_LOCATIONS or any(w.lower() in noise_words for w in words):
+                continue
+            if low not in {s.lower() for s in mand} and low not in {i.lower() for i in industries}:
+                related_skills.append(cleaned)
+
+    return {
+        "target_titles": _dedupe_terms(alt_titles[:5] or [title]),
+        "alternative_titles": _dedupe_terms(alt_titles),
+        "required_skills": _dedupe_terms(mand),
+        "related_skills": _dedupe_terms(pref + related_skills),
+        "industries": _dedupe_terms(industries),
+        "experience_preference": exp_pref,
+        "location_preference": loc_pref,
+        "exclusions": _dedupe_terms(excl),
+        "search_mode": mode,
+        "explanation": " ".join(notes) if notes else "Applied deterministic keyword interpretation.",
+    }
+
+
 def customize_boolean_query_conversationally(
     title: str,
     instruction: str,
@@ -518,118 +787,177 @@ def customize_boolean_query_conversationally(
     exclusions: Optional[List[str]] = None,
     job_id: Optional[int] = None,
     search_mode: str = "balanced",
+    custom_titles: Optional[List[str]] = None,
+    custom_related_skills: Optional[List[str]] = None,
+    custom_industries: Optional[List[str]] = None,
+    custom_location: Optional[str] = None,
+    experience_preference: Optional[str] = None,
+    apply_edited_suggestions: bool = False,
 ) -> Dict[str, Any]:
-    """Apply conversational recruiter instructions to adjust search parameters while strictly preserving deterministic validation."""
+    """Interpret recruiter sourcing instructions with local Ollama (or deterministic fallback)
+    and build validated platform-specific Boolean queries.
+    """
     from app.ai.providers.chat_provider import chat_provider
 
-    inst = (instruction or "").strip().lower()
-    mand = list(mandatory_skills or [])
-    pref = list(preferred_skills or [])
-    excl = list(exclusions or ["Intern", "Trainee", "Student", "Fresher"])
-    alt_titles = list(alternative_titles or [])
-    cos = list(target_companies or [])
-    mode = search_mode
-    explanation = "Adjusted query based on recruiter instruction."
+    jd_mand = _dedupe_terms(mandatory_skills)
+    mand = list(jd_mand)
+    pref = _dedupe_terms(preferred_skills)
+    excl = _dedupe_terms(exclusions if exclusions is not None else ["Intern", "Trainee", "Student", "Fresher"])
+    alt_titles = _dedupe_terms(alternative_titles)
+    cos = _dedupe_terms(target_companies)
+    industries = _dedupe_terms(custom_industries)
+    loc_pref = (custom_location if custom_location is not None else location) or ""
+    exp_pref = experience_preference or ""
+    mode = search_mode if search_mode in {"broad", "balanced", "strict"} else "balanced"
 
-    # Heuristic fast-path for common recruiter commands
-    if "broader" in inst or "broad" in inst or "expand" in inst:
-        mode = "broad"
-        explanation = "Expanded Boolean query into broad OR mode to maximize candidate discovery reach."
-    elif "strict" in inst or "narrow" in inst or "tight" in inst or "exact" in inst:
-        mode = "strict"
-        explanation = "Constrained query into strict AND mode requiring exact core tool qualifications."
-    elif "balanced" in inst or "reset" in inst:
-        mode = "balanced"
-        explanation = "Reset query strategy to balanced hybrid targeting title variants and tool clusters."
+    ai_available = False
+    ai_status = "Edited suggestions applied"
+    explanation = "Generated Boolean queries from your edited sourcing parameters."
 
-    if "intern" in inst or "trainee" in inst or "fresher" in inst:
-        for t in ["Intern", "Trainee", "Student", "Fresher"]:
-            if t not in excl:
-                excl.append(t)
-        explanation += " Added negative filters for interns and trainees."
+    if apply_edited_suggestions:
+        if custom_titles is not None:
+            alt_titles = _dedupe_terms(custom_titles)
+        if custom_related_skills is not None:
+            pref = _dedupe_terms(custom_related_skills)
+    else:
+        parsed = None
+        if chat_provider.is_available():
+            try:
+                ai_prompt = (
+                    "You are an experienced IT and non-IT Talent Acquisition Specialist.\n"
+                    "Interpret the recruiter's natural-language sourcing instruction for this Job Description.\n"
+                    "Preserve mandatory JD skills unless explicitly asked to relax them. Use OR-groups for related skills/titles.\n"
+                    "Do NOT copy the raw sentence as a keyword.\n"
+                    f"Job Title: {title}\n"
+                    f"Location: {location or 'Not specified'}\n"
+                    f"Mandatory JD Skills: {jd_mand}\n"
+                    f"Preferred JD Skills: {pref}\n"
+                    f"Current Alternative Titles: {alt_titles}\n"
+                    f"Current Exclusions: {excl}\n"
+                    f"Recruiter Instruction: \"{instruction}\"\n\n"
+                    "Return strictly JSON with keys:\n"
+                    "{\n"
+                    '  "target_titles": ["string"],\n'
+                    '  "alternative_titles": ["string"],\n'
+                    '  "required_skills": ["string"],\n'
+                    '  "related_skills": ["string"],\n'
+                    '  "industries": ["string"],\n'
+                    '  "experience_preference": "string",\n'
+                    '  "location_preference": "string",\n'
+                    '  "exclusions": ["string"],\n'
+                    '  "search_mode": "balanced" | "strict" | "broad",\n'
+                    '  "explanation": "1-2 simple sentences explaining how the request was interpreted"\n'
+                    "}"
+                )
+                parsed = chat_provider.extract_json(
+                    prompt=ai_prompt,
+                    system_prompt="You are a recruitment Boolean search strategist. Return valid JSON only.",
+                )
+            except Exception:
+                parsed = None
 
-    if "senior" in inst or "lead" in inst or "experienced" in inst:
-        for t in ["Senior", "Lead", "Principal", "Staff"]:
-            t_comb = f"{t} {title}"
-            if t_comb not in alt_titles:
-                alt_titles.insert(0, t_comb)
-        explanation += " Prioritized senior and lead title variants."
+        if isinstance(parsed, dict) and parsed:
+            def _as_list(v: Any) -> List[str]:
+                if isinstance(v, list):
+                    return [str(x).strip() for x in v if str(x).strip()]
+                if isinstance(v, str) and v.strip():
+                    return [s.strip() for s in v.split(",") if s.strip()]
+                return []
 
-    if "reduce mandatory" in inst or "relax mandatory" in inst or "less mandatory" in inst or "fewer software" in inst:
-        if len(mand) > 2:
-            moved = mand.pop()
-            if moved not in pref:
-                pref.append(moved)
-            explanation += f" Relaxed mandatory requirement '{moved}' to preferred qualifications."
-
-    # Pattern match for "include X" or "focus on X" or "candidates from X"
-    include_match = re.search(r"(?:include|add|focus on|experience with|candidates with)\s+([a-zA-Z0-9\s\.\+#\-_/]+)", inst)
-    if include_match:
-        added_term = include_match.group(1).strip().title()
-        cleaned_term = re.sub(r"^(?:Candidates|Experience|Profiles|People)\s+(?:With|From)\s+", "", added_term, flags=re.I).strip()
-        if cleaned_term and len(cleaned_term) >= 2 and cleaned_term.lower() not in [m.lower() for m in mand]:
-            mand.append(cleaned_term)
-            explanation += f" Included '{cleaned_term}' in search parameters."
-
-    # If instruction is complex and local Ollama is available, let AI refine parameters intelligently
-    if len(inst) > 10 and chat_provider.is_available() and not any(k in inst for k in ["broad", "strict", "balanced"]):
-        try:
-            ai_prompt = (
-                f"You are a recruitment Boolean search optimizer.\n"
-                f"Current Job: {title}\n"
-                f"Current Mandatory Skills: {mand}\n"
-                f"Current Preferred Skills: {pref}\n"
-                f"Current Exclusions: {excl}\n"
-                f"Recruiter Instruction: \"{instruction}\"\n\n"
-                f"Return JSON:\n"
-                f"{{\n"
-                f'  "updated_mandatory": ["string"],\n'
-                f'  "updated_preferred": ["string"],\n'
-                f'  "updated_exclusions": ["string"],\n'
-                f'  "search_mode": "balanced" | "strict" | "broad",\n'
-                f'  "explanation": "concise explanation of what was changed"\n'
-                f"}}"
+            ai_available = True
+            ai_status = f"AI interpreted via {chat_provider.model_name}"
+            ai_titles = _as_list(parsed.get("target_titles")) + _as_list(parsed.get("alternative_titles"))
+            if ai_titles:
+                alt_titles = _dedupe_terms(ai_titles + alt_titles)
+            ai_req = _as_list(parsed.get("required_skills"))
+            if ai_req:
+                # Preserve mandatory JD skills unless explicitly instructed to relax.
+                mand = _dedupe_terms(jd_mand + ai_req) if "relax" not in (instruction or "").lower() else ai_req
+            ai_rel = _as_list(parsed.get("related_skills"))
+            if ai_rel:
+                pref = _dedupe_terms(pref + ai_rel)
+            ai_ind = _as_list(parsed.get("industries"))
+            if ai_ind:
+                industries = _dedupe_terms(ai_ind)
+            if parsed.get("exclusions") is not None:
+                excl = _dedupe_terms(_as_list(parsed.get("exclusions")))
+            if parsed.get("experience_preference"):
+                exp_list = _as_list(parsed.get("experience_preference"))
+                exp_pref = ", ".join(exp_list) if exp_list else str(parsed["experience_preference"]).strip()
+            if parsed.get("location_preference"):
+                loc_list = _as_list(parsed.get("location_preference"))
+                loc_pref = loc_list[0] if loc_list else str(parsed["location_preference"]).strip()
+            if str(parsed.get("search_mode") or "").lower() in {"broad", "strict", "balanced"}:
+                mode = str(parsed["search_mode"]).lower()
+            if parsed.get("explanation"):
+                explanation = str(parsed["explanation"]).strip()
+        else:
+            det = _deterministic_interpret_instruction(
+                title=title,
+                instruction=instruction,
+                mand=mand,
+                pref=pref,
+                excl=excl,
+                alt_titles=alt_titles,
+                location=loc_pref,
+                mode=mode,
             )
-            ai_res = chat_provider.extract_json(
-                prompt=ai_prompt,
-                system_prompt="You optimize Boolean recruitment search parameters. Return valid JSON only.",
-            )
-            if ai_res and isinstance(ai_res, dict):
-                if ai_res.get("updated_mandatory"):
-                    mand = [str(s).strip() for s in ai_res["updated_mandatory"] if str(s).strip()]
-                if ai_res.get("updated_preferred"):
-                    pref = [str(s).strip() for s in ai_res["updated_preferred"] if str(s).strip()]
-                if ai_res.get("updated_exclusions"):
-                    excl = [str(s).strip() for s in ai_res["updated_exclusions"] if str(s).strip()]
-                if ai_res.get("search_mode") in {"broad", "strict", "balanced"}:
-                    mode = ai_res["search_mode"]
-                if ai_res.get("explanation"):
-                    explanation = str(ai_res["explanation"]).strip()
-        except Exception:
-            pass
+            alt_titles = det["alternative_titles"]
+            mand = det["required_skills"]
+            pref = det["related_skills"]
+            industries = det["industries"]
+            exp_pref = det["experience_preference"]
+            loc_pref = det["location_preference"]
+            excl = det["exclusions"]
+            mode = det["search_mode"]
+            explanation = det["explanation"]
+            ai_available = False
+            ai_status = "AI customization unavailable (Ollama offline) — deterministic rules applied"
 
-    # Pass the AI-refined parameters through the deterministic query builder & validator
+    # Resolve any contradictory inclusions vs exclusions before query construction.
+    mand, excl, contradiction_warnings = _resolve_contradictions(mand + pref + alt_titles, excl, jd_mand)
+    # Keep mand focused on mandatory + added required skills (not mixing alt_titles into mand).
+    mand_clean = _dedupe_terms(
+        [s for s in mand if s.lower() not in {t.lower() for t in alt_titles} and s.lower() not in {p.lower() for p in pref}]
+        or jd_mand
+    )
+
     new_queries = generate_boolean_queries(
         title=title,
-        mandatory_skills=mand,
+        mandatory_skills=mand_clean,
         preferred_skills=pref,
         domain_terms=domain_terms,
         alternative_titles=alt_titles,
         adjacent_skills=adjacent_skills,
-        location=location,
+        location=loc_pref or location,
         experience_years=experience_years,
         target_companies=cos,
         exclusions=excl,
         job_id=job_id,
         search_mode=mode,
+        industries=industries,
+        experience_preference=exp_pref,
     )
     result_dict = new_queries.model_dump()
     result_dict["customization_explanation"] = explanation
     result_dict["explanation"] = explanation
     result_dict["customization_applied"] = explanation
     result_dict["customized_query"] = result_dict.get("naukri", {}).get("query", "")
-    result_dict["custom_mandatory"] = mand
+    result_dict["custom_mandatory"] = mand_clean
     result_dict["custom_preferred"] = pref
     result_dict["custom_exclusions"] = excl
     result_dict["search_mode"] = mode
+    result_dict["ai_available"] = ai_available
+    result_dict["ai_status"] = ai_status
+    result_dict["validation_warnings"] = contradiction_warnings
+    result_dict["interpreted_suggestions"] = {
+        "titles": _clean_title_variants(title, alt_titles),
+        "mandatory_skills": mand_clean,
+        "related_skills": pref,
+        "industries": industries,
+        "experience_preference": exp_pref,
+        "location_preference": loc_pref,
+        "exclusions": excl,
+        "search_mode": mode,
+    }
     return result_dict
